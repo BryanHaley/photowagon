@@ -2129,6 +2129,9 @@ enum AppleDecoder {
             image = out
             // ProPhoto, so raw colour isn't clipped.
             space = CGColorSpace(name: CGColorSpace.rommrgb)
+        } else if let (cg, orientation) = redrawnHEIF(data) {
+            image = CIImage(cgImage: cg).oriented(orientation)
+            space = cg.colorSpace.flatMap { $0.model == .rgb ? $0 : nil }
         } else if let out = CIImage(data: data, options: [.applyOrientationProperty: true]) {
             image = out
             space = out.colorSpace.flatMap { $0.model == .rgb ? $0 : nil }
@@ -2136,6 +2139,21 @@ enum AppleDecoder {
             return nil
         }
         return CIContext().tiffRepresentation(of: image, format: .RGBA16, colorSpace: space ?? CGColorSpaceCreateDeviceRGB())
+    }
+
+    /// A HEIC/HEIF redrawn as 16-bit RGBA, with its orientation; `nil` for anything else. iOS 27's
+    /// Core Image misreads ImageIO's HEIF pixels (10-bit packed, and 16-bit with straight alpha).
+    private static func redrawnHEIF(_ data: Data) -> (CGImage, CGImagePropertyOrientation)? {
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+              let type = CGImageSourceGetType(source).flatMap({ UTType($0 as String) }), type.conforms(to: .heif) || type.conforms(to: .heic),
+              let cg = CGImageSourceCreateImageAtIndex(source, 0, nil) else { return nil }
+        let props = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]
+        let orientation = (props?[kCGImagePropertyOrientation] as? UInt32).flatMap(CGImagePropertyOrientation.init) ?? .up
+        let space = cg.colorSpace.flatMap { $0.model == .rgb ? $0 : nil } ?? CGColorSpaceCreateDeviceRGB()
+        guard let ctx = CGContext(data: nil, width: cg.width, height: cg.height, bitsPerComponent: 16, bytesPerRow: 0, space: space,
+                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder16Little.rawValue) else { return nil }
+        ctx.draw(cg, in: CGRect(x: 0, y: 0, width: cg.width, height: cg.height))
+        return ctx.makeImage().map { ($0, orientation) }
     }
 }
 
