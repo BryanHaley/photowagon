@@ -38,6 +38,11 @@ fn map_image(v: [f32; 4]) -> Arc<Image> {
     Arc::new(Image { rect: r, ch: 4, data: (0..64).flat_map(|_| v).collect() })
 }
 
+/// Variable Blur amount: 1 on the left half of `R`, 0 on the right.
+fn left_half_mask() -> Arc<Image> {
+    Arc::new(Image { rect: R, ch: 1, data: (0..40 * 30).map(|i| if (i % 40) < 20 { 1.0 } else { 0.0 }).collect() })
+}
+
 const WHITE: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 const BLACK: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
 
@@ -97,9 +102,9 @@ fn new_filters() -> Vec<FilterParams> {
         FilterParams::ShapeBlur { radius: 3.0, shape: BlurShape::Star },
         FilterParams::TiltShift { blur: 6.0, center_x: 0.5, center_y: 0.5, angle: 0.0, focus: 0.1, transition: 0.2 },
         FilterParams::IrisBlur { pins: vec![IrisPin { blur: 6.0, ..IrisPin::default() }] },
-        FilterParams::FieldBlur { pins: vec![FieldPin { x: 0.2, y: 0.2, blur: 0.0 }, FieldPin { x: 0.8, y: 0.8, blur: 6.0 }] },
+        FilterParams::VariableBlur { radius: 6.0, mask: Some(left_half_mask()) },
         FilterParams::SpinBlur { pins: vec![SpinPin { blur_angle: 30.0, ..SpinPin::default() }] },
-        FilterParams::PathBlur { paths: vec![BlurPath { points: vec![[0.1, 0.2], [0.9, 0.8]], speed: 8.0, taper: 30.0 }] },
+        FilterParams::PathBlur { paths: vec![BlurPath { points: vec![[0.1, 0.2], [0.9, 0.8]], speed: 8.0 }] },
         FilterParams::Custom {
             kernel: vec![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, -1.0, 5.0, -1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
             scale: 1.0,
@@ -214,6 +219,7 @@ fn new_params_serde_roundtrip() {
             FilterParams::Displace { horizontal, vertical, stretch, undefined, .. } => {
                 FilterParams::Displace { horizontal, vertical, stretch, undefined, map: None }
             }
+            FilterParams::VariableBlur { radius, .. } => FilterParams::VariableBlur { radius, mask: None },
             other => other,
         };
         assert_eq!(back, strip(&p), "{j}");
@@ -250,7 +256,7 @@ fn identities_at_zero_strength() {
         FilterParams::ShapeBlur { radius: 0.0, shape: BlurShape::Heart },
         FilterParams::TiltShift { blur: 0.0, center_x: 0.5, center_y: 0.5, angle: 30.0, focus: 0.1, transition: 0.2 },
         FilterParams::IrisBlur { pins: vec![IrisPin { blur: 0.0, ..IrisPin::default() }] },
-        FilterParams::FieldBlur { pins: vec![FieldPin { blur: 0.0, ..FieldPin::default() }] },
+        FilterParams::VariableBlur { radius: 0.0, mask: None },
         FilterParams::SpinBlur { pins: vec![SpinPin { blur_angle: 0.0, ..SpinPin::default() }] },
         FilterParams::PathBlur { paths: vec![BlurPath { speed: 0.0, ..BlurPath::default() }] },
     ];
@@ -609,6 +615,9 @@ fn gallery_blurs_follow_their_geometry() {
     let ir = run(&s, &FilterParams::IrisBlur { pins: vec![IrisPin { blur: 6.0, radius_x: 0.3, radius_y: 0.3, ..IrisPin::default() }] });
     assert_eq!(ir.pixel(20, 15), s.pixel(20, 15));
     assert_ne!(ir.pixel(1, 1), s.pixel(1, 1));
+    let vb = run(&s, &FilterParams::VariableBlur { radius: 6.0, mask: Some(left_half_mask()) });
+    assert_ne!(vb.pixel(5, 15), s.pixel(5, 15), "mask 1: blurred");
+    assert_eq!(vb.pixel(35, 15), s.pixel(35, 15), "mask 0: sharp");
     let sp = run(&s, &FilterParams::SpinBlur { pins: vec![SpinPin { radius_x: 0.3, radius_y: 0.3, blur_angle: 40.0, ..SpinPin::default() }] });
     assert_eq!(sp.pixel(1, 1), s.pixel(1, 1), "outside the spin ellipse");
     assert_ne!(sp.pixel(24, 15), s.pixel(24, 15));
@@ -620,7 +629,7 @@ fn gallery_blurs_follow_their_geometry() {
             stripes.write_pixel(x, y, &[v, v, v, 1.0]);
         }
     }
-    let pb = run(&stripes, &FilterParams::PathBlur { paths: vec![BlurPath { points: vec![[0.0, 0.5], [1.0, 0.5]], speed: 6.0, taper: 0.0 }] });
+    let pb = run(&stripes, &FilterParams::PathBlur { paths: vec![BlurPath { points: vec![[0.0, 0.5], [1.0, 0.5]], speed: 6.0 }] });
     assert!((pb.pixel(20, 10)[0] - 1.0).abs() < 1e-5 && pb.pixel(20, 11)[0] < 1e-5);
 }
 

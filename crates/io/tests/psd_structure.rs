@@ -431,7 +431,7 @@ fn text_and_smart_detected() {
     let (d, _) = psd_to_document(&f);
     let n = d.layers.len();
     assert_eq!(d.layers[n - 3].content.kind_name(), "Type");
-    assert_eq!(d.layers[n - 2].content.kind_name(), "Smart Object");
+    assert_eq!(d.layers[n - 2].content.kind_name(), "Embedded");
     assert_eq!(d.layers[n - 1].content.kind_name(), "Shape");
 }
 

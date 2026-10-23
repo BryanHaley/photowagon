@@ -2837,3 +2837,60 @@ curves	Smooth	平滑
 	Increase Brush Size	放大筆刷大小
 	Decrease Brush Hardness	降低筆刷硬度
 	Increase Brush Hardness	提高筆刷硬度
+# Renamed engine strings (same translations as the names they replaced).
+	Create Batch App…	建立快捷批次處理…
+	Contact Sheet…	縮圖目錄 II…
+	Merge to HDR…	合併為 HDR Pro…
+	Panorama…	Photomerge…
+	Create Embedded Layer after Loading Layers	載入圖層後建立智慧型物件
+	Fill from Surroundings…	內容感知填滿…
+	Content-Preserving Scale	內容感知縮放
+	Pin Warp	操控彎曲
+	Raw Develop…	Camera Raw…
+	New Embedded Layer via Copy	以拷貝新增智慧型物件
+	Live Filter	智慧型濾鏡
+	Convert for Live Filters	轉換成智慧型濾鏡
+	Clear Live Filters	清除智慧型濾鏡
+	Disable Live Filters	停用智慧型濾鏡
+	Embedded Layers	智慧型物件
+	Embedded Layer	智慧型物件
+	Convert to Embedded Layer	轉換為智慧型物件
+	Refine Selection…	選取並遮住…
+	Refine Selection (Legacy)	調整邊緣
+	Develop…	Camera Raw 濾鏡…
+	Fluid Warp…	液化…
+	Perspective Planes…	消失點…
+	Blur Effects	模糊收藏館
+	Save these settings as a Raw Develop .xmp file	將這些設定儲存為 Camera Raw .xmp 檔案
+	Load settings from a Raw Develop .xmp file	從 Camera Raw .xmp 檔案載入設定
+	Loaded Raw Develop settings from {file}	已從 {file} 載入 Camera Raw 設定
+	Loaded Raw Develop settings from {file} ({n} not supported)	已從 {file} 載入 Camera Raw 設定（{n} 項不支援）
+	Raw Develop isn't open	Camera Raw 未開啟
+	Commit Pin Warp ({key})	確認操控彎曲 ({key})
+	Contact Sheet	連絡表 II
+	Create Batch App	建立快捷批次
+	Filter for embedded layers	篩選智慧型物件
+	Fluid Warp is not open	液化未開啟
+	Pin Warp is not active	操控彎曲未啟用
+	Fill from Surroundings needs a selection on a pixel layer	內容感知填滿需要在像素圖層上建立選取範圍
+	Could not use Pin Warp: no opaque pixels	無法使用操控彎曲：沒有不透明像素
+	Could not use Pin Warp: the layer is empty	無法使用操控彎曲：圖層是空的
+	Repair Brush Tool	修復筆刷工具
+	Live Filters	智慧型濾鏡
+	Spot Repair Brush Tool	污點修復筆刷工具
+	Always create embedded layers when placing	置入時一律建立智慧型物件
+	Raw Develop Defaults	Camera Raw 預設值
+	Open as embedded layer	以智慧型物件開啟
+	Embedded Layer Layer	智慧型物件圖層
+	Rasterize Embedded Layer	點陣化智慧型物件
+	Develop ({layer})	Camera Raw 濾鏡（{layer}）
+	Raw Develop ({name})	Camera Raw（{name}）
+	Move and Fill Tool	內容感知移動工具
+	Repair Brush	修復筆刷
+	Spot Repair Brush	污點修復筆刷
+	Perspective Planes: click four corners to create a plane	消失點：按一下四個角以建立平面
+	Perspective Planes is not active	消失點未啟用
+	Apply Perspective Planes ({key})	套用消失點 ({key})
+	Refine Selection (Legacy) Brush (R)	調整邊緣筆刷 (R)
+@plural	Updated {n} linked embedded layer changed on disk|Updated {n} linked embedded layers changed on disk	已更新 {n} 個在磁碟上變更的連結智慧型物件
+	Fill from Surroundings	內容感知填滿

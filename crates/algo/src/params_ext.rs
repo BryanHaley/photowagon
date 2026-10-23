@@ -234,21 +234,6 @@ impl Default for IrisPin {
     }
 }
 
-/// Field Blur pin: a blur amount at a point.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", default)]
-pub struct FieldPin {
-    pub x: f32,
-    pub y: f32,
-    pub blur: f32,
-}
-
-impl Default for FieldPin {
-    fn default() -> Self {
-        FieldPin { x: 0.5, y: 0.5, blur: 15.0 }
-    }
-}
-
 /// Spin Blur pin: an ellipse whose content is rotated about its centre.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
@@ -275,12 +260,10 @@ pub struct BlurPath {
     pub points: Vec<[f32; 2]>,
     /// Blur length in px.
     pub speed: f32,
-    /// 0–100: how much the blur fades toward the path's end.
-    pub taper: f32,
 }
 
 impl Default for BlurPath {
     fn default() -> Self {
-        BlurPath { points: vec![[0.2, 0.5], [0.8, 0.5]], speed: 50.0, taper: 0.0 }
+        BlurPath { points: vec![[0.2, 0.5], [0.8, 0.5]], speed: 50.0 }
     }
 }

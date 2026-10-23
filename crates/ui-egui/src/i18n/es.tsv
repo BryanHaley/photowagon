@@ -4192,3 +4192,72 @@ navigator	Zoom	Zoom
 	Increase Brush Size	Aumentar tamaño del pincel
 	Decrease Brush Hardness	Reducir dureza del pincel
 	Increase Brush Hardness	Aumentar dureza del pincel
+# Renamed engine strings (same translations as the names they replaced).
+	Create Batch App…	Crear droplet…
+	Contact Sheet…	Hoja de contactos II…
+	Merge to HDR…	Combinar en HDR Pro…
+	Panorama…	Photomerge…
+	Create Embedded Layer after Loading Layers	Crear objeto inteligente tras cargar las capas
+	Fill from Surroundings…	Relleno según el contenido…
+	Content-Preserving Scale	Escala según el contenido
+	Pin Warp	Deformación de posición libre
+	Raw Develop…	Camera Raw…
+	New Embedded Layer via Copy	Nuevo objeto inteligente mediante copia
+	Live Filter	Filtro inteligente
+	Convert for Live Filters	Convertir para filtros inteligentes
+	Clear Live Filters	Borrar filtros inteligentes
+	Disable Live Filters	Desactivar filtros inteligentes
+	Embedded Layers	Objetos inteligentes
+	Embedded Layer	Objeto inteligente
+	Convert to Embedded Layer	Convertir en objeto inteligente
+	Refine Selection…	Selección y máscara…
+	Refine Selection (Legacy)	Perfeccionar borde
+	Develop…	Filtro de Camera Raw…
+	Fluid Warp…	Licuar…
+	Perspective Planes…	Punto de fuga…
+	Blur Effects	Galería de desenfoque
+	Save these settings as a Raw Develop .xmp file	Guardar estos ajustes como archivo .xmp de Camera Raw
+	Load settings from a Raw Develop .xmp file	Cargar ajustes desde un archivo .xmp de Camera Raw
+	Loaded Raw Develop settings from {file}	Ajustes de Camera Raw cargados desde {file}
+	Loaded Raw Develop settings from {file} ({n} not supported)	Ajustes de Camera Raw cargados desde {file} ({n} no compatibles)
+	Raw Develop isn't open	Camera Raw no está abierto
+	Commit Pin Warp ({key})	Confirmar deformación de posición libre ({key})
+	Contact Sheet	Hoja de contactos II
+	Create Batch App	Crear droplet
+	Filter for embedded layers	Filtrar por objetos inteligentes
+	Fluid Warp is not open	Licuar no está abierto
+	Pin Warp is not active	La deformación de posición libre no está activa
+	Fill from Surroundings needs a selection on a pixel layer	El relleno según el contenido necesita una selección en una capa de píxeles
+	Could not use Pin Warp: no opaque pixels	No se pudo usar la deformación de posición libre: no hay píxeles opacos
+	Could not use Pin Warp: the layer is empty	No se pudo usar la deformación de posición libre: la capa está vacía
+	Repair Brush Tool	Herramienta Pincel corrector
+	Live Filters	Filtros inteligentes
+	Spot Repair Brush Tool	Herramienta Pincel corrector puntual
+	Always create embedded layers when placing	Crear siempre objetos inteligentes al colocar
+	Raw Develop Defaults	Valores predeterminados de Camera Raw
+	Open as embedded layer	Abrir como objeto inteligente
+	Embedded Layer Layer	Capa de objeto inteligente
+	Rasterize Embedded Layer	Rasterizar objeto inteligente
+	Develop ({layer})	Filtro de Camera Raw ({layer})
+	Raw Develop ({name})	Camera Raw ({name})
+	Move and Fill Tool	Herramienta Mover con detección de contenido
+	Repair Brush	Pincel corrector
+	Spot Repair Brush	Pincel corrector puntual
+	Perspective Planes: click four corners to create a plane	Punto de fuga: haga clic en cuatro esquinas para crear un plano
+	Perspective Planes is not active	Punto de fuga no está activo
+	Apply Perspective Planes ({key})	Aplicar punto de fuga ({key})
+	Refine Selection (Legacy) Brush (R)	Pincel para perfeccionar bordes (R)
+@plural	Updated {n} linked embedded layer changed on disk|Updated {n} linked embedded layers changed on disk	Se actualizó {n} objeto inteligente enlazado modificado en el disco|Se actualizaron {n} objetos inteligentes enlazados modificados en el disco
+	Delete Live Filters	Eliminar filtros inteligentes
+	Enable Live Filters	Activar filtros inteligentes
+	Move and Fill	Mover con detección de contenido
+	Commit Pin Warp (↩)	Confirmar Deformación de posición libre (↩)
+	Raw Develop	Camera Raw
+	Develop	Filtro de Camera Raw
+	Fill from Surroundings	Relleno según el contenido
+	Fluid Warp	Licuar
+	Merge to HDR	Combinar en HDR Pro
+	Panorama	Photomerge
+	Refine Selection	Seleccionar y aplicar máscara
+	Perspective Planes	Punto de fuga
+	This Embedded Layer must be rasterized before proceeding. Its contents will no longer be editable. Rasterize the Embedded Layer?	Este objeto inteligente debe rasterizarse antes de continuar. Su contenido dejará de ser editable. ¿Rasterizar el objeto inteligente?

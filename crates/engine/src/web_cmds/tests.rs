@@ -817,3 +817,22 @@ fn overlapping_slices_keep_the_later_slice_in_html() {
 
 #[path = "color_table_tests.rs"]
 mod color_table_tests;
+
+#[test]
+fn quick_export_takes_a_size_and_can_drop_transparency() {
+    let dir = tmp("quick_size");
+    let mut s = session(8);
+    let r = s.execute("file.export.quickExport", json!({"path": format!("{dir}/half.png"), "percent": 50})).unwrap();
+    assert_eq!(decode(r["path"].as_str().unwrap()).dimensions(), (32, 24), "the document is 64×48");
+    s.execute("file.export.quickExport", json!({"path": format!("{dir}/w.png"), "width": 128})).unwrap();
+    assert_eq!(decode(&format!("{dir}/w.png")).dimensions(), (128, 96), "one side keeps the aspect");
+    assert_eq!(s.active().unwrap().doc.size.width, 64, "the document keeps its size");
+    assert!(s.execute("file.export.quickExport", json!({"path": format!("{dir}/x.png"), "width": 0})).is_err());
+    s.execute("file.export.quickExport", json!({"path": format!("{dir}/flat.png"), "transparency": false})).unwrap();
+    let alpha = |f: &str| {
+        let img = decode(&format!("{dir}/{f}")).convert(photocraft_codecs::ChannelLayout::Rgba, photocraft_codecs::SampleType::U8);
+        img.data().chunks(4).map(|p| p[3]).min().unwrap()
+    };
+    assert_eq!(alpha("half.png"), 0, "transparent by default");
+    assert_eq!(alpha("flat.png"), 255, "transparency off: on white");
+}

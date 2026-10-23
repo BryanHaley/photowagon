@@ -30,7 +30,7 @@ fn active_smart(s: &Session) -> std::result::Result<(), String> {
     let d = s.active().ok_or("no document")?;
     match d.active_layer.and_then(|id| d.doc.layer(id)).map(|l| &l.content) {
         Some(LayerContent::Smart(_)) => Ok(()),
-        _ => Err("the active layer is not a smart object".into()),
+        _ => Err("not an embedded layer".into()),
     }
 }
 
@@ -132,7 +132,7 @@ fn warp_layer(doc_sel: Option<&Surface>, group: Locks, l: &mut Layer, w: &Warp, 
         LayerContent::Shape(sh) => crate::vector_cmds::map_shape(sh, None, Some(w))?,
         LayerContent::Smart(sm) => {
             // Store in source space: undo the placement (affine, or Distort / Perspective) around the warp.
-            let inv = crate::smart_cmds::placement(sm).inverse().ok_or_else(|| EngineError::Other("the smart object's transform is degenerate".into()))?;
+            let inv = crate::smart_cmds::placement(sm).inverse().ok_or_else(|| EngineError::Other("the embedded layer's transform is degenerate".into()))?;
             let corners =
                 [[w.bounds[0], w.bounds[1]], [w.bounds[2], w.bounds[1]], [w.bounds[2], w.bounds[3]], [w.bounds[0], w.bounds[3]]].map(|p| hom_apply(&inv, p));
             let sb = corners.iter().fold([f64::MAX, f64::MAX, f64::MIN, f64::MIN], |b, p| [b[0].min(p[0]), b[1].min(p[1]), b[2].max(p[0]), b[3].max(p[1])]);
@@ -458,7 +458,7 @@ fn split(s: &mut Session, p: &Value, cmd: &str, how: Split) -> Result<Value> {
     let id = st.active_layer.ok_or(EngineError::Other("no active layer".into()))?;
     let layer = st.doc.layer(id).ok_or(EngineError::NoLayer(id))?;
     let LayerContent::Smart(sm) = &layer.content else {
-        return Err(bad(cmd, "pass the warp being edited (`warp`), or select a warped smart object"));
+        return Err(bad(cmd, "pass the warp being edited (`warp`), or select a warped embedded layer"));
     };
     let w = sm.warp.clone().unwrap_or_else(|| {
         let b = layer.surface().map_or(Rect::EMPTY, Surface::content_bounds);
@@ -521,7 +521,7 @@ fn grid(s: &mut Session, p: &Value) -> Result<Value> {
     let id = st.active_layer.ok_or(EngineError::Other("no active layer".into()))?;
     let layer = st.doc.layer(id).ok_or(EngineError::NoLayer(id))?;
     let LayerContent::Smart(sm) = &layer.content else {
-        return Err(bad(CMD, "pass the warp being edited (`warp`), or select a smart object"));
+        return Err(bad(CMD, "pass the warp being edited (`warp`), or select an embedded layer"));
     };
     let w = sm.warp.clone().unwrap_or_else(|| {
         let b = layer.surface().map_or(Rect::EMPTY, Surface::content_bounds);
@@ -546,9 +546,9 @@ fn grid(s: &mut Session, p: &Value) -> Result<Value> {
 }
 
 pub fn specs() -> Vec<CommandSpec> {
-    const P: &str = r##"{"layer":id?,"rect":[x0,y0,x1,y1]? (warp box; default = layer content ∩ selection),"style":"custom|none|arc|arcLower|arcUpper|arch|bulge|shellLower|shellUpper|flag|wave|fish|rise|fisheye|inflate|squeeze|twist","bend":%=50,"hDistort":%,"vDistort":%,"vertical":bool,"mesh":{"us":[0,…,1],"vs":[0,…,1],"points":[[x,y]…]} ((3c+1)×(3r+1) control points, row-major, document px; on a smart object `us`/`vs` span the source contents, so points equal to the placement are an identity warp even when it is skewed),"grid":[cols,rows]?,"warp":{full warp object}?,"interpolation":"bicubic|bilinear|nearest"} — on a type layer a style (or none) sets its Warp Text and the type stays editable"##;
-    const S: &str = r##"{"warp":{…}? (the warp being edited; returned split),"rect":[x0,y0,x1,y1]?,"at":[x,y]? (document point; default = middle of the patch)} — without `warp`, edits the active smart object's warp. A 1×1 custom mesh is divided at the thirds first (the guides drawn on the default grid), so splitWarpCrosswise on an identity custom warp returns a 4×4 mesh (knots at 0, 1/3, 1/2, 2/3 and 1), not a 2×2. A preset is fitted as one patch and split without that step."##;
-    const G: &str = r##"{"warp":{…}? (the warp being edited; returned with the new mesh),"rect":[x0,y0,x1,y1]?,"size":n|"default"|"3"|"4"|"5" (square patches, 1..=64; 1 and "default" are the single-patch grid)} — without `warp`/`style`/`mesh`, edits the active smart object's warp. The surface is kept and the new lines are real splits at i/n."##;
+    const P: &str = r##"{"layer":id?,"rect":[x0,y0,x1,y1]? (warp box; default = layer content ∩ selection),"style":"custom|none|arc|arcLower|arcUpper|arch|bulge|shellLower|shellUpper|flag|wave|fish|rise|fisheye|inflate|squeeze|twist","bend":%=50,"hDistort":%,"vDistort":%,"vertical":bool,"mesh":{"us":[0,…,1],"vs":[0,…,1],"points":[[x,y]…]} ((3c+1)×(3r+1) control points, row-major, document px; on an embedded layer `us`/`vs` span the source contents, so points equal to the placement are an identity warp even when it is skewed),"grid":[cols,rows]?,"warp":{full warp object}?,"interpolation":"bicubic|bilinear|nearest"} — on a type layer a style (or none) sets its Warp Text and the type stays editable"##;
+    const S: &str = r##"{"warp":{…}? (the warp being edited; returned split),"rect":[x0,y0,x1,y1]?,"at":[x,y]? (document point; default = middle of the patch)} — without `warp`, edits the active embedded layer's warp. A 1×1 custom mesh is divided at the thirds first (the guides drawn on the default grid), so splitWarpCrosswise on an identity custom warp returns a 4×4 mesh (knots at 0, 1/3, 1/2, 2/3 and 1), not a 2×2. A preset is fitted as one patch and split without that step."##;
+    const G: &str = r##"{"warp":{…}? (the warp being edited; returned with the new mesh),"rect":[x0,y0,x1,y1]?,"size":n|"default"|"3"|"4"|"5" (square patches, 1..=64; 1 and "default" are the single-patch grid)} — without `warp`/`style`/`mesh`, edits the active embedded layer's warp. The surface is kept and the new lines are real splits at i/n."##;
     vec![
         CommandSpec {
             id: "edit.transform.warp",
@@ -563,7 +563,7 @@ pub fn specs() -> Vec<CommandSpec> {
         CommandSpec {
             id: "layer.smartObjects.warp",
             label: "Warp",
-            menu: &["Layer", "Smart Objects"],
+            menu: &["Layer", "Embedded Layers"],
             shortcut: None,
             params: P,
             enabled: active_smart,

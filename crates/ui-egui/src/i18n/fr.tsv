@@ -3238,3 +3238,63 @@ curves	Smooth	Lisser
 	Increase Brush Size	Augmenter la taille du pinceau
 	Decrease Brush Hardness	Réduire la dureté du pinceau
 	Increase Brush Hardness	Augmenter la dureté du pinceau
+# Renamed engine strings (same translations as the names they replaced).
+	Create Batch App…	Créer un droplet…
+	Contact Sheet…	Planche contact II…
+	Merge to HDR…	Fusionner en HDR Pro…
+	Panorama…	Photomerge…
+	Create Embedded Layer after Loading Layers	Créer un objet intelligent après le chargement des calques
+	Fill from Surroundings…	Remplissage d'après le contenu…
+	Content-Preserving Scale	Mise à l'échelle d'après le contenu
+	Pin Warp	Déformation par épingles
+	Raw Develop…	Camera Raw…
+	New Embedded Layer via Copy	Nouvel objet intelligent par copie
+	Live Filter	Filtre intelligent
+	Convert for Live Filters	Convertir pour les filtres intelligents
+	Clear Live Filters	Effacer les filtres intelligents
+	Disable Live Filters	Désactiver les filtres intelligents
+	Embedded Layers	Objets intelligents
+	Embedded Layer	Objet intelligent
+	Convert to Embedded Layer	Convertir en objet intelligent
+	Refine Selection…	Sélectionner et masquer…
+	Refine Selection (Legacy)	Améliorer le contour
+	Develop…	Filtre Camera Raw…
+	Fluid Warp…	Liquéfier…
+	Perspective Planes…	Point de fuite…
+	Blur Effects	Galerie de flous
+	Save these settings as a Raw Develop .xmp file	Enregistrer ces paramètres dans un fichier .xmp Camera Raw
+	Load settings from a Raw Develop .xmp file	Charger les paramètres d’un fichier .xmp Camera Raw
+	Loaded Raw Develop settings from {file}	Paramètres Camera Raw chargés depuis {file}
+	Loaded Raw Develop settings from {file} ({n} not supported)	Paramètres Camera Raw chargés depuis {file} ({n} non pris en charge)
+	Raw Develop isn't open	Camera Raw n'est pas ouvert
+	Commit Pin Warp ({key})	Valider la déformation par épingles ({key})
+	Contact Sheet	Planche contact II
+	Create Batch App	Créer un droplet
+	Filter for embedded layers	Filtrer les objets intelligents
+	Fluid Warp is not open	Liquéfier n'est pas ouvert
+	Pin Warp is not active	La déformation par épingles n'est pas active
+	Fill from Surroundings needs a selection on a pixel layer	Le remplissage selon le contenu nécessite une sélection sur un calque de pixels
+	Could not use Pin Warp: no opaque pixels	Impossible d'utiliser la déformation par épingles : aucun pixel opaque
+	Could not use Pin Warp: the layer is empty	Impossible d'utiliser la déformation par épingles : le calque est vide
+	Repair Brush Tool	Outil Pinceau correcteur
+	Live Filters	Filtres intelligents
+	Spot Repair Brush Tool	Outil Correcteur localisé
+	Always create embedded layers when placing	Toujours créer des objets intelligents lors du placement
+	Raw Develop Defaults	Valeurs par défaut de Camera Raw
+	Open as embedded layer	Ouvrir en tant qu'objet intelligent
+	Embedded Layer Layer	Calque d'objet intelligent
+	Rasterize Embedded Layer	Rastériser l'objet intelligent
+	Delete Live Filters	Supprimer les filtres intelligents
+	Enable Live Filters	Activer les filtres intelligents
+	Move and Fill	Déplacement selon le contenu
+	Commit Pin Warp (↩)	Valider la déformation par épingles (↩)
+	Develop ({layer})	Filtre Camera Raw ({layer})
+	Raw Develop ({name})	Camera Raw ({name})
+	Move and Fill Tool	Outil Déplacement selon le contenu
+	Repair Brush	Pinceau correcteur
+	Spot Repair Brush	Correcteur localisé
+	Perspective Planes: click four corners to create a plane	Point de fuite : cliquez sur quatre coins pour créer un plan
+	Perspective Planes is not active	Point de fuite n’est pas actif
+	Apply Perspective Planes ({key})	Appliquer le point de fuite ({key})
+	Refine Selection (Legacy) Brush (R)	Pinceau d'amélioration du contour (R)
+	Fill from Surroundings	Remplissage d'après le contenu

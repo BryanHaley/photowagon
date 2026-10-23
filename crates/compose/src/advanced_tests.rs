@@ -283,6 +283,27 @@ fn transparency_shapes_off_spreads_effects_over_the_whole_layer() {
     }
 }
 
+/// Color Dodge's soft edge with Transparency Shapes Layer off: the alpha acts as Fill, so dark
+/// backdrops barely change and light ones blow out.
+#[test]
+fn transparency_shapes_off_takes_alpha_as_fill_in_the_special_modes() {
+    for depth in DEPTHS {
+        let mut d = doc(depth, false);
+        d.layers.push(solid(&d, "dark", Rect::new(0, 0, 6, 8), [0.1, 0.1, 0.1, 1.0]));
+        d.layers.push(solid(&d, "light", Rect::new(6, 0, 12, 8), GRAY));
+        let mut sun = solid(&d, "sun", full(&d), [1.0, 1.0, 1.0, 0.5]);
+        sun.blend = BlendMode::ColorDodge;
+        d.layers.push(sun);
+        // Shaped by its transparency: half of dodge(cb, 1) = 1.
+        check(&d, 2, 2, [0.55, 0.55, 0.55, 1.0], "dark, shaped");
+        check(&d, 8, 2, [0.75, 0.75, 0.75, 1.0], "light, shaped");
+        // As Fill: dodge(cb, 0.5) = cb / 0.5.
+        d.layers[2].advanced.transparency_shapes = false;
+        check(&d, 2, 2, [0.2, 0.2, 0.2, 1.0], "dark, alpha as fill");
+        check(&d, 8, 2, WHITE, "light, alpha as fill");
+    }
+}
+
 fn inside_stroke() -> Effect {
     Effect::Stroke(StrokeFx {
         common: FxCommon::new(BlendMode::Normal, 1.0),

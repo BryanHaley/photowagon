@@ -7,6 +7,8 @@
 //! - `brush.presets.importImage` turns an image file (anything File › Open reads: PNG, JPEG,
 //!   TIFF, PSD…) into a sampled-tip brush preset, as Edit › Define Brush Preset does with a
 //!   selection: dark pixels paint, white and transparent ones don't (TOOL-213-12).
+//! - `brush.presets.importFile` takes any of these, plus GIMP brushes (`.gbr`, `.gih`, `.vbr`)
+//!   and Krita presets and bundles (`.kpp`, `.bundle`), read by `photocraft-io` (`gimp_brush`).
 //! - `gradient.presets.importGrd` adds the gradients of a `.grd` file (version 5) to the
 //!   Gradients panel as one group.
 //!
@@ -199,6 +201,31 @@ fn import_image(s: &mut Session, p: &Value) -> Result<Value> {
     Ok(json!({ "name": name, "width": tw, "height": th }))
 }
 
+/// Any brush file, by its extension: `.abr`, GIMP and Krita tips, else an image. The group is
+/// named after the file.
+fn import_file(s: &mut Session, p: &Value) -> Result<Value> {
+    let cmd = "brush.presets.importFile";
+    let name = p.get("fileName").or_else(|| p.get("path")).and_then(Value::as_str).unwrap_or_default().to_string();
+    let file = std::path::Path::new(&name);
+    let ext = file.extension().map(|e| e.to_string_lossy().to_ascii_lowercase()).unwrap_or_default();
+    let mut p = p.clone();
+    if p.get("group").is_none()
+        && let (Some(o), Some(stem)) = (p.as_object_mut(), file.file_stem().map(|s| s.to_string_lossy().trim().to_string()).filter(|s| !s.is_empty()))
+    {
+        o.insert("group".into(), json!(stem));
+    }
+    if ext == "abr" {
+        return import_abr(s, &p);
+    }
+    if !photocraft_io::gimp_brush::EXTENSIONS.contains(&ext.as_str()) {
+        return import_image(s, &p);
+    }
+    let (bytes, _) = file_bytes(&p, cmd, "brush file")?;
+    let group = p.get("group").and_then(Value::as_str).map(str::trim).filter(|g| !g.is_empty()).unwrap_or("Imported Brushes").to_string();
+    let imp = photocraft_io::gimp_brush::read_brush_file(&name, &bytes, &group).map_err(|e| bad(cmd, e))?;
+    add_abr_presets(s, &p, group, imp)
+}
+
 /// Brush-file import command specs.
 pub fn specs() -> Vec<CommandSpec> {
     vec![
@@ -220,6 +247,16 @@ pub fn specs() -> Vec<CommandSpec> {
             params: r##"{"path":"image file (PNG, JPEG, TIFF, PSD…)"?,"data":base64 bytes?,"fileName":string? (with data: the file's name, for its format and the default preset name),"name":string?=file name,"select":bool=true (make it the current brush)} → {name, width, height}"##,
             enabled: always,
             run: import_image,
+            journal: true,
+        },
+        CommandSpec {
+            id: "brush.presets.importFile",
+            label: "Import Brush Tips…",
+            menu: &[],
+            shortcut: None,
+            params: r##"{"path":"brush file"?,"data":base64 bytes?,"fileName":string? (with data: the file's name, for its kind),"group":string?=file name,"replace":bool=true,"select":bool} (.abr as brush.presets.importAbr; .gbr/.gih/.vbr (GIMP) and .bundle (Krita) as one group; any other image as brush.presets.importImage)"##,
+            enabled: always,
+            run: import_file,
             journal: true,
         },
         CommandSpec {
@@ -472,6 +509,24 @@ mod tests {
         }
         let img = photocraft_codecs::Image::from_u16(40, 30, photocraft_codecs::ChannelLayout::Rgba, &px).unwrap();
         photocraft_codecs::encode(&img, photocraft_codecs::Format::Png, &Default::default()).unwrap()
+    }
+
+    #[test]
+    fn imports_gimp_brushes_by_extension() {
+        let mut gbr = Vec::new();
+        for v in [32u32, 2, 1, 1, 1] {
+            gbr.extend(v.to_be_bytes());
+        }
+        gbr.extend(b"GIMP");
+        gbr.extend(25u32.to_be_bytes());
+        gbr.extend(b"Dot\0\xff");
+        let mut s = Session::new();
+        let data = photocraft_paint::tile::b64_encode(&gbr);
+        let r = s.execute("brush.presets.importFile", json!({"data": data, "fileName": "Dots.gbr"})).unwrap();
+        assert_eq!((r["group"].as_str(), r["count"].as_u64()), (Some("Dots"), Some(1)));
+        assert!(s.tools.presets.iter().any(|p| p.name == "Dot" && p.group == "Dots"));
+        assert!(s.execute("brush.presets.importFile", json!({"data": data, "fileName": "Dots.gih"})).is_err());
+        assert!(s.execute("brush.presets.importFile", json!({"fileName": "x.gbr"})).is_err());
     }
 
     #[test]

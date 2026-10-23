@@ -1,0 +1,148 @@
+# PhotoWagon for each version tag (v1.2.3, v1.2.3-rc.1, ...): one archive, exported twice.
+# The App Store-signed .ipa is a workflow artifact (only people with access to the repository
+# see it). An unsigned .ipa, for sideloading, goes on the public GitHub release.
+#
+# Signing uses an App Store Connect API key, so no certificate or profile is stored on GitHub:
+# Xcode signs in the cloud with the team's distribution certificate. Repository secrets:
+#   APPLE_TEAM_ID         the 10-character team ID
+#   ASC_KEY_ID            the API key's ID
+#   ASC_ISSUER_ID         the issuer ID shown above the keys list
+#   ASC_KEY_P8_BASE64     the .p8 file, base64-encoded (base64 -i AuthKey_XXXX.p8 | pbcopy)
+# The key needs the Admin role for Xcode to use cloud-managed certificates.
+
+name: iOS App Store build
+
+on:
+  push:
+    tags: ['v[0-9]+.[0-9]+.[0-9]+*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-app-store-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 90
+    environment: app-store
+    env:
+      ARCHIVE: ${{ github.workspace }}/target/ios/PhotoWagon.xcarchive
+      EXPORT: ${{ github.workspace }}/target/ios/export
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      # libjxl's own dependencies, without its test and tool submodules.
+      - name: libjxl dependencies
+        run: git -C submodules/libjxl submodule update --init --depth 1 third_party/highway third_party/brotli third_party/skcms
+
+      - name: Versions from the tag
+        id: version
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          # App Store versions are numbers only: 1.2.3-rc.1 ships as 1.2.3.
+          echo "marketing=$(echo "$tag" | grep -oE '^[0-9]+\.[0-9]+\.[0-9]+')" >> "$GITHUB_OUTPUT"
+          echo "build=${{ github.run_number }}.${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
+
+      - name: Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.4.app
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Rust core and Xcode project
+        run: |
+          brew install xcodegen cmake ninja
+          cargo xtask ios --device --release
+          cd ios && xcodegen generate
+
+      - name: API key
+        env:
+          ASC_KEY_P8_BASE64: ${{ secrets.ASC_KEY_P8_BASE64 }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+        run: |
+          dir="$RUNNER_TEMP/private_keys"
+          mkdir -p "$dir" && chmod 700 "$dir"
+          echo "$ASC_KEY_P8_BASE64" | base64 --decode > "$dir/AuthKey_$ASC_KEY_ID.p8"
+          chmod 600 "$dir/AuthKey_$ASC_KEY_ID.p8"
+          echo "API_PRIVATE_KEYS_DIR=$dir" >> "$GITHUB_ENV"
+
+      - name: Archive
+        env:
+          TEAM: ${{ secrets.APPLE_TEAM_ID }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          xcodebuild -project ios/PhotoWagon.xcodeproj -scheme PhotoWagon -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath "$ARCHIVE" \
+            -allowProvisioningUpdates -authenticationKeyPath "$API_PRIVATE_KEYS_DIR/AuthKey_$ASC_KEY_ID.p8" \
+            -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            DEVELOPMENT_TEAM="$TEAM" CODE_SIGN_STYLE=Automatic \
+            MARKETING_VERSION=${{ steps.version.outputs.marketing }} \
+            CURRENT_PROJECT_VERSION=${{ steps.version.outputs.build }} \
+            archive -quiet
+
+      - name: Export the signed .ipa
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          xcodebuild -exportArchive -archivePath "$ARCHIVE" -exportPath "$EXPORT" \
+            -exportOptionsPlist ios/ExportOptions.plist \
+            -allowProvisioningUpdates -authenticationKeyPath "$API_PRIVATE_KEYS_DIR/AuthKey_$ASC_KEY_ID.p8" \
+            -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+
+      - name: Check the build
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          ios/check-ipa.sh "$EXPORT/PhotoWagon.ipa"
+          # Apple's own checks, the same ones an upload runs.
+          xcrun altool --validate-app -f "$EXPORT/PhotoWagon.ipa" -t ios \
+            --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID"
+
+      - name: Remove the API key
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/private_keys"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PhotoWagon-${{ github.ref_name }}-app-store
+          path: |
+            ${{ env.EXPORT }}/PhotoWagon.ipa
+            ${{ env.ARCHIVE }}/dSYMs
+          retention-days: 30
+
+      - name: Unsigned .ipa
+        run: ios/unsigned-ipa.sh "$ARCHIVE" "PhotoWagon-${GITHUB_REF_NAME}-unsigned.ipa"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: unsigned
+          path: PhotoWagon-${{ github.ref_name }}-unsigned.ipa
+          retention-days: 1
+
+  # A separate job, so the one that can write releases never sees the signing secrets.
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: unsigned
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          pre=
+          case "$GITHUB_REF_NAME" in *-*) pre=--prerelease ;; esac
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes $pre \
+            "PhotoWagon-${GITHUB_REF_NAME}-unsigned.ipa"

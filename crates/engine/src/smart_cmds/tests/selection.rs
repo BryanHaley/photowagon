@@ -171,7 +171,7 @@ fn combined_contents_survive_native_and_psd_save_open() {
         let back = photocraft_io::import("pair.psd", &psd.bytes).unwrap().document;
         assert_eq!(back.depth, depth);
         assert_eq!(back.layers.len(), 1);
-        let LayerContent::Smart(sm) = &back.layers[0].content else { panic!("PSD lost the smart object") };
+        let LayerContent::Smart(sm) = &back.layers[0].content else { panic!("PSD lost the embedded layer") };
         let (name, bytes) = source_bytes(&back.metadata, &sm.source).unwrap();
         let inner = decode_source(&name, &bytes).unwrap();
         let names: Vec<_> = inner.walk().into_iter().filter(|(_, _, l)| matches!(l.content, LayerContent::Raster(_))).map(|(_, _, l)| l.name.clone()).collect();

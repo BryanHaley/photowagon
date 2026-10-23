@@ -24,7 +24,7 @@ fn smart_id(doc: &Document) -> LayerId {
     doc.walk().into_iter().find_map(|(_, _, l)| matches!(l.content, LayerContent::Smart(_)).then_some(l.id)).unwrap()
 }
 fn bytes(doc: &Document, id: LayerId) -> Arc<Vec<u8>> {
-    let LayerContent::Smart(sm) = &doc.layer(id).unwrap().content else { panic!("expected smart object") };
+    let LayerContent::Smart(sm) = &doc.layer(id).unwrap().content else { panic!("expected embedded layer") };
     source_bytes(&doc.metadata, &sm.source).unwrap().1
 }
 fn hash(bytes: &[u8]) -> (usize, String) {
@@ -209,7 +209,7 @@ fn copy_excludes_unselected_linked_records_from_native_save() {
     if let Some(file) = &retained {
         assert_eq!(hash(&file.bytes), hash(&private_bytes));
     }
-    assert!(retained.is_none(), "copying one selected layer must not retain another unselected smart object's embedded file in saved destination .pcraft");
+    assert!(retained.is_none(), "copying one selected layer must not retain another unselected embedded layer's embedded file in saved destination .pcraft");
     let linked: Vec<_> = back.metadata.psd_global_blocks.iter().filter(|(_, k, _)| matches!(k, b"lnk2" | b"lnk3" | b"lnkD" | b"lnkE")).collect();
     assert_eq!(linked.len(), 1);
     assert_eq!(hash(&linked[0].2), hash(&selected_record), "unidentified tail bytes must not follow the selected record");

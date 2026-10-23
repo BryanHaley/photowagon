@@ -20,6 +20,9 @@
 
 use std::io::Write as _;
 
+#[cfg(target_os = "ios")]
+mod craft_print;
+#[cfg(not(target_os = "ios"))]
 mod windows_marks;
 
 use photocraft_color::ColorMode;
@@ -118,7 +121,7 @@ fn system_spooler() -> Option<&'static str> {
 
 /// The printer a job goes to: the one asked for when the server knows it, else the default,
 /// else the only one; otherwise an error that names what there is.
-#[cfg(all(not(target_arch = "wasm32"), not(target_os = "windows")))]
+#[cfg(all(not(target_arch = "wasm32"), not(target_os = "windows"), not(target_os = "ios")))]
 fn resolve_printer(requested: Option<&str>, default: Option<&str>, printers: &[photocraft_ipp::Printer]) -> std::result::Result<String, SpoolError> {
     let names: Vec<&str> = printers.iter().map(|p| p.name.as_str()).collect();
     let known = |n: &str| names.iter().find(|k| k.eq_ignore_ascii_case(n)).map(|k| (*k).to_string());
@@ -138,7 +141,7 @@ fn resolve_printer(requested: Option<&str>, default: Option<&str>, printers: &[p
     }
 }
 
-#[cfg(all(not(target_arch = "wasm32"), not(target_os = "windows")))]
+#[cfg(all(not(target_arch = "wasm32"), not(target_os = "windows"), not(target_os = "ios")))]
 fn cups_server(named: Option<&str>) -> std::result::Result<photocraft_ipp::Endpoint, SpoolError> {
     match named {
         Some(server) => {
@@ -154,7 +157,7 @@ fn cups_server(named: Option<&str>) -> std::result::Result<photocraft_ipp::Endpo
 }
 
 /// The IPP route: the job to the system's (or the named) CUPS server.
-#[cfg(all(not(target_arch = "wasm32"), not(target_os = "windows")))]
+#[cfg(all(not(target_arch = "wasm32"), not(target_os = "windows"), not(target_os = "ios")))]
 fn cups_spool(job: &PrintJob) -> std::result::Result<String, SpoolError> {
     let failed = |e: photocraft_ipp::Error| SpoolError::Failed(e.to_string());
     let ep = cups_server(job.server.as_deref())?;
@@ -173,10 +176,12 @@ fn cups_spool(job: &PrintJob) -> std::result::Result<String, SpoolError> {
 
 /// No IPP route here: a named server is a failure, the system's a missing route (the app's
 /// spooler may have one).
-#[cfg(any(target_arch = "wasm32", target_os = "windows"))]
+#[cfg(any(target_arch = "wasm32", target_os = "windows", target_os = "ios"))]
 fn cups_spool(job: &PrintJob) -> std::result::Result<String, SpoolError> {
     let why = if cfg!(target_arch = "wasm32") {
         "printing needs the desktop app"
+    } else if cfg!(target_os = "ios") {
+        "there is no print server on iOS; print from the system print dialog"
     } else {
         "a print server over IPP is not available on Windows yet; print to PDF instead"
     };
@@ -197,7 +202,7 @@ fn system_printers(_s: &mut Session, p: &Value) -> Result<Value> {
         let printers: Vec<Value> = list.into_iter().map(|p| json!({"name": p.name, "default": p.default})).collect();
         return Ok(json!({"server": Value::Null, "default": default, "printers": printers}));
     }
-    #[cfg(all(not(target_arch = "wasm32"), not(target_os = "windows")))]
+    #[cfg(all(not(target_arch = "wasm32"), not(target_os = "windows"), not(target_os = "ios")))]
     {
         let ep = match cups_server(named) {
             Ok(ep) => ep,
@@ -215,7 +220,7 @@ fn system_printers(_s: &mut Session, p: &Value) -> Result<Value> {
             .collect();
         Ok(json!({"server": ep.to_string(), "default": default, "printers": printers}))
     }
-    #[cfg(not(all(not(target_arch = "wasm32"), not(target_os = "windows"))))]
+    #[cfg(not(all(not(target_arch = "wasm32"), not(target_os = "windows"), not(target_os = "ios"))))]
     {
         let _ = named;
         Ok(json!({"server": Value::Null, "default": Value::Null, "printers": [], "note": "listing printers is not available on this platform yet"}))
@@ -667,6 +672,7 @@ fn remember_print(s: &mut Session, p: &Value) {
 }
 
 /// The `printer` parameter, or the system's default printer.
+#[cfg(not(target_os = "ios"))]
 fn printer_name(p: &Value) -> Result<String> {
     if let Some(name) = p.get("printer").and_then(Value::as_str).filter(|v| !v.trim().is_empty()) {
         return Ok(name.to_string());
@@ -675,6 +681,7 @@ fn printer_name(p: &Value) -> Result<String> {
 }
 
 /// The driver settings chosen with Print Settings… (`printerSettings`, hex), when any.
+#[cfg(not(target_os = "ios"))]
 fn printer_settings(p: &Value) -> Result<Option<craft_print::rgb::DevMode>> {
     match p.get("printerSettings").and_then(Value::as_str).filter(|v| !v.is_empty()) {
         Some(hex) => craft_print::rgb::DevMode::from_hex(hex).map(Some).map_err(|e| bad("file.print", e.to_string())),
@@ -714,6 +721,7 @@ pub fn page_rect_top_left(page: &PrintPage) -> (f64, f64, f64, f64) {
 /// Prints `page` on a Windows printer. Corner/centre crop and registration marks are drawn with
 /// GDI vector calls, matching the PDF path's geometry; description and label text are still
 /// PDF-only (no font/text layout in the GDI path yet).
+#[cfg(not(target_os = "ios"))]
 fn print_windows(page: &PrintPage, p: &Value, title: &str, copies: u32) -> Result<Value> {
     let printer = printer_name(p)?;
     let settings = printer_settings(p)?;
@@ -745,6 +753,7 @@ fn print_windows(page: &PrintPage, p: &Value, title: &str, copies: u32) -> Resul
     )
 }
 
+#[cfg(not(target_os = "ios"))]
 fn printers(_: &mut Session, _: &Value) -> Result<Value> {
     match craft_print::rgb::printers() {
         Ok(list) => Ok(json!({"supported": true, "printers": list.iter().map(|p| json!({"name": p.name, "default": p.default})).collect::<Vec<_>>()})),
@@ -753,12 +762,34 @@ fn printers(_: &mut Session, _: &Value) -> Result<Value> {
     }
 }
 
+#[cfg(not(target_os = "ios"))]
 fn printer_page(_: &mut Session, p: &Value) -> Result<Value> {
     let printer = printer_name(p)?;
     let pg = craft_print::rgb::page(&printer, printer_settings(p)?.as_ref()).map_err(other)?;
     Ok(
         json!({"printer": printer, "paper": [pg.paper.0, pg.paper.1], "printable": [pg.printable.0, pg.printable.1, pg.printable.2, pg.printable.3], "dpi": [pg.dpi.0, pg.dpi.1]}),
     )
+}
+
+// iOS has no Windows driver path: `cfg!(windows)` never reaches these.
+#[cfg(target_os = "ios")]
+fn printer_settings(_: &Value) -> Result<Option<()>> {
+    Ok(None)
+}
+
+#[cfg(target_os = "ios")]
+fn print_windows(_: &PrintPage, _: &Value, _: &str, _: u32) -> Result<Value> {
+    Err(other("Windows printing is not available on iOS"))
+}
+
+#[cfg(target_os = "ios")]
+fn printers(_: &mut Session, _: &Value) -> Result<Value> {
+    Ok(json!({"supported": false, "printers": []}))
+}
+
+#[cfg(target_os = "ios")]
+fn printer_page(_: &mut Session, _: &Value) -> Result<Value> {
+    Err(other("printer pages are not available on iOS; the system print dialog picks the paper"))
 }
 
 /// Set once by test harnesses (the panic hunt) so no command in the process can reach a printer.

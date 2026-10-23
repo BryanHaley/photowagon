@@ -28,7 +28,7 @@ pub fn can_bake(l: &Layer) -> bool {
 fn enabled(s: &Session) -> std::result::Result<(), String> {
     let d = s.active().ok_or("no document open")?;
     let ids = d.selected_layers().into_iter().chain(d.active_layer);
-    if ids.filter_map(|id| d.doc.layer(id)).any(can_bake) { Ok(()) } else { Err("no selected layer has layer effects to rasterize".into()) }
+    if ids.filter_map(|id| d.doc.layer(id)).any(can_bake) { Ok(()) } else { Err("no layer effects to rasterize".into()) }
 }
 
 /// Bake one layer (type, shape, fill and Smart Object content is rasterized first, in the same

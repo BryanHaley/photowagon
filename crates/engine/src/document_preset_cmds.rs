@@ -77,7 +77,7 @@ pub(crate) fn validate_new_params(s: &Session, p: &Value) -> Result<()> {
                 background_color(p, s.tools.background, cmd)?;
                 continue;
             }
-            "name" => (value.is_string(), "a string".into()),
+            "name" | "profile" => (value.is_string(), "a string".into()),
             _ => return Err(bad(cmd, format!("unknown parameter `{key}`"))),
         };
         if !valid {

@@ -25,7 +25,7 @@ fn paint(s: &mut Session, rgba: [f32; 4]) {
 }
 
 fn smart(s: &Session, id: u64) -> &SmartObject {
-    let LayerContent::Smart(sm) = &s.active().unwrap().doc.layer(LayerId(id)).unwrap().content else { panic!("smart object") };
+    let LayerContent::Smart(sm) = &s.active().unwrap().doc.layer(LayerId(id)).unwrap().content else { panic!("embedded layer") };
     sm
 }
 
@@ -268,7 +268,7 @@ fn photoshop_placed_copies_import_as_shared_instances() {
     s.add_document(photocraft_io::psd_to_document(&file).0, None);
 
     let tree = s.execute("document.inspect", json!({})).unwrap();
-    let copies: Vec<&Value> = tree["layers"].as_array().unwrap().iter().filter(|l| l["kind"] == "Smart Object").collect();
+    let copies: Vec<&Value> = tree["layers"].as_array().unwrap().iter().filter(|l| l["kind"] == "Embedded").collect();
     assert_eq!(copies.len(), 2);
     assert_eq!(copies[0]["smartContents"], copies[1]["smartContents"]);
     assert_eq!(copies[0]["smartContents"]["instances"], 2);

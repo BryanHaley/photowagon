@@ -858,6 +858,209 @@ const MAX_EFFECTS: usize = 256;
 /// (`fx`: the effect JSON as the dialog loaded it, kept verbatim for everything the
 /// dialog doesn't model) with the params present. Unknown kinds, kind/snapshot
 /// mismatches and malformed snapshots are errors, never panics.
+fn hex(c: &Color) -> String {
+    let [r, g, b, _] = c.to_rgba8();
+    format!("#{r:02x}{g:02x}{b:02x}")
+}
+
+/// Current values of an existing effect, in the command's parameter units —
+/// only the keys this dialog models. Everything else (gradient strokes, multi-stop
+/// gradients, imported contours) is left out so the apply overlay can't clobber it.
+/// `light` is the document's global light angle: an effect that uses it shows that angle.
+pub fn effect_values(e: &Effect, light: f32) -> Value {
+    let mut v = effect_defaults(kind_of(e));
+    let set = |v: &mut Value, k: &str, x: Value| {
+        v[k] = x;
+    };
+    let drop_keys = |v: &mut Value, keys: &[&str]| {
+        if let Some(o) = v.as_object_mut() {
+            for k in keys {
+                o.remove(*k);
+            }
+        }
+    };
+    match e {
+        Effect::DropShadow(s) | Effect::InnerShadow(s) => {
+            set(&mut v, "blend", json!(s.common.blend.label()));
+            set(&mut v, "opacity", json!((s.common.opacity * 100.0).round()));
+            set(&mut v, "color", json!(hex(&s.color)));
+            set(&mut v, "angle", json!(if s.use_global_light { light } else { s.angle }));
+            set(&mut v, "useGlobalLight", json!(s.use_global_light));
+            set(&mut v, "distance", json!(s.distance));
+            set(&mut v, if matches!(e, Effect::DropShadow(_)) { "spread" } else { "choke" }, json!((s.spread * 100.0).round()));
+            set(&mut v, "size", json!(s.size));
+            set(&mut v, "contour", contour_param(&s.contour));
+            set(&mut v, "antiAlias", json!(s.anti_alias));
+            set(&mut v, "noise", json!((s.noise * 100.0).round()));
+            if matches!(e, Effect::DropShadow(_)) {
+                set(&mut v, "knocksOut", json!(s.knocks_out));
+            }
+        }
+        Effect::OuterGlow(g) | Effect::InnerGlow(g) => {
+            set(&mut v, "blend", json!(g.common.blend.label()));
+            set(&mut v, "opacity", json!((g.common.opacity * 100.0).round()));
+            if let FxPaint::Color(c) = &g.paint {
+                set(&mut v, "color", json!(hex(c)));
+            } else {
+                drop_keys(&mut v, &["color"]);
+            }
+            set(&mut v, if matches!(e, Effect::OuterGlow(_)) { "spread" } else { "choke" }, json!((g.spread * 100.0).round()));
+            set(&mut v, "size", json!(g.size));
+            set(&mut v, "range", json!((g.range * 100.0).round()));
+            set(&mut v, "contour", contour_param(&g.contour));
+            set(&mut v, "antiAlias", json!(g.anti_alias));
+            set(&mut v, "noise", json!((g.noise * 100.0).round()));
+            if matches!(e, Effect::InnerGlow(_)) {
+                set(&mut v, "source", json!(if g.source == GlowSource::Center { "center" } else { "edge" }));
+            }
+        }
+        Effect::Stroke(s) => {
+            set(&mut v, "blend", json!(s.common.blend.label()));
+            set(&mut v, "opacity", json!((s.common.opacity * 100.0).round()));
+            set(&mut v, "size", json!(s.size));
+            set(
+                &mut v,
+                "position",
+                json!(match s.position {
+                    StrokePosition::Inside => "inside",
+                    StrokePosition::Center => "center",
+                    _ => "outside",
+                }),
+            );
+            if let FxPaint::Color(c) = &s.paint {
+                set(&mut v, "color", json!(hex(c)));
+            } else {
+                // A gradient/pattern stroke: the dialog's colour field doesn't model
+                // the paint, so the key is left out and the snapshot carries it.
+                drop_keys(&mut v, &["color"]);
+            }
+        }
+        Effect::ColorOverlay { common, color } => {
+            set(&mut v, "blend", json!(common.blend.label()));
+            set(&mut v, "opacity", json!((common.opacity * 100.0).round()));
+            set(&mut v, "color", json!(hex(color)));
+        }
+        Effect::GradientOverlay { common, gradient: g, .. } => {
+            set(&mut v, "blend", json!(common.blend.label()));
+            set(&mut v, "opacity", json!((common.opacity * 100.0).round()));
+            // The From/To fields model a plain two-stop gradient; anything richer
+            // (more stops, transparency stops) is carried by the snapshot instead.
+            if g.stops.len() == 2 && g.opacity_stops.is_empty() {
+                set(&mut v, "from", json!(hex(&g.stops[0].1)));
+                set(&mut v, "to", json!(hex(&g.stops[1].1)));
+                set(&mut v, "reverse", json!(g.reverse));
+                set(
+                    &mut v,
+                    "style",
+                    json!(match g.style {
+                        photocraft_doc::effects::GradientStyle::Radial => "radial",
+                        photocraft_doc::effects::GradientStyle::Angle => "angle",
+                        photocraft_doc::effects::GradientStyle::Reflected => "reflected",
+                        photocraft_doc::effects::GradientStyle::Diamond => "diamond",
+                        photocraft_doc::effects::GradientStyle::Linear => "linear",
+                    }),
+                );
+                set(&mut v, "angle", json!(g.angle));
+                set(&mut v, "scale", json!((g.scale * 100.0).round()));
+            } else {
+                drop_keys(&mut v, &["from", "to", "reverse", "style", "angle", "scale"]);
+            }
+        }
+        Effect::PatternOverlay { common, name, id, scale, angle, link, phase } => {
+            set(&mut v, "blend", json!(common.blend.label()));
+            set(&mut v, "opacity", json!((common.opacity * 100.0).round()));
+            set(&mut v, "pattern", json!(if id.is_empty() { name } else { id }));
+            set(&mut v, "scale", json!((scale * 100.0).round()));
+            set(&mut v, "angle", json!(angle));
+            set(&mut v, "link", json!(link));
+            set(&mut v, "phaseX", json!(phase.0));
+            set(&mut v, "phaseY", json!(phase.1));
+        }
+        Effect::Satin(s) => {
+            set(&mut v, "blend", json!(s.common.blend.label()));
+            set(&mut v, "opacity", json!((s.common.opacity * 100.0).round()));
+            set(&mut v, "color", json!(hex(&s.color)));
+            set(&mut v, "angle", json!(s.angle));
+            set(&mut v, "distance", json!(s.distance));
+            set(&mut v, "size", json!(s.size));
+            set(&mut v, "invert", json!(s.invert));
+            set(&mut v, "contour", contour_param(&s.contour));
+            set(&mut v, "antiAlias", json!(s.anti_alias));
+        }
+        Effect::BevelEmboss(b) => {
+            set(
+                &mut v,
+                "style",
+                json!(match b.style {
+                    photocraft_doc::effects::BevelStyle::OuterBevel => "outer",
+                    photocraft_doc::effects::BevelStyle::Emboss => "emboss",
+                    photocraft_doc::effects::BevelStyle::PillowEmboss => "pillow",
+                    photocraft_doc::effects::BevelStyle::StrokeEmboss => "stroke",
+                    photocraft_doc::effects::BevelStyle::InnerBevel => "inner",
+                }),
+            );
+            set(
+                &mut v,
+                "technique",
+                json!(match b.technique {
+                    photocraft_doc::effects::BevelTechnique::ChiselHard => "chiselHard",
+                    photocraft_doc::effects::BevelTechnique::ChiselSoft => "chiselSoft",
+                    photocraft_doc::effects::BevelTechnique::Smooth => "smooth",
+                }),
+            );
+            set(&mut v, "depth", json!((b.depth * 100.0).round()));
+            set(&mut v, "size", json!(b.size));
+            set(&mut v, "soften", json!(b.soften));
+            set(&mut v, "angle", json!(if b.use_global_light { light } else { b.angle }));
+            set(&mut v, "useGlobalLight", json!(b.use_global_light));
+            set(&mut v, "altitude", json!(b.altitude));
+            set(&mut v, "direction", json!(if b.up { "up" } else { "down" }));
+            set(&mut v, "glossContour", contour_param(&b.gloss_contour));
+            set(&mut v, "contour", json!(b.contour.is_some()));
+            if let Some(c) = &b.contour {
+                set(&mut v, "contourName", contour_param(&c.contour));
+                set(&mut v, "contourRange", json!((c.range * 100.0).round()));
+                set(&mut v, "contourAntiAlias", json!(c.anti_alias));
+            }
+        }
+    }
+    v
+}
+
+/// The layer's blending options and effects, in the params of the commands that set them.
+fn get_style(s: &mut Session, p: &Value) -> Result<Value> {
+    let id = crate::commands::layer_param(s, p)?;
+    let d = s.active().ok_or(EngineError::NoDocument)?;
+    let l = d.doc.layer(id).ok_or(EngineError::NoLayer(id))?;
+    let light = d.doc.global_light.angle;
+    let [this, under] = l.blend_if.get(0);
+    let channels: Vec<Value> = crate::layer_menu_cmds::blend_if_channels(d.doc.mode)
+        .into_iter()
+        .map(|(name, i)| {
+            let [t, u] = l.blend_if.get(i);
+            json!({"channel": name, "thisLayer": t.to_bytes(), "underlying": u.to_bytes()})
+        })
+        .collect();
+    let effects: Vec<Value> = l
+        .effects
+        .items
+        .iter()
+        .map(|e| json!({"kind": kind_of(e), "enabled": e.enabled(), "params": effect_values(e, light), "fx": serde_json::to_value(e).unwrap_or(Value::Null)}))
+        .collect();
+    Ok(json!({
+        "layer": id.0,
+        "globalLight": light,
+        "blending": {
+            "blend": l.blend.label(),
+            "opacity": (l.opacity * 100.0).round(),
+            "fillOpacity": (l.fill_opacity * 100.0).round(),
+            "transparencyShapesLayer": l.advanced.transparency_shapes,
+            "blendIf": {"channel": "gray", "thisLayer": this.to_bytes(), "underlying": under.to_bytes(), "channels": channels},
+        },
+        "effects": effects,
+    }))
+}
+
 fn replace_effects(s: &mut Session, p: &Value) -> Result<Value> {
     const CMD: &str = "layer.layerStyle.replace";
     crate::commands::check_f32_values(CMD, p)?;
@@ -1036,6 +1239,16 @@ pub fn specs() -> Vec<CommandSpec> {
             r##"{"color":"#rrggbb","opacity":0..100=50,"blend":str,"angle":deg,"distance":px,"size":px,"contour":name|curve,"antiAlias":bool=true,"invert":bool,"add":bool}"##
         ),
         CommandSpec {
+            id: "layer.layerStyle.get",
+            label: "Layer Style Settings",
+            menu: &[],
+            shortcut: None,
+            params: r##"{"layer":id?} → {"layer","globalLight","blending":{"blend","opacity","fillOpacity","transparencyShapesLayer","blendIf":{"channel":"gray","thisLayer":[4],"underlying":[4],"channels":[{"channel","thisLayer","underlying"},…] (Gray, then each colour channel)}},"effects":[{"kind","enabled","params":{…layer.layerStyle.<kind> params…},"fx":snapshot}]} (for layer.layerStyle.blendingOptions and layer.layerStyle.replace)"##,
+            enabled: has_layer,
+            run: get_style,
+            journal: false,
+        },
+        CommandSpec {
             id: "layer.layerStyle.replace",
             label: "Edit Layer Style",
             menu: &[],
@@ -1070,17 +1283,22 @@ pub fn specs() -> Vec<CommandSpec> {
             label: "Clear Layer Style",
             menu: &["Layer", "Layer Style"],
             shortcut: None,
-            params: r##"{"layer":id? (no layer: every selected layer that has a style),"effect":index? (only that effect of "layer", as an effect row dropped on the Layers panel's Delete button)}"##,
+            params: r##"{"layer":id? (no layer: every selected layer that has a style or blending options),"effect":index? (only that effect of "layer", as an effect row dropped on the Layers panel's Delete button)}"##,
             enabled: has_layer,
             run: |s, p| {
                 if let Some(effect) = p.get("effect").filter(|v| !v.is_null()) {
                     return delete_effect(s, p, effect);
                 }
-                let ids = crate::extra_cmds::style_targets(s, p, |l| !l.effects.items.is_empty())?;
+                let ids = crate::extra_cmds::style_targets(s, p, |l| !l.effects.items.is_empty() || !default_blending(l))?;
                 s.edit("Clear Layer Style", |doc, _| {
                     for id in ids {
                         let l = doc.layer_mut(id).ok_or(EngineError::NoLayer(id))?;
                         l.effects = photocraft_doc::Effects { enabled: true, ..Default::default() };
+                        l.blend = if l.is_group() { BlendMode::PassThrough } else { BlendMode::Normal };
+                        (l.opacity, l.fill_opacity) = (1.0, 1.0);
+                        l.blend_if = Default::default();
+                        l.excluded_channels = 0;
+                        l.advanced = Default::default();
                     }
                     Ok(())
                 })?;
@@ -1089,6 +1307,12 @@ pub fn specs() -> Vec<CommandSpec> {
             journal: true,
         },
     ]
+}
+
+/// Blending options as a new layer has them.
+fn default_blending(l: &photocraft_doc::Layer) -> bool {
+    let blend = if l.is_group() { BlendMode::PassThrough } else { BlendMode::Normal };
+    l.blend == blend && l.opacity == 1.0 && l.fill_opacity == 1.0 && l.blend_if.is_default() && l.excluded_channels == 0 && l.advanced == Default::default()
 }
 
 /// `layer.layerStyle.clear` with an `effect` index: deletes that one effect of `layer` (the active
@@ -1130,6 +1354,30 @@ mod tests {
     fn effects(s: &Session) -> Vec<Effect> {
         let d = s.active().unwrap();
         d.doc.layer(d.active_layer.unwrap()).unwrap().effects.items.clone()
+    }
+
+    #[test]
+    fn get_reports_what_blending_options_and_replace_take_back() {
+        let mut s = session();
+        s.execute("layer.layerStyle.dropShadow", json!({"distance": 12, "size": 3})).unwrap();
+        s.execute("layer.layerStyle.dropShadow", json!({"distance": 4, "add": true})).unwrap();
+        s.execute("layer.layerStyle.blendingOptions", json!({"fillOpacity": 30, "transparencyShapesLayer": false, "blendIf": {"channel": "gray", "underlying": [0, 40, 255, 255]}})).unwrap();
+        let got = s.execute("layer.layerStyle.get", json!({})).unwrap();
+        let b = &got["blending"];
+        assert_eq!((b["fillOpacity"].as_f64(), b["transparencyShapesLayer"].as_bool()), (Some(30.0), Some(false)), "{b}");
+        assert_eq!(b["blendIf"]["underlying"], json!([0, 40, 255, 255]));
+        s.execute("layer.layerStyle.blendingOptions", json!({"blendIf": {"channel": "blue", "thisLayer": [0, 0, 120, 200]}})).unwrap();
+        let ch = &s.execute("layer.layerStyle.get", json!({})).unwrap()["blending"]["blendIf"]["channels"];
+        assert_eq!(ch[0]["underlying"], json!([0, 40, 255, 255]));
+        assert_eq!(ch[3]["channel"], "blue");
+        assert_eq!(ch[3]["thisLayer"], json!([0, 0, 120, 200]));
+        let fx = got["effects"].as_array().unwrap();
+        assert_eq!(fx.len(), 2);
+        assert_eq!((fx[0]["kind"].as_str(), fx[0]["params"]["distance"].as_f64()), (Some("dropShadow"), Some(12.0)));
+        let before = effects(&s);
+        let entries: Vec<Value> = fx.iter().map(|e| json!({"kind": e["kind"], "fx": e["fx"], "params": e["params"]})).collect();
+        s.execute("layer.layerStyle.replace", json!({"layer": got["layer"], "effects": entries})).unwrap();
+        assert_eq!(effects(&s), before);
     }
 
     #[test]
@@ -1213,6 +1461,16 @@ mod tests {
         assert!(effects(&s).is_empty());
         s.execute("edit.undo", json!({})).unwrap();
         assert_eq!(effects(&s).len(), 1);
+    }
+
+    #[test]
+    fn clear_resets_the_blending_options_too() {
+        let mut s = session();
+        s.execute("layer.layerStyle.blendingOptions", json!({"blend": "screen", "fillOpacity": 40, "blendIf": {"channel": "blue", "thisLayer": [0, 0, 100, 200]}})).unwrap();
+        s.execute("layer.layerStyle.clear", json!({})).unwrap();
+        let b = &s.execute("layer.layerStyle.get", json!({})).unwrap()["blending"];
+        assert_eq!((b["blend"].as_str(), b["fillOpacity"].as_f64()), (Some("Normal"), Some(100.0)), "{b}");
+        assert_eq!(b["blendIf"]["channels"][3]["thisLayer"], json!([0, 0, 255, 255]));
     }
 
     fn pixel(s: &mut Session) -> Vec<f32> {

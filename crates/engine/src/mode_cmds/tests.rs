@@ -365,6 +365,10 @@ fn duotone_inks_and_display() {
     let px = photocraft_compose::render(&shown, Rect::from_xywh(8, 4, 1, 1)).px[0];
     assert!(px[0] > px[2] + 0.05, "{px:?}");
     assert!(display_document(&Document::new("x", Size::new(1, 1), ColorMode::Grayscale, SampleType::U8)).is_none());
+    let got = s.execute("image.mode.duotoneInks", json!({})).unwrap();
+    assert_eq!(got["inks"][1]["color"], "#ff8000");
+    assert_eq!(got["inks"][1]["curve"][1], json!([100.0, 80.0]));
+    assert_eq!(got["current"], true);
     // Tritone defaults and leaving the mode.
     s.execute("image.mode.duotone", json!({"type": "tritone"})).unwrap();
     assert_eq!(doc(&s).duotone.as_ref().unwrap().inks.len(), 3);

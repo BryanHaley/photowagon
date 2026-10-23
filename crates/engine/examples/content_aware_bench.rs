@@ -317,7 +317,7 @@ fn doc_cases(depth: u64, out: &mut Vec<(String, String)>) -> Res<()> {
     step(&mut s, "fill-ca-noadapt", &[ellipse(650, 550, 50, 40), ("edit.fill", json!({"contents": "contentAware", "colorAdaptation": false}))])?;
     step(&mut s, "delete-and-fill", &[ellipse(100, 600, 45, 45), ("edit.deleteAndFillSelection", json!({}))])?;
     exec(&mut s, "select.deselect", json!({}))?;
-    for (k, kind) in ["contentAware", "proximityMatch", "createTexture"].into_iter().enumerate() {
+    for (k, kind) in ["contentAware", "matchNearby", "createTexture"].into_iter().enumerate() {
         let (x, y) = (150 + 220 * k as u32, 250);
         let pts: Vec<Value> = (0..8).map(|j| json!([x + j * 10, y + j * 5])).collect();
         step(&mut s, &format!("spot-{kind}"), &[("paint.spotHealing", json!({"points": pts, "size": 40, "type": kind}))])?;
@@ -372,9 +372,6 @@ fn algo_cases(out: &mut Vec<(String, String)>) {
         let src: Vec<bool> = (0..w * h).map(|i| (i % w) < w * 3 / 4).collect();
         let opts = FillOptions { rotations: content_aware::rotation_level("medium"), mirror: true, scale: ch == 3, seed: 2, ..Default::default() };
         out.push((format!("fill/{w}x{h}x{ch}/variants"), hash_f32(&content_aware::fill(w, h, ch, &img, &hole, &src, &opts))));
-        let auto = content_aware::auto_sampling(w, h, ch, &img, &hole);
-        out.push((format!("auto/{w}x{h}x{ch}"), hash_f32(&auto.iter().map(|b| f32::from(u8::from(*b))).collect::<Vec<_>>())));
-        out.push((format!("offset/{w}x{h}x{ch}"), format!("{:?}", inpaint::best_offset(w, h, ch, &img, &hole, 4, (w / 3) as i32))));
         out.push((format!("synth/{w}x{h}x{ch}"), hash_f32(&inpaint::synthesize(w, h, ch, &img, &hole, 12, 0x5eed))));
     }
     // A hole wider than `refine_extent` (refine-only levels) and a long thin one.

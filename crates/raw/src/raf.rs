@@ -301,6 +301,8 @@ pub(crate) fn decode(bytes: &[u8], limits: &Limits) -> Result<Sensor> {
         orientation: orientation.unwrap_or(1),
         baseline_exposure,
         gain_maps: Vec::new(),
+        polynomials: Vec::new(),
+        gain_table: None,
         tone_curve: Vec::new(),
         black_point: 0.0,
         warnings,

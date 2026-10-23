@@ -441,11 +441,11 @@ fn locked_smart_objects_refuse_distortions() {
                 s.execute("layer.lockLayers", lock.clone()).unwrap();
                 s.execute("layer.select", json!({"layer": layer.0})).unwrap();
                 let locks = s.active().unwrap().doc.effective_locks(layer);
-                assert!(locks.all || locks.pixels, "the lock reaches the smart object ({lock}, group: {on_group})");
+                assert!(locks.all || locks.pixels, "the lock reaches the embedded layer ({lock}, group: {on_group})");
                 let steps = s.active().unwrap().history.past_len();
                 let before = s.active().unwrap().doc.layer(layer).unwrap().clone();
                 let r = s.execute(cmd, p);
-                assert!(r.is_err(), "{cmd} edited a smart object locked with {lock} (group: {on_group}): {r:?}");
+                assert!(r.is_err(), "{cmd} edited an embedded layer locked with {lock} (group: {on_group}): {r:?}");
                 let st = s.active().unwrap();
                 let LayerContent::Smart(sm) = &st.doc.layer(layer).unwrap().content else { panic!("not smart") };
                 assert!(sm.smart_filters.is_empty(), "{cmd} {lock} group: {on_group}");
@@ -472,4 +472,38 @@ fn unlocked_or_position_locked_smart_objects_take_distortions() {
             assert_eq!(s.active().unwrap().history.past_len(), steps + 1, "{cmd} {lock:?}");
         }
     }
+}
+
+#[test]
+fn puppet_preview_matches_the_command_and_leaves_the_document() {
+    let mut s = session(8);
+    let before = active_surface(&s);
+    // At rest the mesh covers the block.
+    let (_, rest) = puppet_preview(&s, &json!({})).unwrap().render().unwrap();
+    assert!(rest.chunks(2).all(|q| (8.0..=62.0).contains(&q[0]) && (8.0..=42.0).contains(&q[1])), "{:?}", &rest[..8]);
+    let p = json!({"pins": [{"src": [15, 25], "dst": [15, 25]}, {"src": [55, 25], "dst": [55, 10]}], "mode": "normal"});
+    let (doc, edges) = puppet_preview(&s, &p).unwrap().render().unwrap();
+    assert!(!edges.is_empty() && edges.len() % 4 == 0);
+    assert_eq!(active_surface(&s), before, "the document is untouched");
+    let id = s.active().unwrap().active_layer.unwrap();
+    let shown = doc.layer(id).unwrap().surface().unwrap().clone();
+    s.execute(PUPPET, p).unwrap();
+    // The preview samples bilinearly, the command bicubically: a pixel apart at most.
+    let (a, b) = (shown.content_bounds(), active_surface(&s).content_bounds());
+    assert!([a.x0 - b.x0, a.y0 - b.y0, a.x1 - b.x1, a.y1 - b.y1].iter().all(|d| d.abs() <= 1), "{a:?} {b:?}");
+    assert!(puppet_preview(&s, &json!({"pins": [{"src": [1, 1]}]})).is_err());
+}
+
+#[test]
+fn liquify_preview_warps_a_copy_like_the_command() {
+    let mut s = session(8);
+    let p = json!({"strokes": [{"tool": "forwardWarp", "size": 30, "pressure": 100, "points": [[30, 25], [45, 25]]}]});
+    let before = active_surface(&s);
+    let shown = liquify_preview(&s, &p).unwrap().render().unwrap();
+    let id = s.active().unwrap().active_layer.unwrap();
+    let preview = shown.layer(id).unwrap().surface().unwrap().clone();
+    assert_eq!(worst(&before, &active_surface(&s), Rect::new(0, 0, 80, 60)), 0.0, "the document is untouched");
+    s.execute("filter.liquify", p).unwrap();
+    assert!(worst(&before, &preview, Rect::new(10, 10, 60, 40)) > 0.1, "the preview moved pixels");
+    assert!(worst(&preview, &active_surface(&s), Rect::new(0, 0, 80, 60)) < 1e-4, "as the command does");
 }

@@ -1465,12 +1465,12 @@ fn composite_layer_plain(layer: &Layer, clipped: &[Layer], backdrop: &mut Buffer
             *p = psblend::composite(BlendMode::Normal, *p, *s, 1.0);
             p[3] *= mask_k(&mask, i);
         }
-        blend_into_fill(backdrop, &content, layer.blend, layer.opacity, layer.fill_opacity, 1.0);
+        blend_into_fill(backdrop, &content, layer, 1.0);
         return;
     }
     let Some(mut content) = render_content(layer, rect, cx) else { return };
     advanced::composite_clipped(clipped, &mut content, cx);
-    blend_into_fill(backdrop, &content, layer.blend, layer.opacity, layer.fill_opacity, text_gamma(layer));
+    blend_into_fill(backdrop, &content, layer, text_gamma(layer));
 }
 
 /// A layer with effects (and its clipping group) onto `backdrop`.
@@ -1852,7 +1852,18 @@ fn blend_into(backdrop: &mut Buffer, src: &Buffer, mode: BlendMode, opacity: f32
 
 /// [`blend_into_g`] for a layer's own `opacity` and `fill`: Fill is part of the blend for
 /// Photoshop's special eight ([`psblend::composite_fill`]), plain coverage otherwise.
-fn blend_into_fill(backdrop: &mut Buffer, src: &Buffer, mode: BlendMode, opacity: f32, fill: f32, gamma: f32) {
+/// With Transparency Shapes Layer off, the special eight take the layer's transparency as Fill
+/// too, over the whole layer: what's below shapes it.
+fn blend_into_fill(backdrop: &mut Buffer, src: &Buffer, layer: &Layer, gamma: f32) {
+    let (mode, opacity, fill) = (layer.blend, layer.opacity, layer.fill_opacity);
+    if !layer.advanced.transparency_shapes && psblend::fill_is_special(mode) {
+        for (b, s) in backdrop.px.iter_mut().zip(&src.px) {
+            if s[3] > 0.0 {
+                *b = psblend::composite_fill(mode, *b, [s[0], s[1], s[2], 1.0], opacity, fill * s[3], gamma);
+            }
+        }
+        return;
+    }
     if fill >= 1.0 || !psblend::fill_is_special(mode) {
         return blend_into_g(backdrop, src, mode, opacity * fill, gamma);
     }

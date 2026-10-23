@@ -1,0 +1,23 @@
+<style>
+:root { color-scheme: light dark; --text: #1c1c1e; --muted: #6e6e73; --line: #d1d1d6; --bg: #ffffff; --link: #0a66d8; }
+@media (prefers-color-scheme: dark) {
+  :root { --text: #f2f2f7; --muted: #a1a1a6; --line: #3a3a3c; --bg: #111113; --link: #64a8ff; }
+}
+html, body { background: var(--bg); color: var(--text); }
+body { font: 17px/1.5 -apple-system, system-ui, sans-serif; max-width: 40em; margin: 0 auto; padding: 8px 16px 48px; }
+h1 { font-size: 1.6em; margin: 1.6em 0 0.4em; padding-top: 0.6em; border-top: 1px solid var(--line); }
+h2 { font-size: 1.25em; margin: 1.4em 0 0.3em; }
+h3 { font-size: 1.05em; margin: 1.2em 0 0.2em; }
+header h1.title { border: 0; margin-top: 0.4em; }
+p { margin: 0.5em 0; }
+em { color: var(--muted); font-style: normal; font-weight: 600; }
+a { color: var(--link); text-decoration: none; }
+img { display: block; max-width: 100%; max-height: 70vh; margin: 0.8em auto; border-radius: 10px; border: 1px solid var(--line); }
+figure { margin: 0; }
+figcaption { display: none; }
+nav#TOC ul { list-style: none; padding-left: 0; }
+nav#TOC > ul > li { margin: 0.5em 0; font-weight: 600; }
+nav#TOC ul ul { padding-left: 1em; font-weight: 400; columns: 2; }
+nav#TOC ul ul li { break-inside: avoid; }
+code { font: inherit; }
+</style>

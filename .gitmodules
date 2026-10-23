@@ -1,0 +1,6 @@
+[submodule "submodules/LibRaw"]
+	path = submodules/LibRaw
+	url = https://github.com/LibRaw/LibRaw.git
+[submodule "submodules/libjxl"]
+	path = submodules/libjxl
+	url = https://github.com/libjxl/libjxl.git

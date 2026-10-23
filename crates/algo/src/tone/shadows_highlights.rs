@@ -1,4 +1,4 @@
-//! Image › Adjustments › Shadows/Highlights, as Photoshop 25.4 does it.
+//! Image › Adjustments › Shadows/Highlights, modelled on Photoshop 25.4.
 //!
 //! Measured on Photoshop as a black box (synthetic 16-bit images through the adjustment, results
 //! read back exactly); no Photoshop code was read. The pieces:
@@ -7,6 +7,7 @@
 //!   luma. Its neighbourhood value is an edge-aware average: a Gaussian of σ = 1.14 · Radius whose
 //!   weights fall linearly with the difference from the pixel's own (lightly blurred) brightness,
 //!   so pixels across a strong edge count less and halos stay small. It is quantised to 8 bits.
+//!   One neighbourhood (one Radius) is measured, and both the shadow and highlight masks read it.
 //! - **Tonal mask.** Tone sets which neighbourhoods are treated: shadows take the complement of a
 //!   Beta distribution function of the neighbourhood brightness, from Beta(1.95, 23) at Tone 0 to
 //!   1 − L at Tone 95 and over; highlights take the same of 1 − L.
@@ -228,11 +229,7 @@ pub fn shadows_highlights(px: &mut [[f32; 4]], w: usize, h: usize, p: &ShadowsHi
     }
     let (sa, ha) = (p.shadow_amount, p.highlight_amount);
     let lum: Vec<f32> = px.iter().map(|q| (q[0].max(q[1]).max(q[2]) + luma([q[0], q[1], q[2]])) / 2.0).collect();
-    let ls = (sa > 0.0).then(|| neighbourhood(&lum, w, h, p.shadow_radius));
-    let lh = (ha > 0.0).then(|| match &ls {
-        Some(l) if (p.highlight_radius - p.shadow_radius).abs() < 1e-3 => l.clone(),
-        _ => neighbourhood(&lum, w, h, p.highlight_radius),
-    });
+    let nb = (sa > 0.0 || ha > 0.0).then(|| neighbourhood(&lum, w, h, p.radius));
     let (ms, mh) = (tonal_mask(p.shadow_tone), tonal_mask(p.highlight_tone));
     let (ss, hs) = (strength(sa), strength(ha));
     // The new luma of every pixel.
@@ -242,16 +239,19 @@ pub fn shadows_highlights(px: &mut [[f32; 4]], w: usize, h: usize, p: &ShadowsHi
             let i = y * w + x;
             let q = px[i];
             let mut adj = [q[0], q[1], q[2]];
-            if let Some(l) = &ls {
-                let m = ms[level(l[i])];
-                for v in &mut adj {
-                    *v += m * (lift(ss, *v) - *v);
+            if let Some(l) = &nb {
+                let k = level(l[i]);
+                if sa > 0.0 {
+                    let m = ms[k];
+                    for v in &mut adj {
+                        *v += m * (lift(ss, *v) - *v);
+                    }
                 }
-            }
-            if let Some(l) = &lh {
-                let m = mh[255 - level(l[i])];
-                for (v, &o) in adj.iter_mut().zip(&q[..3]) {
-                    *v -= m * (lift(hs, 1.0 - o) - (1.0 - o));
+                if ha > 0.0 {
+                    let m = mh[255 - k];
+                    for (v, &o) in adj.iter_mut().zip(&q[..3]) {
+                        *v -= m * (lift(hs, 1.0 - o) - (1.0 - o));
+                    }
                 }
             }
             *out = midtone(p.midtone, luma(adj).clamp(0.0, 1.0));
@@ -365,7 +365,7 @@ mod tests {
     /// Radius 10 px), in black, 0.15 and 0.3 grey surroundings: Photoshop's results.
     #[test]
     fn colour_matches_photoshop() {
-        let p = ShadowsHighlights { shadow_radius: 10.0, black_clip: 0.0, white_clip: 0.0, ..Default::default() };
+        let p = ShadowsHighlights { radius: 10.0, black_clip: 0.0, white_clip: 0.0, ..Default::default() };
         for (bg, px, want) in [
             (0.0, [3277, 1638, 0], [8235, 5202, 2170]),
             (0.0, [8192, 6554, 4915], [19350, 16514, 13676]),
@@ -387,7 +387,7 @@ mod tests {
         let p = ShadowsHighlights {
             shadow_amount: 100.0,
             shadow_tone: 100.0,
-            shadow_radius: 10.0,
+            radius: 10.0,
             color: 0.0,
             black_clip: 0.0,
             white_clip: 0.0,

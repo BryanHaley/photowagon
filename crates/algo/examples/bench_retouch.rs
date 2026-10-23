@@ -1,5 +1,5 @@
 //! Timing of the retouch kernels alone (no document plumbing): Poisson seamless clone and
-//! PatchMatch completion on a disc-shaped region, RGBA.
+//! exemplar completion on a disc-shaped region, RGBA.
 //! `cargo run --release -p photocraft-algo --example bench_retouch`
 use std::time::Instant;
 
@@ -37,8 +37,5 @@ fn main() {
         let t = Instant::now();
         let _ = inpaint::complete(cw, chh, ch, &cimg, &hole, &inpaint::CompleteParams::default());
         println!("complete        {d:>3} px disc: {:>8.1?}", t.elapsed());
-        let t = Instant::now();
-        let _ = inpaint::best_offset(cw, chh, ch, &cimg, &hole, (d / 8).clamp(3, 16), m as i32);
-        println!("best_offset     {d:>3} px disc: {:>8.1?}", t.elapsed());
     }
 }

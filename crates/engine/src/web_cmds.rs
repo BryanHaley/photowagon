@@ -376,6 +376,8 @@ pub struct Optimized {
     pub indices: Vec<u8>,
     /// What the optimised file looks like, straight RGBA8 (for the dialog's previews).
     pub preview: Vec<u8>,
+    /// The palette the indices point into, the transparent entry included (indexed formats).
+    pub palette: Vec<[u8; 3]>,
 }
 
 fn to8(v: f32) -> u8 {
@@ -405,6 +407,41 @@ pub fn web_xmp(doc: &Document, m: WebMetadata) -> Option<String> {
     }
 }
 
+/// An animated GIF's bytes, frame count, width and height.
+type AnimatedGif = (Vec<u8>, usize, u32, u32);
+
+/// A frame animation saved as GIF: every frame optimised with the same settings, played `loops`
+/// times (default the animation's own). `None` when it isn't one (or `animate` is off).
+fn animated_gif(doc: &Document, p: &Value, st: &WebSettings, cmd: &str) -> Result<Option<AnimatedGif>> {
+    let Some(a) = doc.animation.as_ref().filter(|a| a.frames.len() > 1) else { return Ok(None) };
+    if st.format != WebFormat::Gif || p.get("animate").and_then(Value::as_bool) == Some(false) {
+        return Ok(None);
+    }
+    let plays = match p.get("loops") {
+        None | Some(Value::Null) => a.loops,
+        Some(Value::String(v)) if v == "forever" => 0,
+        Some(Value::String(v)) if v == "once" => 1,
+        Some(v) => v
+            .as_u64()
+            .and_then(|n| u32::try_from(n).ok())
+            .filter(|n| (1..=65_535).contains(n))
+            .ok_or_else(|| EngineError::BadParams { cmd: cmd.into(), msg: "`loops` must be \"once\", \"forever\" or 1 to 65535".into() })?,
+    };
+    let mut frames = Vec::with_capacity(a.frames.len());
+    let (mut w, mut h) = (0, 0);
+    for (i, f) in a.frames.iter().enumerate() {
+        let fdoc = crate::anim_cmds::frame_document(doc, i)?;
+        let (wdoc, _, _) = web_document(&fdoc, p, st)?;
+        let buf = photocraft_compose::flatten(&wdoc);
+        let o = optimize(&buf.px, wdoc.size.width as usize, wdoc.bounds(), st, None, None, wdoc.resolution_dpi, true)?;
+        (w, h) = (o.width, o.height);
+        let delay_cs = (f64::from(f.delay) * 100.0).round().clamp(0.0, 65_535.0) as u16;
+        frames.push(photocraft_codecs::web::GifFrame { indices: o.indices, palette: o.palette, transparent: o.transparent_index.and_then(|t| u8::try_from(t).ok()), delay_cs });
+    }
+    let bytes = photocraft_codecs::web::encode_gif_animated_plays(w, h, &frames, plays).map_err(other)?;
+    Ok(Some((bytes, frames.len(), w, h)))
+}
+
 /// Optimises `rect` of `px` (straight RGBA, `bw` wide) with `st`. `preview` also returns what
 /// the file looks like (the dialog's panes); exports skip it.
 #[allow(clippy::too_many_arguments)]
@@ -429,6 +466,7 @@ pub fn optimize(px: &[[f32; 4]], bw: usize, rect: Rect, st: &WebSettings, icc: O
     let mut color_table = Vec::new();
     let mut transparent_index = None;
     let mut indices = Vec::new();
+    let mut palette = Vec::new();
     let (bytes, colors) = match st.format {
         WebFormat::Png24 => {
             let alpha = st.transparency && region().any(|p| p[3] < 1.0);
@@ -562,10 +600,11 @@ pub fn optimize(px: &[[f32; 4]], bw: usize, rect: Rect, st: &WebSettings, icc: O
             if preview {
                 indices = idx;
             }
+            palette = pal.clone();
             (bytes, Some(pal.len()))
         }
     };
-    Ok(Optimized { bytes, ext: st.format.ext(), width: ww, height: hh, colors, color_table, transparent_index, indices, preview: look })
+    Ok(Optimized { bytes, ext: st.format.ext(), width: ww, height: hh, colors, color_table, transparent_index, indices, preview: look, palette })
 }
 
 /// Nearest palette entry through a lazily filled 6-bit-per-channel inverse colour map: each
@@ -887,6 +926,14 @@ fn save_for_web_impl(s: &mut Session, p: &Value, write: &mut dyn FnMut(&str, &[u
         .collect();
     let single = p.get("path").and_then(Value::as_str).filter(|v| !v.is_empty());
     let dir = p.get("dir").and_then(Value::as_str).filter(|v| !v.is_empty());
+    if let Some((bytes, frames, w, h)) = animated_gif(&doc, p, &st, cmd)? {
+        if let Some(path) = single {
+            write(path, &bytes)?;
+            remember_web_settings(s, cmd, p);
+            return Ok(json!({"files": [path], "bytes": bytes.len(), "width": w, "height": h, "frames": frames}));
+        }
+        return Ok(json!({"format": "gif", "bytes": bytes.len(), "width": w, "height": h, "frames": frames}));
+    }
     let mut last_web = p.clone();
     // A trusted-markup decision applies to this export only, never to another document opened
     // with the dialog's remembered settings.
@@ -1066,6 +1113,17 @@ fn quick_export(s: &mut Session, p: &Value) -> Result<Value> {
     };
     let d = s.active().ok_or(EngineError::NoDocument)?;
     let doc = d.doc.clone();
+    // Export As's image size; the document keeps its own.
+    let mut size = serde_json::Map::new();
+    for k in ["width", "height", "percent"] {
+        if let Some(v) = p.get(k).and_then(Value::as_f64) {
+            if !(1.0..=300_000.0).contains(&v) {
+                return Err(bad(cmd, format!("`{k}` must be 1..300000")));
+            }
+            size.insert(k.into(), json!(v));
+        }
+    }
+    let size = Value::Object(size);
     let metadata = serde_json::to_value(prefs.metadata).ok().and_then(|v| v.as_str().map(str::to_string)).unwrap_or_default();
     let mut o = serde_json::Map::new();
     o.insert(
@@ -1079,7 +1137,7 @@ fn quick_export(s: &mut Session, p: &Value) -> Result<Value> {
         }),
     );
     o.insert("convertToSrgb".into(), json!(prefs.convert_to_srgb));
-    o.insert("transparency".into(), json!(true));
+    o.insert("transparency".into(), json!(p.get("transparency").and_then(Value::as_bool).unwrap_or(true)));
     o.insert("matte".into(), json!("#ffffff"));
     match fmt.as_str() {
         "jpg" => {
@@ -1093,7 +1151,7 @@ fn quick_export(s: &mut Session, p: &Value) -> Result<Value> {
             // WebP uses the regular exporter. Its optional quality is in the Photoshop-style
             // 0–12 save scale: invert that mapping so the codec receives the chosen 1–100.
             // Keeping quality absent preserves the historical lossless Quick Export behavior.
-            let (wdoc, _, _) = web_document(&doc, &json!({}), &WebSettings { convert_to_srgb: prefs.convert_to_srgb, ..Default::default() })?;
+            let (wdoc, _, _) = web_document(&doc, &size, &WebSettings { convert_to_srgb: prefs.convert_to_srgb, ..Default::default() })?;
             let quality = if prefs.webp_lossless { None } else { Some((f64::from(prefs.webp_quality.clamp(1, 100)) - 1.0) * 12.0 / 99.0) };
             let warnings = crate::file_cmds::save_doc(&wdoc, &path, quality)?;
             crate::automate_cmds::fire_event(s, "export");
@@ -1105,7 +1163,7 @@ fn quick_export(s: &mut Session, p: &Value) -> Result<Value> {
     }
     let q = Value::Object(o);
     let st = WebSettings::from_params(&q, cmd)?;
-    let (wdoc, _, _) = web_document(&doc, &json!({}), &st)?;
+    let (wdoc, _, _) = web_document(&doc, &size, &st)?;
     let buf = photocraft_compose::flatten(&wdoc);
     let xmp = web_xmp(&doc, st.metadata);
     let opt = optimize(
@@ -1504,7 +1562,7 @@ pub fn specs() -> Vec<CommandSpec> {
             "Save for Web (Legacy)…",
             &["File", "Export"],
             Some("Cmd+Alt+Shift+S"),
-            r##"{"preset":"GIF 128 Dithered|JPEG High|PNG-24|…"?,"format":"gif|png8|png24|jpeg|wbmp"="png24","palette":"perceptual|selective|adaptive|restrictive|exact|systemMac|systemWindows|uniform"="selective","colors":2..256=256,"colorTable":["#rrggbb",…]? (fixed opaque source palette, 1–256 entries; 255 with transparency),"colorTableEdits":{"0":"#rrggbb",…}? (replace entries after indexing; requires colorTable),"dither":"none|diffusion|pattern|noise"="diffusion","ditherAmount":0..100=88,"transparency":bool=true,"matte":"#rrggbb|none"="none" (a preset's own: white; formats without transparency go over white),"interlaced":bool=false,"webSnap":0..100=0,"quality":0..100=60,"progressive":bool=false,"optimized":bool=true,"embedIcc":bool=false,"metadata":"none|copyright|copyrightAndContact|all"="copyright","convertToSrgb":bool=true,"width"|"height"|"percent"? (image size),"resample":"bicubic|bilinear|nearest"?,"path":file? (whole image),"dir":folder? (one file per slice in images/),"imagesFolder":relative-folder?="images","html":bool=false,"trustedSliceHtml":bool=false (only for trusted documents; emit raw no-image cell HTML),"slices":"all|user"="all","numbers":[n]?} → no path/dir: {bytes,width,height,colors,colorTable,transparentIndex} estimate; else {files, html, bytes}"##,
+            r##"{"preset":"GIF 128 Dithered|JPEG High|PNG-24|…"?,"format":"gif|png8|png24|jpeg|wbmp"="png24","palette":"perceptual|selective|adaptive|restrictive|exact|systemMac|systemWindows|uniform"="selective","colors":2..256=256,"colorTable":["#rrggbb",…]? (fixed opaque source palette, 1–256 entries; 255 with transparency),"colorTableEdits":{"0":"#rrggbb",…}? (replace entries after indexing; requires colorTable),"dither":"none|diffusion|pattern|noise"="diffusion","ditherAmount":0..100=88,"transparency":bool=true,"matte":"#rrggbb|none"="none" (a preset's own: white; formats without transparency go over white),"interlaced":bool=false,"webSnap":0..100=0,"quality":0..100=60,"progressive":bool=false,"optimized":bool=true,"embedIcc":bool=false,"metadata":"none|copyright|copyrightAndContact|all"="copyright","convertToSrgb":bool=true,"width"|"height"|"percent"? (image size),"resample":"bicubic|bilinear|nearest"?,"path":file? (whole image),"dir":folder? (one file per slice in images/),"imagesFolder":relative-folder?="images","html":bool=false,"trustedSliceHtml":bool=false (only for trusted documents; emit raw no-image cell HTML),"slices":"all|user"="all","numbers":[n]?,"loops":"once|forever"|n? (a frame animation's GIF: default the animation's),"animate":bool=true} → no path/dir: {bytes,width,height,colors,colorTable,transparentIndex} estimate; else {files, html, bytes}"##,
             has_doc,
             save_for_web
         ),
@@ -1522,7 +1580,7 @@ pub fn specs() -> Vec<CommandSpec> {
             "Quick Export",
             &[],
             None,
-            r##"{"path":str? (required unless Export Preferences › Location is "sameFolder" and the document is saved)} → {path, format, bytes}"##,
+            r##"{"path":str? (required unless Export Preferences › Location is "sameFolder" and the document is saved),"width":px?,"height":px?,"percent":%? (the exported image's size; one side keeps the aspect),"transparency":bool=true (off: transparent areas come out white)} → {path, format, bytes}"##,
             native_doc,
             quick_export
         ),

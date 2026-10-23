@@ -47,7 +47,7 @@ fn has_doc(s: &Session) -> Enabled {
 
 fn mode_is(s: &Session, modes: &[ColorMode], what: &str) -> Enabled {
     let d = s.active().ok_or("no document open")?;
-    if modes.contains(&d.doc.mode) { Ok(()) } else { Err(format!("{what} (the document is {:?})", d.doc.mode)) }
+    if modes.contains(&d.doc.mode) { Ok(()) } else { Err(what.to_string()) }
 }
 
 // ---------- Image Rotation › Arbitrary ----------
@@ -491,6 +491,21 @@ fn duotone(s: &mut Session, p: &Value) -> Result<Value> {
     Ok(json!({"inks": names}))
 }
 
+/// `image.mode.duotoneInks`: the document's inks, as `image.mode.duotone` takes them; before it
+/// is a Duotone, the four default inks.
+fn duotone_inks(s: &mut Session, _: &Value) -> Result<Value> {
+    let d = s.active().ok_or(EngineError::NoDocument)?;
+    let current = d.doc.duotone.as_ref().map(|t| t.inks.clone());
+    let inks: Vec<Value> = current.clone().unwrap_or_else(|| default_inks(4)).iter().map(|i| {
+        json!({
+            "name": i.name,
+            "color": hex(i.color.map(|v| (v.clamp(0.0, 1.0) * 255.0).round() as u8)),
+            "curve": i.curve.iter().map(|p| [(p.input * 1000.0).round() / 10.0, (p.output * 1000.0).round() / 10.0]).collect::<Vec<_>>(),
+        })
+    }).collect();
+    Ok(json!({"inks": inks, "current": current.is_some()}))
+}
+
 macro_rules! spec {
     ($id:literal, $label:literal, [$($m:literal),*], $params:literal, $en:expr, $run:expr) => {
         CommandSpec { id: $id, label: $label, menu: &[$($m),*], shortcut: None, params: $params, enabled: $en, run: $run, journal: true }
@@ -532,7 +547,7 @@ pub fn specs() -> Vec<CommandSpec> {
             "Bitmap…",
             ["Image", "Mode"],
             r##"{"method":"diffusion|threshold|pattern|halftone"="diffusion","frequency":1..999=53,"angle":-180..180=45,"shape":"round|ellipse|line|square|diamond|cross"="round"} (halftone frequency in lines/inch; flattens)"##,
-            |s| mode_is(s, &[ColorMode::Grayscale], "Bitmap needs a Grayscale image (Image › Mode › Grayscale first)"),
+            |s| mode_is(s, &[ColorMode::Grayscale], "Bitmap needs a Grayscale image"),
             bitmap
         ),
         spec!(
@@ -540,9 +555,19 @@ pub fn specs() -> Vec<CommandSpec> {
             "Duotone…",
             ["Image", "Mode"],
             r##"{"type":"duotone|monotone|tritone|quadtone"="duotone","inks":json} (inks: [{"name","color":"#rrggbb","curve":[[in,out],…] in 0..100}, …])"##,
-            |s| mode_is(s, &[ColorMode::Grayscale, ColorMode::Duotone], "Duotone needs a Grayscale image (Image › Mode › Grayscale first)"),
+            |s| mode_is(s, &[ColorMode::Grayscale, ColorMode::Duotone], "Duotone needs a Grayscale image"),
             duotone
         ),
+        CommandSpec {
+            id: "image.mode.duotoneInks",
+            label: "Duotone Inks",
+            menu: &[],
+            shortcut: None,
+            params: "{} → {\"inks\":[{\"name\",\"color\",\"curve\"}],\"current\":bool}",
+            enabled: |s| s.active().map(|_| ()).ok_or_else(|| "no document open".into()),
+            run: duotone_inks,
+            journal: false,
+        },
     ]
 }
 

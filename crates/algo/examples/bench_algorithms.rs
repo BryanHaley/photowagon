@@ -47,6 +47,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "spin" => FilterParams::SpinBlur {
             pins: vec![photocraft_algo::SpinPin { radius_x: 1.0, radius_y: 1.0, blur_angle: 30.0, angle: 17.0, ..Default::default() }],
         },
+        "surface" => FilterParams::SurfaceBlur { radius: 10.0, threshold: 15.0 },
         "spin-default" => FilterParams::SpinBlur { pins: vec![Default::default()] },
         "lens" | "lens-ca" | "trap" | "trap-wide" | "trap-default" => FilterParams::Invert,
         _ => return Err("unknown case".into()),

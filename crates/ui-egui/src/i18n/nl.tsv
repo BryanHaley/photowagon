@@ -3990,3 +3990,71 @@ curves	Smooth	Vloeiend maken
 	Increase Brush Size	Penseelgrootte vergroten
 	Decrease Brush Hardness	Penseelhardheid verlagen
 	Increase Brush Hardness	Penseelhardheid verhogen
+# Renamed engine strings (same translations as the names they replaced).
+	Create Batch App…	Droplet maken…
+	Contact Sheet…	Contactblad II…
+	Merge to HDR…	Samenvoegen tot HDR Pro…
+	Panorama…	Photomerge…
+	Create Embedded Layer after Loading Layers	Slim object maken na laden van lagen
+	Fill from Surroundings…	Inhoudsbewust vullen…
+	Content-Preserving Scale	Inhoudsbewust schalen
+	Pin Warp	Marionetvervorming
+	Raw Develop…	Camera Raw…
+	New Embedded Layer via Copy	Nieuw slim object via kopiëren
+	Live Filter	Slim filter
+	Convert for Live Filters	Omzetten voor slimme filters
+	Clear Live Filters	Slimme filters wissen
+	Disable Live Filters	Slimme filters uitschakelen
+	Embedded Layers	Slimme objecten
+	Embedded Layer	Slim object
+	Convert to Embedded Layer	Omzetten naar slim object
+	Refine Selection…	Selecteren en maskeren…
+	Refine Selection (Legacy)	Rand verfijnen
+	Develop…	Camera Raw-filter…
+	Fluid Warp…	Uitvloeien…
+	Perspective Planes…	Verdwijnpunt…
+	Blur Effects	Vervagingsgalerie
+	Save these settings as a Raw Develop .xmp file	Deze instellingen opslaan als Camera Raw-.xmp-bestand
+	Load settings from a Raw Develop .xmp file	Instellingen laden uit een Camera Raw-.xmp-bestand
+	Loaded Raw Develop settings from {file}	Camera Raw-instellingen geladen uit {file}
+	Loaded Raw Develop settings from {file} ({n} not supported)	Camera Raw-instellingen geladen uit {file} ({n} niet ondersteund)
+	Raw Develop isn't open	Camera Raw is niet geopend
+	Commit Pin Warp ({key})	Marionetvervorming toepassen ({key})
+	Contact Sheet	Contactblad II
+	Create Batch App	Droplet maken
+	Filter for embedded layers	Filter op slimme objecten
+	Fluid Warp is not open	Uitvloeien is niet geopend
+	Pin Warp is not active	Marionetvervorming is niet actief
+	Fill from Surroundings needs a selection on a pixel layer	Inhoudsbewust vullen vereist een selectie op een pixellaag
+	Could not use Pin Warp: no opaque pixels	Kan marionetvervorming niet gebruiken: geen dekkende pixels
+	Could not use Pin Warp: the layer is empty	Kan marionetvervorming niet gebruiken: de laag is leeg
+	Repair Brush Tool	Herstelpenseel
+	Live Filters	Slimme filters
+	Spot Repair Brush Tool	Snel herstelpenseel
+	Always create embedded layers when placing	Bij plaatsen altijd slimme objecten maken
+	Raw Develop Defaults	Standaardwaarden Camera Raw
+	Open as embedded layer	Openen als slim object
+	Embedded Layer Layer	Laag met slim object
+	Rasterize Embedded Layer	Slim object rasteren
+	Develop ({layer})	Camera Raw-filter ({layer})
+	Raw Develop ({name})	Camera Raw ({name})
+	Move and Fill Tool	Inhoudsbewust verplaatsen
+	Commit Pin Warp (↩)	Marionetvervorming toepassen (↩)
+	Delete Live Filters	Slimme filters verwijderen
+	Enable Live Filters	Slimme filters inschakelen
+	Raw Develop	Camera Raw
+	Develop	Camera Raw-filter
+	Fill from Surroundings	Inhoudsbewust vullen
+	Fluid Warp	Uitvloeien
+	Merge to HDR	Samenvoegen tot HDR Pro
+	Panorama	Photomerge
+	Refine Selection	Selecteren en maskeren
+	Perspective Planes	Verdwijnpunt
+	Move and Fill	Inhoudsbewust verplaatsen
+	Repair Brush	Herstelpenseel
+	Spot Repair Brush	Snel herstelpenseel
+	Perspective Planes: click four corners to create a plane	Verdwijnpunt: klik op vier hoeken om een vlak te maken
+	Perspective Planes is not active	Verdwijnpunt is niet actief
+	Apply Perspective Planes ({key})	Verdwijnpunt toepassen ({key})
+	Refine Selection (Legacy) Brush (R)	Penseel Rand verfijnen (R)
+@plural	Updated {n} linked embedded layer changed on disk|Updated {n} linked embedded layers changed on disk	{n} gekoppeld slim object bijgewerkt dat op schijf is gewijzigd|{n} gekoppelde slimme objecten bijgewerkt die op schijf zijn gewijzigd

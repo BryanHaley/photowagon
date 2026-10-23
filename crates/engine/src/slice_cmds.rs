@@ -39,7 +39,7 @@ fn unlocked(s: &Session) -> std::result::Result<(), String> {
 
 fn has_slices(s: &Session) -> std::result::Result<(), String> {
     unlocked(s)?;
-    if s.active().is_some_and(|d| !d.doc.slices.is_empty()) { Ok(()) } else { Err("the document has no user or layer-based slices".into()) }
+    if s.active().is_some_and(|d| !d.doc.slices.is_empty()) { Ok(()) } else { Err("the document has no slices".into()) }
 }
 
 fn has_layer_for_slice(s: &Session) -> std::result::Result<(), String> {
@@ -51,7 +51,7 @@ fn has_layer_for_slice(s: &Session) -> std::result::Result<(), String> {
         return Err("adjustment layers have no bounds to slice".into());
     }
     if d.doc.is_background(id) {
-        return Err("the Background layer can't have a layer-based slice".into());
+        return Err("not for the Background layer".into());
     }
     if d.doc.slices.list.iter().any(|s| s.layer == Some(id)) {
         return Err("the layer already has a layer-based slice".into());

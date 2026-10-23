@@ -79,7 +79,7 @@ fn has_layer(s: &Session) -> std::result::Result<(), String> {
     let d = s.active().ok_or("no document open")?;
     match d.active_layer.and_then(|id| d.doc.layer(id)).map(|l| &l.content) {
         Some(LayerContent::Raster(_)) => Ok(()),
-        Some(other) => Err(format!("Vanishing Point needs a pixel layer (active layer is {} {} layer)", other.article(), other.kind_name())),
+        Some(other) => Err(format!("not on {} layers", other.kind_name())),
         None => Err("no active layer".into()),
     }
 }
@@ -137,9 +137,9 @@ fn vanishing_point(s: &mut Session, p: &Value) -> Result<Value> {
     let clones: Vec<Value> = p.get("clone").and_then(Value::as_array).cloned().unwrap_or_default();
     let new_layer = p.get("newLayer").and_then(Value::as_bool).unwrap_or(false);
     let mut dabs = 0usize;
-    let target = s.edit("Vanishing Point", |doc: &mut Document, active| {
+    let target = s.edit("Perspective Planes", |doc: &mut Document, active| {
         let id = if new_layer {
-            let l = Layer::raster(doc.next_layer_name("Vanishing Point"), doc.pixel_format());
+            let l = Layer::raster(doc.next_layer_name("Perspective Planes"), doc.pixel_format());
             let nid = doc.insert_above(*active, l);
             *active = Some(nid);
             nid
@@ -153,7 +153,7 @@ fn vanishing_point(s: &mut Session, p: &Value) -> Result<Value> {
         if locks.all || locks.pixels {
             return Err(EngineError::Other(format!("layer \"{}\" is locked", l.name)));
         }
-        let surf = l.surface_mut().ok_or_else(|| EngineError::Other("Vanishing Point needs a pixel layer".into()))?;
+        let surf = l.surface_mut().ok_or_else(|| EngineError::Other("Perspective Planes needs a pixel layer".into()))?;
         for (plane, src, rect, at, width) in &pastes {
             if let Some(out) = paste(&sc, *plane, src, *rect, *at, *width)? {
                 over(surf, &out);
@@ -208,7 +208,7 @@ fn vanishing_point(s: &mut Session, p: &Value) -> Result<Value> {
 pub fn specs() -> Vec<CommandSpec> {
     vec![CommandSpec {
         id: VP,
-        label: "Vanishing Point…",
+        label: "Perspective Planes…",
         menu: &["Filter"],
         shortcut: Some("Cmd+Alt+V"),
         params: r##"{"planes":[{"corners":[[x,y]×4]} | {"from":plane,"edge":"top|right|bottom|left","angle":deg=90,"depth":1}],"focalLength":px=0,"paste":[{"plane":0,"layer":id? (else the clipboard),"at":[u,v]=[0.25,0.25],"width":0..1=0.5}],"clone":[{"source":[x,y],"points":[[x,y]],"size":px=40,"hardness":0..100=50,"opacity":0..100=100}],"newLayer":bool=false}"##,

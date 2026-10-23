@@ -23,10 +23,10 @@ fn luma(c: [f32; 3]) -> f32 {
 pub struct ShadowsHighlights {
     pub shadow_amount: f32,
     pub shadow_tone: f32,
-    pub shadow_radius: f32,
     pub highlight_amount: f32,
     pub highlight_tone: f32,
-    pub highlight_radius: f32,
+    /// Size in px of the one neighbourhood both shadows and highlights are measured over.
+    pub radius: f32,
     /// Colour (saturation) correction in -100..=100, applied where tones were changed.
     pub color: f32,
     /// Midtone contrast in -100..=100.
@@ -41,10 +41,9 @@ impl Default for ShadowsHighlights {
         ShadowsHighlights {
             shadow_amount: 35.0,
             shadow_tone: 50.0,
-            shadow_radius: 30.0,
             highlight_amount: 0.0,
             highlight_tone: 50.0,
-            highlight_radius: 30.0,
+            radius: 30.0,
             color: 20.0,
             midtone: 0.0,
             black_clip: 0.01,

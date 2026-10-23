@@ -1,11 +1,12 @@
-PhotoCraft
-Copyright (c) 2026 ArtCraft Team and the PhotoCraft contributors.
+PhotoWagon
+Copyright (c) 2026 Bryan Haley.
 Licensed under the MIT License or the Apache License, Version 2.0, at your option
 (LICENSE-MIT, LICENSE-APACHE).
 
-The ArtCraft name, wordmark and logos in docs/brand/ are trademarks of the ArtCraft Team. They are
-not open source and are not covered by the license above; their terms are in
-docs/brand/LICENSE-brand.txt.
+PhotoWagon is built on PhotoCraft (https://github.com/storytold/photocraft).
+Copyright (c) 2026 ArtCraft Team and the PhotoCraft contributors.
+Licensed under the MIT License or the Apache License, Version 2.0, at your option
+(LICENSE-MIT-PhotoCraft, LICENSE-APACHE-PhotoCraft).
 
 Third-party material
 
@@ -16,7 +17,15 @@ Inter font (assets/fonts/Inter-*.ttf) — SIL Open Font License 1.1. See assets/
 JetBrains Mono font (assets/fonts/JetBrainsMono-Regular.ttf) — SIL Open Font License 1.1. See assets/fonts/OFL-JetBrainsMono.txt.
 Lucide icons (assets/icons/*.svg, except slice-knife.svg) — ISC; icons derived from Feather also MIT. See assets/icons/LICENSE-lucide.txt.
 SCOWL English word list (assets/dict/en_US-scowl-50.txt.gz) — SCOWL license. See assets/dict/LICENSE-SCOWL.txt.
+libjxl (submodules/libjxl; the iOS app's JPEG XL reader and writer) — BSD-3-Clause, Copyright (c) the JPEG XL Project Authors, with Google's royalty-free patent grant for this implementation of JPEG XL. See submodules/libjxl/LICENSE and submodules/libjxl/PATENTS. It bundles Highway (Apache-2.0 or BSD-3-Clause, submodules/libjxl/third_party/highway/LICENSE*), Brotli (MIT, third_party/brotli/LICENSE) and skcms (BSD-3-Clause, third_party/skcms/LICENSE).
+LibRaw (submodules/LibRaw; the iOS app's last-resort camera raw reader) — used under the Common Development and Distribution License (CDDL) 1.0, one of the two licences LibRaw offers (the other is LGPL 2.1). Copyright (C) 2008-2025 LibRaw LLC. Its source code is available under the CDDL in submodules/LibRaw of this product's source code, https://github.com/BryanHaley/photowagon. See submodules/LibRaw/LICENSE.CDDL and submodules/LibRaw/COPYRIGHT. It includes code from dcraw (Copyright 1997-2018 Dave Coffin), DCB demosaic and FBDD denoise (BSD-3-Clause, Copyright (C) 2010 Jacek Gozdz), the X3F library (BSD-3-Clause, Copyright (c) 2010 Roland Karlsson) and the DNG SDK 1.4 (MIT).
 libfacedetection face detection weights and network (crates/algo/data/libfacedetection.bin, crates/algo/src/faces/cnn.rs) — BSD-3-Clause, Copyright (c) 2015-2019, Shiqi Yu, all rights reserved. See crates/algo/data/LICENSE-libfacedetection.txt.
+
+X.Org colour names (crates/codecs/src/codecs/xpm/x11_colors.rs) — MIT-style, Copyright 1985, 1989, 1998 The Open Group and Copyright (c) 1994, 2008 Oracle and/or its affiliates. See crates/codecs/src/codecs/xpm/LICENSE-x11-rgb.txt.
+
+The iOS app also links the Rust standard library and Rust crates under their own permissive licences (MIT, Apache-2.0, BSD, Zlib,
+ISC, Unicode-3.0) and UniFFI (MPL-2.0, source at https://crates.io/crates/uniffi). The app shows all
+of these notices and licence texts under Help › Acknowledgements (made by `cargo xtask ios`).
 
 Builds made with craft-fonts (CRAFT_FONTS_DIR; all official releases) also embed the fonts listed in
 https://github.com/storytold/craft-fonts/blob/main/ATTRIBUTION.md (today BIZ UDPGothic, Shippori Mincho and

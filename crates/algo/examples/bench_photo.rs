@@ -1,5 +1,5 @@
 //! Timing for the computational-photography algorithms on a ~24 MP (6000×4000) image:
-//! Camera Raw develop, Lens Correction, Adaptive Wide Angle, HDR merge + tone mapping, Crop and
+//! Camera Raw develop, Lens Correction, HDR merge + tone mapping, Crop and
 //! Straighten detection, and a 4-image panorama registration + blend (2 MP sources).
 //! `cargo run --release -p photocraft-algo --example bench_photo [case-substring]`
 use std::time::Instant;
@@ -9,8 +9,6 @@ use photocraft_algo::hdr::{self, MergeOptions, ToneMethod};
 use photocraft_algo::lens::{self, LensCorrection};
 use photocraft_algo::panorama::{self, AlignOptions, Layout, RoiImage};
 use photocraft_algo::tone::HdrToning;
-use photocraft_algo::transform::Interp;
-use photocraft_algo::wideangle::{self, Constraint, Orientation, WideAngle, WideModel};
 use photocraft_color::PixelFormat;
 use photocraft_geom::Rect;
 use photocraft_raster::Surface;
@@ -109,18 +107,6 @@ fn main() {
                 ..Default::default()
             },
         )
-    });
-    time("adaptive wide angle (fisheye, 2 constraints)", &only, || {
-        let p = WideAngle {
-            model: WideModel::Fisheye,
-            focal_length: 12.0,
-            constraints: vec![
-                Constraint { a: [500.0, 600.0], b: [5500.0, 600.0], orientation: Orientation::Horizontal },
-                Constraint { a: [700.0, 500.0], b: [700.0, 3500.0], orientation: Orientation::Vertical },
-            ],
-            ..Default::default()
-        };
-        wideangle::apply(&s, r, &p, Interp::Bicubic)
     });
     time("hdr: merge 3 exposures + local adaptation", &only, || {
         let shots: Vec<Vec<[f32; 4]>> =

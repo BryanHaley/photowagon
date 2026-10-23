@@ -491,6 +491,9 @@ impl LiveStroke {
     /// Committing `cmd` with the same params and `"seed": live.seed` gives the same pixels.
     pub fn begin_with(s: &Session, cmd: &str, p: &Value) -> Result<Self> {
         has_paintable(s).map_err(EngineError::Other)?;
+        // The channel the Layers or Channels panel targets (a layer's mask), as the command
+        // takes it when it runs.
+        let p = &crate::channel_cmds::inject_target(s, cmd, p.clone());
         let pts = parse_points(p, cmd)?;
         let pencil = match cmd {
             "paint.stroke" => false,
@@ -737,6 +740,7 @@ fn presets_list(s: &mut Session, p: &Value) -> Result<Value> {
             let mut v = json!({
                 "name": pr.name,
                 "builtin": pr.builtin,
+                "group": pr.group,
                 "size": pr.brush.size,
                 "hardness": pr.brush.hardness,
                 "tip": match &pr.brush.tip { TipShape::Round => "round", TipShape::Sampled(_) | TipShape::Stored(_) => "sampled" },

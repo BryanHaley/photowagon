@@ -11,7 +11,7 @@ use crate::{EngineError, Result, Session};
 fn enabled(s: &Session) -> std::result::Result<(), String> {
     match s.active() {
         Some(d) if d.doc.mode == ColorMode::Cmyk => Ok(()),
-        Some(_) => Err("Trap needs a CMYK document (Image › Mode › CMYK Color)".into()),
+        Some(_) => Err("Trap needs a CMYK document".into()),
         None => Err("no document".into()),
     }
 }
@@ -30,7 +30,7 @@ fn trap(s: &mut Session, p: &Value) -> Result<Value> {
         let LayerContent::Raster(surf) = &mut l.content else {
             return Err(EngineError::BadParams {
                 cmd: cmd.into(),
-                msg: format!("Trap needs a pixel layer (active layer is {} {})", l.content.article(), l.content.kind_name()),
+                msg: "Trap needs a pixel layer".to_string(),
             });
         };
         if bounds.is_empty() {

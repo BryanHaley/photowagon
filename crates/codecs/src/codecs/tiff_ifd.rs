@@ -31,6 +31,8 @@ pub(crate) const TAG_WIDTH: u16 = 256;
 pub(crate) const TAG_HEIGHT: u16 = 257;
 pub(crate) const TAG_BITS: u16 = 258;
 pub(crate) const TAG_COMPRESSION: u16 = 259;
+pub(crate) const TAG_YCBCR_COEFFICIENTS: u16 = 529;
+pub(crate) const TAG_REFERENCE_BLACK_WHITE: u16 = 532;
 pub(crate) const TAG_PHOTOMETRIC: u16 = 262;
 pub(crate) const TAG_ORIENTATION: u16 = 274;
 pub(crate) const TAG_SAMPLES: u16 = 277;
@@ -235,6 +237,18 @@ impl<'a> File<'a> {
             12 => Some(f64::from_bits(self.u64_at(e.value_at)?)),
             _ => self.uint(e, 0).map(|v| v as f64),
         }
+    }
+
+    /// The first `n` values of a RATIONAL tag (`None` if it has fewer or one is unreadable).
+    pub fn tag_rationals(&self, ifd: &Ifd, tag: u16, n: u64) -> Option<Vec<f64>> {
+        let e = ifd.get(tag).filter(|e| e.ty == 5 && e.count >= n)?;
+        (0..n)
+            .map(|i| {
+                let at = e.value_at.checked_add(i.checked_mul(8)?)?;
+                let (num, den) = (self.u32_at(at)?, self.u32_at(at.checked_add(4)?)?);
+                (den != 0).then(|| f64::from(num) / f64::from(den))
+            })
+            .collect()
     }
 
     /// The bytes of a one-byte-per-value tag (BYTE, ASCII, SBYTE or UNDEFINED).

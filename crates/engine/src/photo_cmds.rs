@@ -278,8 +278,9 @@ fn roi_of(surf: &Surface, area: Rect) -> RoiImage {
 /// Placements, source sizes and the panorama offset (for vignette removal).
 pub(crate) type BlendGeometry<'a> = (&'a [Placement], &'a [(usize, usize)], (f64, f64));
 
-/// Result of [`seam_blend`]: per input, the pixels to keep (blended inside its seam region)
-/// and its mask; plus the blended composite.
+/// Result of [`feather_blend`]: per input, its pixels (the blend wherever it has weight) and a
+/// mask such that stacking the inputs in order, bottom up, with normal blending gives the
+/// blend; plus the blended composite.
 pub(crate) struct Blended {
     pub layers: Vec<(Surface, Surface)>,
     pub composite: Surface,
@@ -287,9 +288,10 @@ pub(crate) struct Blended {
     pub vignette: [f64; 2],
 }
 
-/// Gain compensation (+ optional vignetting), seams in `order`, multi-band blending. Inputs are
-/// surfaces already in panorama coordinates with alpha. `geometry` enables vignette removal.
-pub(crate) fn seam_blend(warped: &[Surface], canvas: Rect, order: &[usize], seamless: bool, gains: bool, geometry: Option<BlendGeometry>) -> Blended {
+/// Gain compensation (+ optional vignetting), then a blend weighted by distance to each image's
+/// border (multi-band when `seamless`). Inputs are surfaces already in panorama coordinates
+/// with alpha. `geometry` enables vignette removal.
+pub(crate) fn feather_blend(warped: &[Surface], canvas: Rect, seamless: bool, gains: bool, geometry: Option<BlendGeometry>) -> Blended {
     let n = warped.len();
     let fmt = warped.first().map_or(PixelFormat::RGBA8, Surface::format);
     let mut rois: Vec<RoiImage> = warped
@@ -335,72 +337,46 @@ pub(crate) fn seam_blend(warped: &[Surface], canvas: Rect, order: &[usize], seam
             }
         }
     }
-    // Seams on a ≤ 1000 px grid.
+    // Coverage on a ≤ 1000 px grid.
     let (cw, chh) = (canvas.width().max(1) as usize, canvas.height().max(1) as usize);
     let s = cw.max(chh).div_ceil(1000).max(1);
     let (gw, gh) = (cw.div_ceil(s), chh.div_ceil(s));
-    let mut luma = vec![vec![0.0f32; gw * gh]; n];
     let mut cover = vec![vec![false; gw * gh]; n];
     for (i, roi) in rois.iter().enumerate() {
-        let mut acc = vec![(0.0f32, 0.0f32, 0u32); gw * gh];
+        let mut acc = vec![0.0f32; gw * gh];
         for y in 0..roi.h {
             for x in 0..roi.w {
                 let (u, v) = ((roi.x0 - canvas.x0) as usize + x, (roi.y0 - canvas.y0) as usize + y);
-                let g = (v / s).min(gh - 1) * gw + (u / s).min(gw - 1);
-                let k = y * roi.w + x;
-                let l = roi.px[k * roi.ch..(k + 1) * roi.ch].iter().sum::<f32>() / roi.ch as f32;
-                acc[g].0 += l;
-                acc[g].1 += roi.alpha[k];
-                acc[g].2 += 1;
+                acc[(v / s).min(gh - 1) * gw + (u / s).min(gw - 1)] += roi.alpha[y * roi.w + x];
             }
         }
         for g in 0..gw * gh {
-            let (l, a, c) = acc[g];
-            if c > 0 {
-                luma[i][g] = l / c as f32;
-                cover[i][g] = a / (s * s) as f32 > 0.98;
-            }
+            cover[i][g] = acc[g] / (s * s) as f32 > 0.98;
         }
     }
-    let labels = panorama::seam_labels(gw, gh, &luma, &cover, order);
-    // Full-resolution weights: the seam label, falling back to the earliest covering image in
-    // `order` where the label's image doesn't cover the pixel.
-    let rank: Vec<usize> = {
-        let mut r = vec![usize::MAX; n];
-        for (k, &i) in order.iter().enumerate() {
-            r[i] = k;
-        }
-        r
-    };
-    let alpha_at = |j: usize, x: i32, y: i32| -> f32 {
+    let grid = panorama::border_weights(gw, gh, &cover);
+    // Full-resolution weight of image `j` at canvas pixel (x, y): the grid weight, bilinear between
+    // cell centres, and a tiny floor so pixels of partly covered cells still count.
+    let weight_at = |j: usize, x: i32, y: i32| -> f32 {
         let r = &rois[j];
         let (lx, ly) = (x - r.x0, y - r.y0);
-        if lx < 0 || ly < 0 || lx as usize >= r.w || ly as usize >= r.h { 0.0 } else { r.alpha[ly as usize * r.w + lx as usize] }
+        if lx < 0 || ly < 0 || lx as usize >= r.w || ly as usize >= r.h || r.alpha[ly as usize * r.w + lx as usize] < 0.5 {
+            return 0.0;
+        }
+        let fx = (((x - canvas.x0) as f32 + 0.5) / s as f32 - 0.5).clamp(0.0, (gw - 1) as f32);
+        let fy = (((y - canvas.y0) as f32 + 0.5) / s as f32 - 0.5).clamp(0.0, (gh - 1) as f32);
+        let (x0, y0) = (fx as usize, fy as usize);
+        let (x1, y1) = ((x0 + 1).min(gw - 1), (y0 + 1).min(gh - 1));
+        let (tx, ty) = (fx - x0 as f32, fy - y0 as f32);
+        let g = &grid[j];
+        let top = g[y0 * gw + x0] * (1.0 - tx) + g[y0 * gw + x1] * tx;
+        let bot = g[y1 * gw + x0] * (1.0 - tx) + g[y1 * gw + x1] * tx;
+        (top * (1.0 - ty) + bot * ty).max(1e-6)
     };
     let weights: Vec<Vec<f32>> = rois
         .iter()
         .enumerate()
-        .map(|(i, roi)| {
-            (0..roi.w * roi.h)
-                .map(|k| {
-                    let (x, y) = (roi.x0 + (k % roi.w) as i32, roi.y0 + (k / roi.w) as i32);
-                    if roi.alpha[k] < 0.5 {
-                        return 0.0;
-                    }
-                    let (u, v) = ((x - canvas.x0) as usize, (y - canvas.y0) as usize);
-                    let lab = labels[(v / s).min(gh - 1) * gw + (u / s).min(gw - 1)];
-                    if lab == i as i32 {
-                        return 1.0;
-                    }
-                    if lab >= 0 && alpha_at(lab as usize, x, y) >= 0.5 {
-                        return 0.0;
-                    }
-                    // Fallback: the earliest covering image wins.
-                    let first = (0..n).filter(|&j| alpha_at(j, x, y) >= 0.5).min_by_key(|&j| rank[j]);
-                    if first == Some(i) { 1.0 } else { 0.0 }
-                })
-                .collect()
-        })
+        .map(|(i, roi)| (0..roi.w * roi.h).map(|k| weight_at(i, roi.x0 + (k % roi.w) as i32, roi.y0 + (k / roi.w) as i32)).collect())
         .collect();
     // Shift ROIs to canvas-relative coordinates for the blend.
     let local: Vec<RoiImage> = rois.iter().map(|r| RoiImage { x0: r.x0 - canvas.x0, y0: r.y0 - canvas.y0, ..r.clone() }).collect();
@@ -424,19 +400,22 @@ pub(crate) fn seam_blend(warped: &[Surface], canvas: Rect, order: &[usize], seam
     let layers = rois
         .iter()
         .zip(&weights)
-        .map(|(roi, wt)| {
+        .enumerate()
+        .map(|(i, (roi, wt))| {
             let area = Rect::new(roi.x0, roi.y0, roi.x0 + roi.w as i32, roi.y0 + roi.h as i32);
             let mut px = vec![0.0f32; roi.w * roi.h * nch];
             let mut mask = vec![0.0f32; roi.w * roi.h];
             for k in 0..roi.w * roi.h {
                 let (u, v) = ((roi.x0 - canvas.x0) as usize + k % roi.w, (roi.y0 - canvas.y0) as usize + k / roi.w);
                 let g = v * cw + u;
-                let inside = wt[k] > 0.5;
                 for c in 0..cc {
-                    px[k * nch + c] = if inside && seamless { data_clamp(blend[g * cc + c], fmt) } else { roi.px[k * cc + c] };
+                    px[k * nch + c] = if wt[k] > 0.0 && seamless { data_clamp(blend[g * cc + c], fmt) } else { roi.px[k * cc + c] };
                 }
                 px[k * nch + nch - 1] = roi.alpha[k];
-                mask[k] = wt[k];
+                // Weight over the weights of this layer and those below it.
+                let (x, y) = (roi.x0 + (k % roi.w) as i32, roi.y0 + (k / roi.w) as i32);
+                let below: f32 = (0..i).map(|j| weight_at(j, x, y)).sum();
+                mask[k] = if wt[k] > 0.0 { wt[k] / (wt[k] + below) } else { 0.0 };
             }
             let mut ls = Surface::new(fmt);
             if !area.is_empty() {
@@ -458,22 +437,6 @@ fn data_clamp(v: f32, fmt: PixelFormat) -> f32 {
     if fmt.sample == SampleType::F32 { v } else { v.clamp(0.0, 1.0) }
 }
 
-/// Seam order: the reference first, then by distance of each image's centre from it.
-pub(crate) fn seam_order(warped: &[Surface], reference: usize) -> Vec<usize> {
-    let centre = |s: &Surface| {
-        let b = s.content_bounds();
-        ((b.x0 + b.x1) as f64 / 2.0, (b.y0 + b.y1) as f64 / 2.0)
-    };
-    let rc = centre(&warped[reference.min(warped.len() - 1)]);
-    let mut order: Vec<usize> = (0..warped.len()).collect();
-    order.sort_by(|&a, &b| {
-        let (ca, cb) = (centre(&warped[a]), centre(&warped[b]));
-        let (da, db) = ((ca.0 - rc.0).hypot(ca.1 - rc.1), (cb.0 - rc.0).hypot(cb.1 - rc.1));
-        (a != reference).cmp(&(b != reference)).then(da.total_cmp(&db))
-    });
-    order
-}
-
 // ---------- Photomerge ----------
 
 fn photomerge(s: &mut Session, p: &Value) -> Result<Value> {
@@ -488,7 +451,7 @@ fn photomerge(s: &mut Session, p: &Value) -> Result<Value> {
     let fill = p.get("contentAwareFill").and_then(Value::as_bool).unwrap_or(false);
     let (srcs, fmt, icc) = load_sources(s, p, cmd)?;
     if srcs.len() < 2 {
-        return Err(bad(cmd, "Photomerge needs two or more images"));
+        return Err(bad(cmd, "Panorama needs two or more images"));
     }
     let focal_param = p.get("focalLength").and_then(Value::as_f64).filter(|f| *f > 0.0);
     let doc_name = format!("Untitled_Panorama{}", s.documents().len() + 1);
@@ -496,17 +459,17 @@ fn photomerge(s: &mut Session, p: &Value) -> Result<Value> {
     // blending run on a worker, checking for cancellation between stages and images.
     crate::jobs::run(
         s,
-        "Photomerge",
+        "Panorama",
         false,
         move |ctx| {
-            ctx.progress(0.0, "Photomerge: aligning images");
+            ctx.progress(0.0, "Panorama: aligning images");
             let focal35 = focal_param.or_else(|| exif_focal(&srcs));
             let images: Vec<(&Surface, Rect)> = srcs.iter().map(|s| (&s.surf, Rect::new(0, 0, s.w as i32, s.h as i32))).collect();
             let al = register(&images, layout, None, geometric, focal35)
-                .ok_or_else(|| EngineError::Other("Photomerge couldn't find enough matching detail between the images".into()))?;
+                .ok_or_else(|| EngineError::Other("Panorama couldn't find enough matching detail between the images".into()))?;
             let t_reg = t0.ms() / 1000.0;
             ctx.check()?;
-            ctx.progress(0.35, "Photomerge: warping images");
+            ctx.progress(0.35, "Panorama: warping images");
             let placed: Vec<usize> = (0..srcs.len()).filter(|&i| al.placements[i].is_some()).collect();
             // Parallel to `placed`.
             let placements: Vec<&Placement> = placed.iter().filter_map(|&i| al.placements[i].as_ref()).collect();
@@ -540,17 +503,15 @@ fn photomerge(s: &mut Session, p: &Value) -> Result<Value> {
             };
             let t_warp = t0.ms() / 1000.0;
             ctx.check()?;
-            ctx.progress(0.6, "Photomerge: blending images");
+            ctx.progress(0.6, "Panorama: blending images");
             let mut doc = Document::new(doc_name, Size::new(cw as u32, ch as u32), fmt.mode, fmt.sample);
             doc.icc_profile = icc;
             let mut info = json!({});
-            let ref_pos = placed.iter().position(|&i| i == al.reference).unwrap_or(0);
             if blend {
                 let pls: Vec<Placement> = placements.iter().map(|p| (*p).clone()).collect();
                 let sizes: Vec<(usize, usize)> = placed.iter().map(|&i| (srcs[i].w, srcs[i].h)).collect();
-                let order = seam_order(&warped, ref_pos);
                 let geo = vignette.then_some((pls.as_slice(), sizes.as_slice(), offset));
-                let b = seam_blend(&warped, canvas, &order, true, true, geo);
+                let b = feather_blend(&warped, canvas, true, true, geo);
                 for (k, (px, mask)) in b.layers.into_iter().enumerate() {
                     let mut l = Layer::new(srcs[placed[k]].name.clone(), LayerContent::Raster(px));
                     let mut m = LayerMask::hide_all();
@@ -561,9 +522,9 @@ fn photomerge(s: &mut Session, p: &Value) -> Result<Value> {
                 info = json!({"gains": b.gains, "vignette": b.vignette});
                 ctx.check()?;
                 if fill {
-                    ctx.progress(0.85, "Photomerge: filling edges");
+                    ctx.progress(0.85, "Panorama: filling edges");
                     let filled = content_aware_fill(&b.composite, canvas);
-                    doc.layers.push(Layer::new("Content-Aware Fill", LayerContent::Raster(filled)));
+                    doc.layers.push(Layer::new("Fill from Surroundings", LayerContent::Raster(filled)));
                 }
             } else {
                 for (k, px) in warped.into_iter().enumerate() {
@@ -679,7 +640,7 @@ fn merge_to_hdr(s: &mut Session, p: &Value) -> Result<Value> {
     let t0 = Stopwatch::start();
     let (srcs, _fmt, icc) = load_sources(s, p, cmd)?;
     if srcs.len() < 2 {
-        return Err(bad(cmd, "Merge to HDR Pro needs two or more exposures"));
+        return Err(bad(cmd, "Merge to HDR needs two or more exposures"));
     }
     let (w, h) = (srcs[0].w, srcs[0].h);
     if srcs.iter().any(|s| s.w != w || s.h != h) {
@@ -889,7 +850,7 @@ pub fn specs() -> Vec<CommandSpec> {
     vec![
         CommandSpec {
             id: "file.automate.photomerge",
-            label: "Photomerge…",
+            label: "Panorama…",
             menu: &["File", "Automate"],
             shortcut: None,
             params: r##"{"paths":[str]|folder,"useOpenDocuments":bool=false,"layout":"auto|perspective|cylindrical|spherical|collage|reposition","blend":bool=true,"vignetteRemoval":bool=false,"geometricCorrection":bool=false,"contentAwareFill":bool=false,"focalLength":mm=0 (35 mm equivalent; 0 = EXIF or estimated)} → new document, one masked layer per image"##,
@@ -899,7 +860,7 @@ pub fn specs() -> Vec<CommandSpec> {
         },
         CommandSpec {
             id: "file.automate.mergeToHdrPro",
-            label: "Merge to HDR Pro…",
+            label: "Merge to HDR…",
             menu: &["File", "Automate"],
             shortcut: None,
             params: r##"{"paths":[str]|folder,"useOpenDocuments":bool=false,"exposures":[ev]? (default EXIF, else estimated),"align":bool=true,"removeGhosts":bool=false,"ghostBase":int?,"mode":"32|16|8","method":"localAdaptation|exposureGamma|highlightCompression|equalizeHistogram","radius":1..500=7,"strength":0.1..4=0.52,"gamma":0.1..2=1,"exposure":-5..5=0,"detail":-100..300=30,"shadow":-100..100=0,"highlight":-100..100=0,"vibrance":-100..100=0,"saturation":-100..100=20} → new document (32-bit linear, or tone-mapped 16/8-bit)"##,
@@ -991,11 +952,13 @@ mod tests {
             let d = &s.active().unwrap().doc;
             assert_eq!(d.layers.len(), 3);
             assert!(d.layers.iter().all(|l| l.mask.is_some()));
-            // Masks partition the panorama: every covered pixel is shown by exactly one layer.
+            // Stacked, the layers cover the panorama; in overlaps the upper layer's mask is soft.
             for &(x, y) in &[(20, 100), (200, 50), (380, 150), (470, 120)] {
-                let shown: f32 = d.layers.iter().map(|l| l.mask.as_ref().unwrap().value(x, y) * l.surface().unwrap().rgba(x, y)[3]).sum();
-                assert!((shown - 1.0).abs() < 0.01, "({x},{y}) {shown}");
+                let hidden: f32 = d.layers.iter().map(|l| 1.0 - l.mask.as_ref().unwrap().value(x, y) * l.surface().unwrap().rgba(x, y)[3]).product();
+                assert!(hidden < 0.01, "({x},{y}) {hidden}");
             }
+            let m1 = d.layers[1].mask.as_ref().unwrap().value(200, 50);
+            assert!(m1 > 0.05 && m1 < 0.95, "{m1}");
             // The composite matches the scene up to the global gain.
             let comp = photocraft_compose::flatten(d);
             let at = |x: i32, y: i32| comp.px[(y * comp.rect.width() as i32 + x) as usize];
@@ -1044,7 +1007,7 @@ mod tests {
         assert_eq!(r["placed"].as_array().unwrap().len(), 3, "{r}");
         let d = &s.active().unwrap().doc;
         let top = d.layers.last().unwrap();
-        assert_eq!(top.name, "Content-Aware Fill");
+        assert_eq!(top.name, "Fill from Surroundings");
         // The fill layer is opaque everywhere (the bow-tie corners are filled).
         let b = d.bounds();
         assert!(top.surface().unwrap().rgba(1, 1)[3] > 0.99 && top.surface().unwrap().rgba(b.x1 - 2, b.y1 - 2)[3] > 0.99);

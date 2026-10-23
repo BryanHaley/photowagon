@@ -279,7 +279,7 @@ mod tests {
         s.execute("layer.smartObjects.convertToSmartObject", json!({})).unwrap();
         s.execute(ID, json!({"color": "#ffffff"})).unwrap();
         let d = s.active().unwrap();
-        let photocraft_doc::LayerContent::Smart(sm) = &d.doc.layer(d.active_layer.unwrap()).unwrap().content else { panic!("not a smart object") };
+        let photocraft_doc::LayerContent::Smart(sm) = &d.doc.layer(d.active_layer.unwrap()).unwrap().content else { panic!("not an embedded layer") };
         assert_eq!(sm.smart_filters.len(), 1);
         assert_eq!(sm.smart_filters[0].command, ID);
         assert!(sm.cache.as_ref().unwrap().rgba(W - 1, 0)[3] < 0.02, "the cache was re-rendered");

@@ -556,6 +556,9 @@ fn special_eight_fill_matches_cpu() {
             check(&mut g, &d, &format!("{mode:?} fill {fill}"));
             d.layers[0] = noise_layer("bg", PixelFormat::RGBA8, Rect::from_xywh(0, 0, 64, 48), 5, 1.0);
             check(&mut g, &d, &format!("{mode:?} fill {fill} opaque"));
+            // Transparency Shapes Layer off: alpha acts as Fill.
+            d.layers[1].advanced.transparency_shapes = false;
+            check(&mut g, &d, &format!("{mode:?} fill {fill} alpha as fill"));
         }
     }
 }

@@ -44,7 +44,7 @@ fn convertible(l: &Layer) -> std::result::Result<(), String> {
 fn can_convert(s: &Session) -> std::result::Result<(), String> {
     let d = s.active().ok_or("no document open")?;
     if background_id(&d.doc).is_some() {
-        return Err("the document already has a Background layer".into());
+        return Err("there's already a Background layer".into());
     }
     let l = d.active_layer.and_then(|id| d.doc.layer(id)).ok_or("no active layer")?;
     convertible(l)

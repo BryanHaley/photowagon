@@ -1,0 +1,119 @@
+name: PhotoWagon
+options:
+  bundleIdPrefix: ai.storyteller
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    # The Rust build step writes to ../target, outside the build sandbox.
+    ENABLE_USER_SCRIPT_SANDBOXING: NO
+targets:
+  PhotoWagon:
+    type: application
+    platform: iOS
+    sources:
+      - path: PhotoWagon
+      # Help › Manual, made from Manual/*.md by Manual/build.sh.
+      - path: Manual/Book
+        type: folder
+    postCompileScripts:
+      - name: Copy acknowledgements
+        basedOnDependencyAnalysis: false
+        # Written by `cargo xtask ios` (the RustCore step).
+        script: cp "$SRCROOT/../target/ios/Acknowledgements.json" "$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/"
+    dependencies:
+      # Built first, so the framework below is fresh before Xcode copies it.
+      - target: RustCore
+      - framework: Frameworks/PhotoWagonCore.xcframework
+        embed: false
+      - sdk: Metal.framework
+      - sdk: QuartzCore.framework
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ai.storyteller.photowagon
+        TARGETED_DEVICE_FAMILY: "1,2"
+        GENERATE_INFOPLIST_FILE: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        INFOPLIST_KEY_CFBundleDisplayName: PhotoWagon
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription: PhotoWagon saves your edited images to Photos.
+        INFOPLIST_KEY_CADisableMinimumFrameDurationOnPhone: YES
+        # Only Apple's standard HTTPS (the AI Remove model download): no export compliance question per build.
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
+        # LibRaw (inside the Rust library) needs the C++ runtime and zlib.
+        OTHER_LDFLAGS: "-lc++ -lz"
+        # Documents show in Files (On My iPhone › PhotoWagon), and files open in place.
+        INFOPLIST_KEY_UIFileSharingEnabled: YES
+        INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace: YES
+        # Mouse and trackpad as pointer events (right-click, hover, scroll) instead of touches.
+        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
+  PhotoWagonUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: PhotoWagonUITests
+        excludes:
+          - "Samples/*.py"
+          - "Samples/*.md"
+    dependencies:
+      - target: PhotoWagon
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ai.storyteller.photowagon.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: PhotoWagon
+        # Keep the sample PNGs byte for byte (Xcode's iPhone form premultiplies, so pixels shift slightly).
+        COMPRESS_PNG_FILES: NO
+        STRIP_PNG_TEXT: NO
+  PhotoWagonTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: PhotoWagonTests
+    dependencies:
+      - target: PhotoWagon
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ai.storyteller.photowagon.tests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/PhotoWagon.app/PhotoWagon"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+schemes:
+  PhotoWagon:
+    build:
+      targets:
+        PhotoWagon: all
+        PhotoWagonTests: [test]
+        PhotoWagonUITests: [test]
+    test:
+      targets:
+        - PhotoWagonTests
+        - PhotoWagonUITests
+aggregateTargets:
+  RustCore:
+    buildScripts:
+        - name: Build Rust core
+          basedOnDependencyAnalysis: false
+          script: |
+            # Xcode's environment (SDKROOT and friends) breaks cargo's host builds: start clean.
+            slice=--device
+            [ "$PLATFORM_NAME" = iphonesimulator ] && slice=--sim
+            release=
+            [ "$CONFIGURATION" = Release ] && release=--release
+            cd "$SRCROOT/.." && env -i HOME="$HOME" PATH="/opt/homebrew/opt/rustup/bin:$HOME/.cargo/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+              cargo xtask ios $slice $release
+            # Xcode copies the library out of the XCFramework before this step can rebuild it: put
+            # the fresh one where the app links from.
+            triple=aarch64-apple-ios
+            [ "$PLATFORM_NAME" = iphonesimulator ] && triple=aarch64-apple-ios-sim
+            profile=debug
+            [ "$CONFIGURATION" = Release ] && profile=release
+            mkdir -p "$BUILT_PRODUCTS_DIR"
+            cp "target/$triple/$profile/libphotocraft_ffi.a" "$BUILT_PRODUCTS_DIR/libphotocraft_ffi.a"

@@ -51,6 +51,7 @@ mod demosaic;
 mod develop;
 mod dng;
 mod error;
+mod gaintable;
 mod jxl;
 mod ljpeg;
 mod look;

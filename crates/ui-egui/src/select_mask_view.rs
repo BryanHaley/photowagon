@@ -260,12 +260,12 @@ pub fn paint(fields: &mut Map<String, Value>, at: [f64; 2], start: bool, subtrac
     let size = f64::from(brush_size(fields));
     let mut strokes = fields.get("refineStrokes").and_then(Value::as_array).cloned().unwrap_or_default();
     let points = |s: &Value| s.get("points").and_then(Value::as_array).map_or(0, Vec::len);
-    if strokes.iter().map(points).sum::<usize>() >= photocraft_engine::smartselect_cmds::MAX_STROKE_POINTS {
+    if strokes.iter().map(points).sum::<usize>() >= 100_000 {
         return;
     }
     let round = |v: f64| (v * 10.0).round() / 10.0;
     let pt = json!([round(at[0]), round(at[1])]);
-    let room = strokes.len() < photocraft_engine::smartselect_cmds::MAX_STROKES;
+    let room = strokes.len() < 4096;
     let last = strokes.last_mut().and_then(|s| s.get_mut("points")).and_then(Value::as_array_mut);
     match last {
         Some(pts) if !start => {
@@ -383,30 +383,6 @@ impl Coverage {
         Coverage { area, values: grown.iter().zip(&shrunk).map(|(g, s)| (g - s).clamp(0.0, 1.0)).collect(), outside: 0.0 }
     }
 
-    /// Coverage at canvas pixel `(x, y)`.
-    fn at(&self, x: i32, y: i32) -> f32 {
-        if !self.area.contains(x, y) {
-            return self.outside;
-        }
-        let i = (y - self.area.y0) as usize * self.area.width() as usize + (x - self.area.x0) as usize;
-        self.values.get(i).copied().unwrap_or(self.outside)
-    }
-
-    /// The edge band as the Refine Edge Brush changes it: painted areas join it, restored ones
-    /// leave it.
-    fn with_brush(self, brush: Option<&photocraft_algo::matting::EdgeBrush>, canvas: Rect) -> Coverage {
-        let Some(brush) = brush else { return self };
-        let area = self.area.union(&brush.bounds()).intersect(&canvas);
-        let values = (area.y0..area.y1)
-            .flat_map(|y| (area.x0..area.x1).map(move |x| (x, y)))
-            .map(|(x, y)| {
-                let (v, b) = (self.at(x, y), brush.at(x, y));
-                if b >= 0.0 { v.max(b) } else { v * (1.0 + b) }
-            })
-            .collect();
-        Coverage { area, values, outside: self.outside }
-    }
-
     /// A GRAY8 mask surface holding `f(coverage)`.
     fn surface(&self, f: impl Fn(f32) -> f32) -> Surface {
         let g = |v: f32| f(v).clamp(0.0, 1.0);
@@ -456,8 +432,7 @@ pub fn preview_document(doc: &Document, active: Option<LayerId>, params: &Value,
     let original = proxy.selection.clone().or_else(|| active.and_then(|id| proxy.layer(id)).and_then(|l| l.mask.as_ref()).map(|m| m.surface.clone()));
     let canvas = Rect::new(0, 0, i32::try_from(proxy.size.width).unwrap_or(i32::MAX), i32::try_from(proxy.size.height).unwrap_or(i32::MAX));
     let coverage = if view.show_edge {
-        let band = Coverage::edge_band(original.as_ref(), canvas, length(params, "radius", k).round().clamp(1.0, 250.0) as usize);
-        band.with_brush(scaled_strokes(params, k).as_ref().and_then(|s| photocraft_algo::matting::EdgeBrush::new(s, canvas)).as_ref(), canvas)
+        Coverage::edge_band(original.as_ref(), canvas, length(params, "radius", k).round().clamp(1.0, 250.0) as usize)
     } else if view.show_original {
         Coverage::read(original.as_ref(), canvas)
     } else {
@@ -509,27 +484,6 @@ fn refine(proxy: &Document, active: Option<LayerId>, params: &Value, k: u32, can
     }
     s.execute(COMMAND, Value::Object(p)).ok()?;
     Some(s.active()?.doc.selection.clone())
-}
-
-/// The Refine Edge Brush strokes of `params`, reduced by `k`, for Show Edge; `None` when there
-/// are none (or they are malformed: the refinement itself reports those).
-fn scaled_strokes(params: &Value, k: u32) -> Option<Vec<photocraft_algo::matting::EdgeStroke>> {
-    let k = k.max(1) as f32;
-    params
-        .get("refineStrokes")?
-        .as_array()?
-        .iter()
-        .map(|s| {
-            let points = s
-                .get("points")?
-                .as_array()?
-                .iter()
-                .map(|p| Some((p.get(0)?.as_f64()? as f32 / k, p.get(1)?.as_f64()? as f32 / k)))
-                .collect::<Option<Vec<_>>>()?;
-            let size = (s.get("size").and_then(Value::as_f64).unwrap_or(30.0) as f32 / k).max(1.0);
-            Some(photocraft_algo::matting::EdgeStroke { points, size, add: s.get("mode").and_then(Value::as_str) != Some("subtract") })
-        })
-        .collect()
 }
 
 /// A solid fill layer named for the view.

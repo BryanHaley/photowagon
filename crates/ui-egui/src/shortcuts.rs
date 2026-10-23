@@ -652,7 +652,6 @@ pub fn handle(app: &mut PhotocraftApp, ctx: &egui::Context) {
         || app.ui.layer_menu.is_some()
         || app.ui.brush_picker.is_some()
         || app.ui.tool == Tool::RotateView
-        || app.wide_angle.is_some()
         || app.save_options_open()
         || app.distort.gallery.is_some()
         || ctx.any_popup_open()

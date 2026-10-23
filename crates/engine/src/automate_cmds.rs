@@ -548,7 +548,7 @@ pub fn specs() -> Vec<CommandSpec> {
     vec![
         spec!(
             "file.automate.contactSheetII",
-            "Contact Sheet II…",
+            "Contact Sheet…",
             &["File", "Automate"],
             r##"{"input":folder|[paths],"units":"inches|cm|mm|pixels"="inches","width":8,"height":10,"resolution":ppi=300,"mode":"rgb|gray|cmyk|lab"="rgb","depth":8|16=8,"columns":5,"rows":6,"placeAcrossFirst":bool=true,"autoSpacing":bool=true,"horizontal":units?,"vertical":units?,"rotateForBestFit":bool=false,"caption":bool=true (file name as caption),"font":family?,"fontSize":pt=12,"flatten":bool=false} → {documents, pages, images}"##,
             native,
@@ -556,7 +556,7 @@ pub fn specs() -> Vec<CommandSpec> {
         ),
         spec!(
             "file.automate.createDroplet",
-            "Create Droplet…",
+            "Create Batch App…",
             &["File", "Automate"],
             r##"{"path":str (.pcdroplet),"steps":[[id,params]…] (the action),"name":str?,"output":folder?,"format":"same|png|jpg|…"?,"quality":0..12?,"shim":bool=true on Unix (writes <name>.command calling `photocraft-cli droplet`)} → {path, shim} (the actions its Play Action steps call are saved in the droplet)"##,
             native,
@@ -564,7 +564,7 @@ pub fn specs() -> Vec<CommandSpec> {
         ),
         spec!(
             "file.automate.runDroplet",
-            "Run Droplet",
+            "Run Batch App",
             &[],
             r##"{"droplet":path,"input":[files or folders],"output":folder? (default: droplet's, else <input folder>/droplet-output)} → {files, errors} (an input whose output name was already written in the run goes to errors)"##,
             native,
@@ -574,7 +574,7 @@ pub fn specs() -> Vec<CommandSpec> {
             "file.scripts.statistics",
             "Statistics…",
             &["File", "Scripts"],
-            r##"{"mode":"mean|median|maximum|minimum|range|summation|variance|standardDeviation|skewness|kurtosis|entropy"="median","input":folder|[paths],"align":bool=false (Auto-Align first)} → new document with one stack-mode smart object"##,
+            r##"{"mode":"mean|median|maximum|minimum|range|summation|variance|standardDeviation|skewness|kurtosis|entropy"="median","input":folder|[paths],"align":bool=false (Auto-Align first)} → new document with one stack-mode embedded layer"##,
             native,
             statistics
         ),

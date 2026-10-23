@@ -148,13 +148,15 @@ impl<'a> Bits<'a> {
             self.nbits += PAGE as u32 * 8;
             self.pos += PAGE;
         }
-        let mut at = ((self.nbits - num) >> 3) as usize ^ 0x3FF0;
-        at = (at + PAGE - COMPRESSED_SPLIT) % PAGE;
-        let at = self.base + at + self.pos - PAGE;
+        let byte = ((self.nbits - num) >> 3) as usize ^ 0x3FF0;
         self.nbits -= num;
-        // Out-of-range reads (a page short at the end of the file) read as 0.
-        let lo = u32::from(self.buf.get(at).copied().unwrap_or(0));
-        let hi = u32::from(self.buf.get(at + 1).copied().unwrap_or(0));
+        // A page's bytes are stored rotated by the split, so the byte after `byte` isn't always the
+        // next one in the file; past the page's last byte it reads as 0. Out-of-range reads (a page
+        // short at the end of the file) read as 0 too.
+        let page = self.base + self.pos - PAGE;
+        let at = |b: usize| if b < PAGE { self.buf.get(page + (b + PAGE - COMPRESSED_SPLIT) % PAGE).copied().unwrap_or(0) } else { 0 };
+        let lo = u32::from(at(byte));
+        let hi = u32::from(at(byte + 1));
         ((lo | (hi << 8)) >> (self.nbits & 7)) & ((1u32 << num) - 1)
     }
 }
@@ -296,6 +298,8 @@ pub(crate) fn decode(t: &Tiff, limits: &Limits) -> Result<Sensor> {
         orientation: crate::tiff::orientation(t.tag_uint(&ifd, tag::ORIENTATION)),
         baseline_exposure: 0.0,
         gain_maps: Vec::new(),
+        polynomials: Vec::new(),
+        gain_table: None,
         tone_curve: Vec::new(),
         black_point: 0.0,
         warnings,
@@ -355,6 +359,22 @@ mod tests {
     }
 
     #[test]
+    fn reads_straddling_the_page_split_or_end_take_the_right_second_byte() {
+        // Logical byte 0x2007 is the last of the file's first half: the byte after it is stored at
+        // the start of the page, not at the next page.
+        let mut buf = vec![0u8; 2 * PAGE];
+        buf[0x3FFF] = 0x12; // logical 0x2007
+        buf[0] = 0x34; // logical 0x2008
+        buf[PAGE] = 0x56; // the next page
+        let mut bits = Bits { buf: &buf, base: 0, pos: PAGE, nbits: 0xFFBC + 8 };
+        assert_eq!(bits.get(8), 0x41, "(0x3412 >> 4) & 0xFF");
+        // Past the page's last logical byte (0x3FFF) the second byte reads as 0.
+        let buf = vec![0xABu8; 2 * PAGE];
+        let mut bits = Bits { buf: &buf, base: 0, pos: PAGE, nbits: 0x7C + 8 };
+        assert_eq!(bits.get(8), 0x0A, "(0x00AB >> 4) & 0xFF");
+    }
+
+    #[test]
     fn compressed_group_walks_predictors() {
         // One 14-pixel group: both parities start absolute, a delta of 0x80
         // keeps their value, and the scale selector is written before the
@@ -393,14 +413,16 @@ mod tests {
                 self.nbits += PAGE as u32 * 8;
                 self.pos += PAGE;
             }
-            let mut at = ((self.nbits - num) >> 3) as usize ^ 0x3FF0;
-            at = (at + PAGE - COMPRESSED_SPLIT) % PAGE;
-            let at = at + self.pos - PAGE;
+            let byte = ((self.nbits - num) >> 3) as usize ^ 0x3FF0;
             self.nbits -= num;
-            let cur = u32::from(self.buf[at]) | (u32::from(self.buf[at + 1]) << 8);
+            let phys = |b: usize| self.pos - PAGE + (b + PAGE - COMPRESSED_SPLIT) % PAGE;
+            let (lo_at, hi_at) = (phys(byte), (byte + 1 < PAGE).then(|| phys(byte + 1)));
+            let cur = u32::from(self.buf[lo_at]) | hi_at.map_or(0, |h| u32::from(self.buf[h]) << 8);
             let cur = cur | ((v & ((1 << num) - 1)) << (self.nbits & 7));
-            self.buf[at] = cur as u8;
-            self.buf[at + 1] = (cur >> 8) as u8;
+            self.buf[lo_at] = cur as u8;
+            if let Some(h) = hi_at {
+                self.buf[h] = (cur >> 8) as u8;
+            }
         }
     }
 }

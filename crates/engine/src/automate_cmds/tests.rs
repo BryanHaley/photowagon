@@ -276,7 +276,7 @@ fn statistics_makes_a_stack_mode_smart_object() {
     assert_eq!(r["images"], 3);
     let d = &s.active().unwrap().doc;
     assert_eq!(d.layers.len(), 1);
-    let LayerContent::Smart(so) = &d.layers[0].content else { panic!("not a smart object") };
+    let LayerContent::Smart(so) = &d.layers[0].content else { panic!("not an embedded layer") };
     assert_eq!(so.stack_mode, Some(photocraft_doc::StackMode::Mean));
     // Mean of 20, 60, 100 = 60.
     let px = photocraft_compose::flatten(d).px[0];
@@ -312,7 +312,7 @@ fn stacked_smart_object_holds_the_loaded_layers_at_its_top_level() {
         let mut s = Session::new();
         s.execute("file.scripts.statistics", json!({"mode": "median", "input": files, "align": align})).unwrap();
         let d = &s.active().unwrap().doc;
-        let LayerContent::Smart(so) = &d.layers[0].content else { panic!("not a smart object") };
+        let LayerContent::Smart(so) = &d.layers[0].content else { panic!("not an embedded layer") };
         let photocraft_doc::SmartSource::Embedded { file_name, bytes } = &so.source else { panic!("not embedded") };
         let inner = crate::smart_cmds::decode_source(file_name, bytes).unwrap();
         let names: Vec<&str> = inner.layers.iter().map(|l| l.name.as_str()).collect();
@@ -428,7 +428,7 @@ fn load_files_into_stack_aligns_before_the_smart_object() {
     s.execute("file.scripts.loadFilesIntoStack", json!({"paths": files, "align": true, "createSmartObject": true})).unwrap();
     let d = &s.active().unwrap().doc;
     assert_eq!(d.layers.len(), 1);
-    let LayerContent::Smart(_) = &d.layers[0].content else { panic!("not a smart object") };
+    let LayerContent::Smart(_) = &d.layers[0].content else { panic!("not an embedded layer") };
     // A single file has nothing to align with: it just loads.
     let mut s = Session::new();
     s.execute("file.scripts.loadFilesIntoStack", json!({"paths": [files[0].clone()], "align": true})).unwrap();

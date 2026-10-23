@@ -732,9 +732,9 @@ fn remaining_events_import_in_their_photoshop_shapes() {
         item("clearEvent", "Clear", Some(qm_on.clone())),
         item("set", "Set", Some(polygon)),
         item("delete", "Delete", Some(mask_delete)),
-        item("newPlacedLayer", "Convert to Smart Object", None),
+        item("newPlacedLayer", "Convert to Embedded Layer", None),
         item("placedLayerEditContents", "Edit Contents", None),
-        item("updatePlacedLayer", "Update Smart Objects", None),
+        item("updatePlacedLayer", "Update Embedded Layers", None),
     ];
     let file = AtnFile {
         name: UnicodeString::new_nul("More"),
@@ -900,7 +900,7 @@ fn distressing_and_remove_white_shapes_import_and_play() {
         item("Hd  ", "Hide", Some(desc("null").with("null", D::List(vec![target_ref("Lyr ")])))),
         item("Mk  ", "Make", Some(fill)),
         item("slct", "Select", Some(desc("null").with("null", channel_ord("Msk")).with("MkVs", D::Boolean(false)))),
-        item("refineSelectionEdge", "Select and Mask", Some(refine)),
+        item("refineSelectionEdge", "Refine Selection", Some(refine)),
         item("Rple", "Ripple", Some(desc("null").with("Amnt", long(50.0)).with("RplS", enm("RplS", "Sml")))),
         item("Crst", "Crystallize", Some(desc("null").with("ClSz", long(3.0)))),
         item("GEfc", "Filter Gallery", Some(desc("null").with("GEfk", enm("GEft", "Spt")).with("SprR", long(7.0)).with("Smth", long(15.0)))),

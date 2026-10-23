@@ -186,7 +186,8 @@ pub fn lone_target<'a>(doc: &'a Document, layer: Option<LayerId>, p: &Value) -> 
             let id = layer.ok_or_else(|| EngineError::Other("no active layer".into()))?;
             let l = doc.layer(id).ok_or(EngineError::NoLayer(id))?;
             let m = l.mask.as_ref().ok_or_else(|| EngineError::Other("layer has no mask".into()))?;
-            Ok((!m.linked).then_some(&m.surface))
+            // With a selection, only the mask's selected pixels move, as in Photoshop.
+            Ok((!m.linked || doc.selection.is_some()).then_some(&m.surface))
         }
         Target::Alpha(i) => doc
             .channels
@@ -300,10 +301,10 @@ fn check_layer_budget(doc_sel: Option<&Surface>, l: &Layer, h: &Homography) -> R
             LayerContent::Text(_) | LayerContent::Shape(_) => {}
             LayerContent::Smart(sm) => {
                 if let Some(c) = &sm.cache {
-                    check_budget(c.content_bounds(), h, "smart object")?;
+                    check_budget(c.content_bounds(), h, "embedded layer")?;
                 }
                 if let Some(m) = &sm.filter_mask {
-                    check_budget(m.surface.content_bounds(), h, "smart filter mask")?;
+                    check_budget(m.surface.content_bounds(), h, "live filter mask")?;
                 }
             }
             _ => {
@@ -557,6 +558,23 @@ fn relative_matrix(p: &Value, rect: [f64; 4]) -> Result<Option<Homography>> {
     Ok(Some(Homography([a, c, e, b, d, f, 0.0, 0.0, 1.0])))
 }
 
+/// The affine map for a quad that is a parallelogram to within 0.01 px. A UI's corners (often
+/// single-precision) are never exact, and type can only take affine transforms.
+fn parallelogram(rect: [f64; 4], q: &[[f64; 2]; 4]) -> Option<Homography> {
+    let (w, h) = (rect[2] - rect[0], rect[3] - rect[1]);
+    if w.abs() < 1e-9 || h.abs() < 1e-9 {
+        return None;
+    }
+    let [q0, q1, q2, q3] = *q;
+    if (q1[0] + q3[0] - q0[0] - q2[0]).abs() > 0.01 || (q1[1] + q3[1] - q0[1] - q2[1]).abs() > 0.01 {
+        return None;
+    }
+    let (a, b) = ((q1[0] - q0[0]) / w, (q1[1] - q0[1]) / w);
+    let (c, d) = ((q3[0] - q0[0]) / h, (q3[1] - q0[1]) / h);
+    let (e, f) = (q0[0] - a * rect[0] - c * rect[1], q0[1] - b * rect[0] - d * rect[1]);
+    Some(Homography([a, c, e, b, d, f, 0.0, 0.0, 1.0]))
+}
+
 fn quad_param(p: &Value) -> Option<[[f64; 2]; 4]> {
     let a = p.get("quad")?.as_array()?;
     if a.len() != 4 {
@@ -583,7 +601,67 @@ fn with_panel_target(s: &Session, p: &Value) -> Value {
     p
 }
 
+/// What [`transform`] does, worked out from its params.
+struct Plan {
+    id: Option<LayerId>,
+    p: Value,
+    lone: bool,
+    rect: [f64; 4],
+    h: Homography,
+    affine: Option<Affine>,
+    interp: Interp,
+}
+
 fn transform(s: &mut Session, p: &Value) -> Result<Value> {
+    let Plan { id, p, lone, rect, h, affine, interp } = plan(s, p)?;
+    // A background job when started with `Session::start` (#1015): the warp of a large layer runs
+    // on a worker with progress, and can be cancelled.
+    crate::jobs::edit_job(
+        s,
+        "Free Transform",
+        move |doc, _, ctx| ctx.stage(0.0, 1.0, "Transforming", |ctl| transform_doc(doc, id, &p, lone, &h, affine, interp, ctl)),
+        move |()| json!({"rect": rect}),
+    )
+}
+
+/// `edit.transform` on a copy of the active document, for a live preview.
+pub struct Preview {
+    doc: Document,
+    plan: Plan,
+}
+
+/// A [`Preview`] of `edit.transform` with `p` (bilinear, whatever `p` asks for).
+pub fn preview(s: &Session, p: &Value) -> Result<Preview> {
+    let mut plan = plan(s, p)?;
+    plan.interp = Interp::Bilinear;
+    let doc = (*s.active().ok_or(EngineError::NoDocument)?.doc).clone();
+    Ok(Preview { doc, plan })
+}
+
+impl Preview {
+    /// Where pixels can change: the source frame and where it goes.
+    pub fn area(&self) -> Rect {
+        let [x0, y0, x1, y1] = self.plan.rect;
+        let (mut a, mut b) = ([x0.min(x1), y0.min(y1)], [x0.max(x1), y0.max(y1)]);
+        for (x, y) in [(x0, y0), (x1, y0), (x1, y1), (x0, y1)] {
+            let (u, v) = self.plan.h.apply(x, y);
+            if u.is_finite() && v.is_finite() {
+                (a, b) = ([a[0].min(u), a[1].min(v)], [b[0].max(u), b[1].max(v)]);
+            }
+        }
+        let c = |v: f64| v.clamp(-1e9, 1e9) as i32;
+        Rect::new(c(a[0].floor()) - 2, c(a[1].floor()) - 2, c(b[0].ceil()) + 2, c(b[1].ceil()) + 2)
+    }
+
+    /// The document transformed (slow for a big layer: run it off the UI thread).
+    pub fn render(mut self) -> Result<Document> {
+        let Plan { id, p, lone, h, affine, interp, .. } = &self.plan;
+        transform_doc(&mut self.doc, *id, p, *lone, h, *affine, *interp, &Interrupt::NONE)?;
+        Ok(self.doc)
+    }
+}
+
+fn plan(s: &Session, p: &Value) -> Result<Plan> {
     let p = &with_panel_target(s, p);
     let st = s.active().ok_or(EngineError::NoDocument)?;
     let id = crate::commands::explicit_layer(s, p)?.or(st.active_layer);
@@ -611,7 +689,10 @@ fn transform(s: &mut Session, p: &Value) -> Result<Value> {
         }
     };
     let h = if let Some(q) = quad_param(p) {
-        Homography::rect_to_quad(rect, q).ok_or_else(|| bad("degenerate quad"))?
+        match parallelogram(rect, &q) {
+            Some(h) => h,
+            None => Homography::rect_to_quad(rect, q).ok_or_else(|| bad("degenerate quad"))?,
+        }
     } else if let Some(m) = p.get("matrix").and_then(Value::as_array) {
         let v: Vec<f64> = m.iter().filter_map(Value::as_f64).collect();
         if v.len() != 6 {
@@ -631,16 +712,7 @@ fn transform(s: &mut Session, p: &Value) -> Result<Value> {
     let affine =
         (m[6].abs() < 1e-12 && m[7].abs() < 1e-12).then(|| Affine { m: [m[0] / m[8], m[3] / m[8], m[1] / m[8], m[4] / m[8], m[2] / m[8], m[5] / m[8]] });
     let interp = Interp::parse(p.get("interpolation").and_then(Value::as_str).unwrap_or("bicubic"));
-    let lone = lone.is_some();
-    let p = p.clone();
-    // A background job when started with `Session::start` (#1015): the warp of a large layer runs
-    // on a worker with progress, and can be cancelled.
-    crate::jobs::edit_job(
-        s,
-        "Free Transform",
-        move |doc, _, ctx| ctx.stage(0.0, 1.0, "Transforming", |ctl| transform_doc(doc, id, &p, lone, &h, affine, interp, ctl)),
-        move |()| json!({"rect": rect}),
-    )
+    Ok(Plan { id, p: p.clone(), lone: lone.is_some(), rect, h, affine, interp })
 }
 
 /// The edit of [`transform`]: the layer (or a lone mask or channel) and the selection outline.
@@ -734,6 +806,19 @@ mod tests {
     fn active_bounds(s: &Session) -> Rect {
         let st = s.active().unwrap();
         st.doc.layer(st.active_layer.unwrap()).unwrap().surface().unwrap().content_bounds()
+    }
+
+    #[test]
+    fn a_preview_matches_the_transform_and_leaves_the_document() {
+        let mut s = session();
+        let p = json!({"rect": [10, 10, 30, 20], "quad": [[15, 12], [35, 12], [35, 22], [15, 22]], "interpolation": "bilinear"});
+        let pv = preview(&s, &p).unwrap();
+        assert_eq!(pv.area(), Rect::new(8, 8, 37, 24));
+        let doc = pv.render().unwrap();
+        assert_eq!(active_bounds(&s), Rect::new(10, 10, 30, 20));
+        s.execute("edit.transform", p).unwrap();
+        let id = s.active().unwrap().active_layer.unwrap();
+        assert_eq!(doc.layer(id).unwrap().surface().unwrap().content_bounds(), active_bounds(&s));
     }
 
     // ---- Pixel budget (#3773). Tests run with a 2²⁰ px budget, so nothing here comes near the real one. ----
@@ -959,6 +1044,14 @@ mod tests {
         let st = s.active().unwrap();
         let LayerContent::Text(t) = &st.doc.layer(LayerId(id)).unwrap().content else { panic!() };
         assert!((t.transform.m[0] - 2.0).abs() < 1e-9);
+        // A rotation whose corners are a hair off a parallelogram (single-precision UI) is affine.
+        let (c, sn) = (0.3f64.cos(), 0.3f64.sin());
+        let r = active_bounds(&s);
+        let (x0, y0, x1, y1) = (f64::from(r.x0), f64::from(r.y0), f64::from(r.x1), f64::from(r.y1));
+        let rot = |x: f64, y: f64| [x * c - y * sn, x * sn + y * c];
+        let mut quad = [rot(x0, y0), rot(x1, y0), rot(x1, y1), rot(x0, y1)];
+        quad[2][0] += 1e-4;
+        s.execute("edit.transform", json!({"layer": id, "rect": [x0, y0, x1, y1], "quad": quad})).unwrap();
         // Perspective on type is refused, like Photoshop.
         assert!(s.execute("edit.transform", json!({"layer": id, "quad": [[0, 0], [10, 0], [12, 10], [-2, 10]]})).is_err());
     }

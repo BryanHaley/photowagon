@@ -1182,14 +1182,18 @@ impl V4Writer<'_> {
             self.nbits += (RW2_PAGE as u32) * 8;
             self.pos += RW2_PAGE;
         }
-        let mut at = ((self.nbits - num) >> 3) as usize ^ 0x3FF0;
-        at = (at + RW2_PAGE - RW2_COMPRESSED_SPLIT) % RW2_PAGE;
-        let at = self.base + at + self.pos - RW2_PAGE;
+        let byte = ((self.nbits - num) >> 3) as usize ^ 0x3FF0;
         self.nbits -= num;
-        let cur = u32::from(self.buf[at]) | (u32::from(self.buf[at + 1]) << 8);
+        // The second byte goes where the reader looks for it: through the page split, and
+        // nowhere past the page's last byte.
+        let phys = |b: usize| self.base + self.pos - RW2_PAGE + (b + RW2_PAGE - RW2_COMPRESSED_SPLIT) % RW2_PAGE;
+        let (lo_at, hi_at) = (phys(byte), (byte + 1 < RW2_PAGE).then(|| phys(byte + 1)));
+        let cur = u32::from(self.buf[lo_at]) | hi_at.map_or(0, |h| u32::from(self.buf[h]) << 8);
         let cur = cur | ((v & ((1 << num) - 1)) << (self.nbits & 7));
-        self.buf[at] = cur as u8;
-        self.buf[at + 1] = (cur >> 8) as u8;
+        self.buf[lo_at] = cur as u8;
+        if let Some(h) = hi_at {
+            self.buf[h] = (cur >> 8) as u8;
+        }
     }
 
     /// Encodes one row as 14-pixel groups: the scale selector is always 0 and

@@ -258,7 +258,7 @@ fn level(p: &Value, k: &str, default: u8, lo: u8, hi: u8) -> Result<u8> {
 /// docs), as a background job.
 fn patch_content_aware(s: &mut Session, p: &Value) -> Result<Value> {
     use super::content_aware_move::{Target, land, mask, read, window};
-    const LABEL: &str = "Patch (Content-Aware)";
+    const LABEL: &str = "Patch (From Surroundings)";
     let plan = plan(s, p)?;
     let structure = level(p, "structure", 4, 1, 7)?;
     let color = level(p, "color", 0, 0, 10)?;

@@ -53,6 +53,7 @@ const F_QUANT: u32 = 32768u;    // lerp: A rounded to p0.x steps (adjustment res
 const F_ADD_DIFF: u32 = 16384u;  // lerp: A + (B - C) premultiplied (clips on pass-through groups)
 const F_BLEND_IF: u32 = 524288u; // lerp: B back towards A by the Blend If ranges in p0..p3
 const F_TEXT_GAMMA: u32 = 8192u; // blend / atop / fx merge: type layer, mix coverage at gamma p4.w
+const F_ALPHA_FILL: u32 = 1048576u; // blend: Transparency Shapes Layer off, special modes take alpha as Fill
 
 @group(0) @binding(0) var<uniform> chunk: Chunk;
 @group(0) @binding(1) var<uniform> op: Op;
@@ -822,6 +823,9 @@ fn fs_blend(in: VOut) -> @location(0) vec4<f32> {
     if (op.mode == M_DISSOLVE) {
         s.a = select(0.0, 1.0, dissolve_noise(doc_px(p)) < s.a * op.opacity * op.fill);
         return composite(M_NORMAL, b, s, 1.0);
+    }
+    if ((op.flags & F_ALPHA_FILL) != 0u && fill_is_special(op.mode)) {
+        return composite_fill(op.mode, b, vec4(s.rgb, 1.0), op.opacity, op.fill * s.a, (op.flags & F_TEXT_GAMMA) != 0u);
     }
     return composite_fill(op.mode, b, s, op.opacity, op.fill, (op.flags & F_TEXT_GAMMA) != 0u);
 }

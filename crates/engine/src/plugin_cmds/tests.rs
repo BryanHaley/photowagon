@@ -115,7 +115,7 @@ fn example_invert_matches_builtin_invert_and_round_trips_the_registry() {
     s.execute("layer.smartObjects.convertToSmartObject", json!({})).unwrap();
     s.execute("plugin.run", json!({"id": INVERT_ID})).unwrap();
     let d = s.active().unwrap();
-    let LayerContent::Smart(sm) = &d.doc.layer(d.active_layer.unwrap()).unwrap().content else { panic!("not a smart object") };
+    let LayerContent::Smart(sm) = &d.doc.layer(d.active_layer.unwrap()).unwrap().content else { panic!("not an embedded layer") };
     assert_eq!(sm.smart_filters.len(), 1);
     assert_eq!(sm.smart_filters[0].command, RUN);
     assert_eq!(sm.smart_filters[0].params["id"], INVERT_ID);

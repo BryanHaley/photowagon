@@ -289,6 +289,11 @@ fn palette_images_open_as_rgb() {
     map[16 + 15] = 0x8000;
     let d = strips(2, 1, 4, 1, 3, 1, &[0xf0]).tag(320, SHORT, &map);
     assert_eq!(decode_ok(&build(true, false, &[d], &[0]).bytes).data(), &[255, 128, 0, 0, 0, 0]);
+    // 16-bit entries round to the nearest 8-bit level: 61471 is 239.2, not the high byte's 240.
+    let mut map = vec![0u64; 768];
+    map[0] = 61471;
+    let d = strips(1, 1, 8, 1, 3, 1, &[0]).tag(320, SHORT, &map);
+    assert_eq!(decode_ok(&build(true, false, &[d], &[0]).bytes).data(), &[239, 0, 0]);
     // A missing or short colour map is an error.
     let d = strips(2, 1, 8, 1, 3, 1, &[0, 1]);
     assert!(decode(&build(true, false, &[d], &[0]).bytes).is_err());

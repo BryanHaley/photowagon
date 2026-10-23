@@ -36,7 +36,7 @@ fn enabled(s: &Session) -> std::result::Result<(), String> {
     if SOURCES.contains(&d.doc.mode) {
         Ok(())
     } else {
-        Err(format!("Multichannel needs an RGB, CMYK, Lab, Grayscale or Duotone image (the document is {:?})", d.doc.mode))
+        Err(format!("not from {:?} mode", d.doc.mode))
     }
 }
 

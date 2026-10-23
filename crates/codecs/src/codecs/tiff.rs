@@ -421,6 +421,8 @@ struct Layout {
     premultiplied: bool,
     /// Palette images: the colour map (16-bit RGB per index).
     palette: Option<Vec<[u16; 3]>>,
+    /// JPEG-compressed YCbCr, upsampled by the JPEG decoder: converted to RGB.
+    ycbcr: Option<Ycc>,
     /// Upper bound for one chunk's scratch buffer.
     scratch_cap: usize,
 }
@@ -577,8 +579,11 @@ fn decode_ifd(f: &File<'_>, dir: &Ifd, limits: &Limits) -> Result<Image, CodecEr
     let tl = {
         let mut l = tiff::decoder::Limits::default();
         l.decoding_buffer_size = limits.alloc_usize();
-        // No compressed chunk can be larger than the file.
-        l.intermediate_buffer_size = f.b.len().max(1);
+        // No compressed chunk can be larger than the file; WebP decodes each chunk into this
+        // buffer too, so it needs room for a decoded RGBA chunk (still within the alloc limit).
+        let webp = f.tag_uint(dir, ifd::TAG_COMPRESSION) == Some(50001);
+        let chunk = usize::try_from(u64::from(w).saturating_mul(u64::from(h)).saturating_mul(4)).unwrap_or(usize::MAX);
+        l.intermediate_buffer_size = if webp { f.b.len().max(chunk).min(limits.alloc_usize()) } else { f.b.len().max(1) };
         l
     };
     let open = || Decoder::new(Patched { b: f.b, patches: &patches, pos: 0 }).map(|d| d.with_limits(tl.clone())).map_err(map_err);
@@ -588,7 +593,12 @@ fn decode_ifd(f: &File<'_>, dir: &Ifd, limits: &Limits) -> Result<Image, CodecEr
     }
     let ct = dec.colortype().map_err(map_err)?;
     let gray_alpha = alpha_at.is_some() || (extra.is_empty() && spp == 2);
+    // JPEG and old-style JPEG YCbCr come back upsampled, in YCbCr (the `tiff` crate turns the
+    // JPEG decoder's colour conversion off): converted here.
+    let compression = f.tag_uint(dir, ifd::TAG_COMPRESSION).unwrap_or(1);
+    let ycbcr = (matches!(ct, tiff::ColorType::YCbCr(8)) && matches!(compression, 6 | 7) && spp == 3).then(|| Ycc::new(f, dir));
     let (out_layout, chunk_spp) = match ct {
+        tiff::ColorType::YCbCr(8) if ycbcr.is_some() => (ChannelLayout::Rgb, 3),
         _ if palette.is_some() => (ChannelLayout::Rgb, 1),
         tiff::ColorType::Gray(_) => (ChannelLayout::Gray, 1),
         tiff::ColorType::Multiband { num_samples, .. } if all_samples => {
@@ -676,6 +686,7 @@ fn decode_ifd(f: &File<'_>, dir: &Ifd, limits: &Limits) -> Result<Image, CodecEr
         alpha_sample,
         premultiplied: out_layout.has_alpha() && alpha_at.and_then(|a| extra.get(a)) == Some(&1),
         palette,
+        ycbcr,
         scratch_cap,
     };
 
@@ -856,7 +867,7 @@ fn convert_row(lay: &Layout, src: &[u8], dst: &mut [u8], n: usize, plane: usize)
             let Some(rgb) = map.get(index) else { continue };
             for (c, v) in d.chunks_exact_mut(ob).zip(rgb) {
                 if ob == 1 {
-                    c.copy_from_slice(&[(v >> 8) as u8]);
+                    c.copy_from_slice(&[((u32::from(*v) * 255 + 32767) / 65535) as u8]);
                 } else {
                     c.copy_from_slice(&v.to_ne_bytes());
                 }
@@ -942,9 +953,45 @@ fn transfer(src: Src, row: &[u8], sspp: usize, si: usize, dst: &mut [u8], out: S
     }
 }
 
+/// TIFF 6.0 YCbCr to RGB: the luma weights of YCbCrCoefficients (BT.601 by default) and the code
+/// ranges of ReferenceBlackWhite (full range, as JPEG has it, by default).
+struct Ycc {
+    luma: [f32; 3],
+    /// Black and white codes of Y, Cb and Cr.
+    reference: [f32; 6],
+}
+
+impl Ycc {
+    fn new(f: &File<'_>, dir: &Ifd) -> Self {
+        let luma = f.tag_rationals(dir, ifd::TAG_YCBCR_COEFFICIENTS, 3).filter(|l| l.iter().all(|v| v.is_finite() && *v > 0.0));
+        let reference = f.tag_rationals(dir, ifd::TAG_REFERENCE_BLACK_WHITE, 6).filter(|r| r.chunks(2).all(|p| p[1] > p[0]));
+        Ycc {
+            luma: luma.map_or([0.299, 0.587, 0.114], |l| [l[0] as f32, l[1] as f32, l[2] as f32]),
+            reference: reference.map_or([0.0, 255.0, 128.0, 255.0, 128.0, 255.0], |r| std::array::from_fn(|i| r[i] as f32)),
+        }
+    }
+
+    fn rgb(&self, p: [u8; 3]) -> [u8; 3] {
+        let r = &self.reference;
+        let y = (f32::from(p[0]) - r[0]) * 255.0 / (r[1] - r[0]);
+        let cb = (f32::from(p[1]) - r[2]) * 127.0 / (r[3] - r[2]);
+        let cr = (f32::from(p[2]) - r[4]) * 127.0 / (r[5] - r[4]);
+        let [lr, lg, lb] = self.luma;
+        let red = y + cr * (2.0 - 2.0 * lr);
+        let blue = y + cb * (2.0 - 2.0 * lb);
+        let green = (y - lb * blue - lr * red) / lg;
+        [red, green, blue].map(|v| v.round().clamp(0.0, 255.0) as u8)
+    }
+}
+
 /// Applies what the stored samples leave to the reader: WhiteIsZero inversion of the gray
 /// channel, and turning associated (premultiplied) alpha into straight alpha.
 fn finish_band(lay: &Layout, band: &mut [u8]) {
+    if let Some(y) = &lay.ycbcr {
+        for p in band.as_chunks_mut::<3>().0 {
+            *p = y.rgb(*p);
+        }
+    }
     if !lay.invert && !lay.premultiplied {
         return;
     }
@@ -1257,5 +1304,22 @@ pub(crate) fn encode(src: &Image, plan: Plan, opts: &EncodeOptions) -> Result<Ve
         Ok(v) => Ok(v),
         Err(tiff::TiffError::IntSizeError) if !big => write(true).map_err(|e| CodecError::encode(F, e)),
         Err(e) => Err(CodecError::encode(F, e)),
+    }
+}
+
+#[cfg(test)]
+mod ycbcr_tests {
+    use super::Ycc;
+
+    #[test]
+    fn ycbcr_converts_with_the_default_coefficients_and_range() {
+        let y = Ycc { luma: [0.299, 0.587, 0.114], reference: [0.0, 255.0, 128.0, 255.0, 128.0, 255.0] };
+        assert_eq!(y.rgb([128, 128, 128]), [128, 128, 128], "grey stays grey");
+        // Pure red in BT.601 full range: Y 76, Cb 85, Cr 255.
+        let red = y.rgb([76, 85, 255]);
+        assert!(red[0] > 250 && red[1] < 5 && red[2] < 5, "{red:?}");
+        // A ReferenceBlackWhite with video range (16–235): code 16 is black.
+        let video = Ycc { reference: [16.0, 235.0, 128.0, 240.0, 128.0, 240.0], ..y };
+        assert_eq!(video.rgb([16, 128, 128]), [0, 0, 0]);
     }
 }

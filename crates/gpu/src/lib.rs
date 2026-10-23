@@ -43,6 +43,7 @@ pub mod health;
 pub mod plan;
 mod prefix;
 pub mod timing;
+pub mod viewport;
 
 use std::collections::HashMap;
 use std::num::NonZeroU64;

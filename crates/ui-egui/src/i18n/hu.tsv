@@ -4149,3 +4149,72 @@ cameraRaw	Yellow	Sárga
 	Increase Brush Size	Ecsetméret növelése
 	Decrease Brush Hardness	Ecsetkeménység csökkentése
 	Increase Brush Hardness	Ecsetkeménység növelése
+# Renamed engine strings (same translations as the names they replaced).
+@plural	Updated {n} linked embedded layer changed on disk|Updated {n} linked embedded layers changed on disk	{n} csatolt intelligens objektum frissítve (a lemezen módosult)
+	Create Embedded Layer after Loading Layers	Intelligens objektum létrehozása a rétegek betöltése után
+	Contact Sheet…	Kontaktlap II…
+	Fill from Surroundings…	Tartalomérzékeny kitöltés…
+	Content-Preserving Scale	Tartalomérzékeny méretezés
+	Create Batch App…	Droplet létrehozása…
+	Merge to HDR…	HDR Pro-egyesítés…
+	Panorama…	Fotóegyesítés…
+	Pin Warp	Bábtorzítás
+	Clear Live Filters	Intelligens szűrők törlése
+	Convert to Embedded Layer	Átalakítás intelligens objektummá
+	Disable Live Filters	Intelligens szűrők letiltása
+	New Embedded Layer via Copy	Új intelligens objektum másolással
+	Refine Selection…	Kijelölés és maszk…
+	Live Filter	Intelligens szűrő
+	Embedded Layer	Intelligens objektum
+	Embedded Layers	Intelligens objektumok
+	Blur Effects	Elmosásgaléria
+	Develop…	Camera Raw szűrő…
+	Convert for Live Filters	Átalakítás intelligens szűrőkhöz
+	Fluid Warp…	Képlékenyítés…
+	Merge to HDR	HDR Pro-egyesítés
+	Perspective Planes…	Enyészpont…
+	Commit Pin Warp ({key})	Bábtorzítás véglegesítése ({key})
+	Move and Fill	Tartalomérzékeny mozgatás
+	Could not use Pin Warp: no opaque pixels	A bábtorzítás nem használható: nincsenek átlátszatlan pixelek
+	Could not use Pin Warp: the layer is empty	A bábtorzítás nem használható: a réteg üres
+	Repair Brush	Javítóecset
+	Pin Warp is not active	A bábtorzítás nem aktív
+	Spot Repair Brush	Foltjavító ecset
+	Refine Selection (Legacy) Brush (R)	Élfinomító ecset (R)
+	Live Filters	Intelligens szűrők
+	Filter for embedded layers	Szűrés intelligens objektumokra
+	Rasterize Embedded Layer	Intelligens objektum raszterizálása
+	Fluid Warp is not open	A Képlékenyítés nincs megnyitva
+	Refine Selection	Kijelölés és maszk
+	Raw Develop	Camera Raw
+	Raw Develop ({name})	Camera Raw ({name})
+	Develop	Camera Raw szűrő
+	Develop ({layer})	Camera Raw szűrő ({layer})
+	Raw Develop isn't open	A Camera Raw nincs megnyitva
+	Always create embedded layers when placing	Elhelyezéskor mindig intelligens objektum létrehozása
+	Contact Sheet	Kontaktlap II
+	Fill from Surroundings needs a selection on a pixel layer	A tartalomérzékeny kitöltéshez kijelölés kell egy pixelrétegen
+	Create Batch App	Droplet létrehozása
+	This Embedded Layer must be rasterized before proceeding. Its contents will no longer be editable. Rasterize the Embedded Layer?	A folytatáshoz az intelligens objektumot raszterizálni kell. A tartalma ezután nem lesz szerkeszthető. Raszterizálod az intelligens objektumot?
+	Raw Develop Defaults	Camera Raw-alapértékek
+	Raw Develop…	Camera Raw…
+	Fill from Surroundings	Tartalomérzékeny kitöltés
+	Move and Fill Tool	Tartalomérzékeny mozgatás
+	Repair Brush Tool	Javítóecset
+	Fluid Warp	Képlékenyítés
+	Open as embedded layer	Megnyitás intelligens objektumként
+	Panorama	Fotóegyesítés
+	Refine Selection (Legacy)	Élfinomítás
+	Spot Repair Brush Tool	Foltjavító ecset
+	Perspective Planes	Enyészpont
+	Commit Pin Warp (↩)	Bábtorzítás véglegesítése (↩)
+	Delete Live Filters	Intelligens szűrők törlése
+	Enable Live Filters	Intelligens szűrők engedélyezése
+	Embedded Layer Layer	Intelligensobjektum-réteg
+	Apply Perspective Planes ({key})	Enyészpont alkalmazása ({key})
+	Perspective Planes is not active	Az Enyészpont nem aktív
+	Perspective Planes: click four corners to create a plane	Enyészpont: sík létrehozásához kattints a négy sarokra
+	Save these settings as a Raw Develop .xmp file	A beállítások mentése Camera Raw .xmp-fájlként
+	Load settings from a Raw Develop .xmp file	Beállítások betöltése Camera Raw .xmp-fájlból
+	Loaded Raw Develop settings from {file}	Camera Raw-beállítások betöltve innen: {file}
+	Loaded Raw Develop settings from {file} ({n} not supported)	Camera Raw-beállítások betöltve innen: {file} ({n} nem támogatott)

@@ -6,6 +6,7 @@ use crate::color::{self, Calibration, ColorInfo, IDENTITY};
 use crate::error::{RawError, Result};
 use crate::sensor::{BlackLevels, Cfa, JpegLayout, Rect, Sensor, read_plane};
 use crate::tiff::{Ifd, Tiff, tag};
+use crate::gaintable::GainTable;
 use crate::{Limits, RawFormat, opcodes};
 
 const PHOTOMETRIC_CFA: u32 = 32803;
@@ -71,6 +72,16 @@ pub(crate) fn color_info(t: &Tiff, ifd0: &Ifd) -> ColorInfo {
 }
 
 /// CFA pattern of a DNG raw IFD, anchored at the active area origin.
+/// ProfileToneCurve's `[input, output]` pairs, or none unless they're in 0..1 with inputs rising.
+fn profile_tone_curve(v: &[f64]) -> Vec<[f32; 2]> {
+    let pairs: Vec<[f32; 2]> = v.as_chunks::<2>().0.iter().map(|p| p.map(|x| x as f32)).collect();
+    let in_range = pairs.iter().flatten().all(|x| (0.0..=1.0).contains(x));
+    if pairs.len() < 2 || !in_range || !pairs.windows(2).all(|w| w[1][0] > w[0][0]) {
+        return Vec::new();
+    }
+    pairs
+}
+
 fn cfa(t: &Tiff, ifd: &Ifd, active: &Rect) -> Result<Cfa> {
     let dim = t.tag_uints(ifd, tag::CFA_REPEAT_PATTERN_DIM);
     let (rows, cols) = match dim.as_slice() {
@@ -193,26 +204,40 @@ pub(crate) fn decode(t: &Tiff, limits: &Limits) -> Result<Sensor> {
     if scale.len() == 2 && (scale[0] - scale[1]).abs() > 1e-6 {
         warnings.push("non-square pixels (DefaultScale) are not resampled".to_string());
     }
-    // Opcode lists: OpcodeList2 gain maps (lens shading) are applied; everything else is reported.
-    let mut gain_maps = Vec::new();
+    // Opcode lists: OpcodeList2 gain maps (lens shading) and polynomials are applied; everything
+    // else is reported.
+    let mut applied = opcodes::Applied::default();
     for (tg, what) in [(tag::OPCODE_LIST_1, 1), (tag::OPCODE_LIST_2, 2), (tag::OPCODE_LIST_3, 3)] {
         let Some(bytes) = raw.get(tg).and_then(|e| t.raw(e)) else { continue };
         let (maps, skipped) = opcodes::parse(bytes);
         if what == 2 {
-            gain_maps = maps;
-        } else if !maps.is_empty() {
-            warnings.push(format!("DNG OpcodeList{what}: GainMap is not applied"));
+            applied = maps;
+        } else {
+            if !maps.gain_maps.is_empty() {
+                warnings.push(format!("DNG OpcodeList{what}: GainMap is not applied"));
+            }
+            if !maps.polynomials.is_empty() {
+                warnings.push(format!("DNG OpcodeList{what}: MapPolynomial is not applied"));
+            }
         }
         if !skipped.is_empty() {
             warnings.push(format!("DNG OpcodeList{what}: {} not applied", skipped.join(", ")));
         }
     }
 
-    // DNG 1.6 ProfileGainTableMap: the local tone mapping that phones (Samsung Expert RAW) rely on
-    // for their default look. Without it the rendering is darker in the shadows.
-    if ifd0.has(tag::PROFILE_GAIN_TABLE_MAP) || raw.has(tag::PROFILE_GAIN_TABLE_MAP) {
-        warnings.push("DNG ProfileGainTableMap (local tone mapping) is not applied".to_string());
-    }
+    // ProfileGainTableMap: the local tone mapping phones rely on for their default look. DNG 1.7:
+    // version 2 in IFD 0, then the raw IFD; version 1 in the raw IFD, then IFD 0.
+    let found = [(&ifd0, tag::PROFILE_GAIN_TABLE_MAP_2, true), (&raw, tag::PROFILE_GAIN_TABLE_MAP_2, true), (&raw, tag::PROFILE_GAIN_TABLE_MAP, false), (&ifd0, tag::PROFILE_GAIN_TABLE_MAP, false)]
+        .into_iter()
+        .find_map(|(ifd, tg, v2)| ifd.get(tg).map(|e| (e, v2)));
+    let gain_table = found.and_then(|(e, v2)| {
+        let table = t.raw(e).and_then(|b| GainTable::parse(b, t.le, v2));
+        if table.is_none() {
+            warnings.push("DNG ProfileGainTableMap is malformed and not applied".to_string());
+        }
+        table
+    });
+    let tone_curve = profile_tone_curve(&t.tag_floats(&ifd0, tag::PROFILE_TONE_CURVE));
 
     let max = ((1u32 << plane.bits) - 1) as f32;
     let linearization = raw.get(tag::LINEARIZATION_TABLE).map(|e| t.uints(e)).filter(|v| !v.is_empty() && v.len() <= 65536);
@@ -269,8 +294,10 @@ pub(crate) fn decode(t: &Tiff, limits: &Limits) -> Result<Sensor> {
         camera_wb: None,
         orientation: crate::tiff::orientation(t.tag_uint(&ifd0, tag::ORIENTATION)),
         baseline_exposure: if baseline_exposure.is_finite() { baseline_exposure.clamp(-10.0, 10.0) } else { 0.0 },
-        gain_maps,
-        tone_curve: Vec::new(),
+        gain_maps: applied.gain_maps,
+        polynomials: applied.polynomials,
+        gain_table,
+        tone_curve,
         black_point: 0.0,
         warnings,
     })

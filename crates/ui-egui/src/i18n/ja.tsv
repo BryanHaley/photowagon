@@ -3907,3 +3907,71 @@ curves	Smooth	スムーズ
 	Increase Brush Size	ブラシサイズを大きく
 	Decrease Brush Hardness	ブラシの硬さを下げる
 	Increase Brush Hardness	ブラシの硬さを上げる
+# Renamed engine strings (same translations as the names they replaced).
+	Create Batch App…	ドロップレットを作成…
+	Contact Sheet…	コンタクトシート II…
+	Merge to HDR…	HDR 合成(Pro)…
+	Panorama…	写真を貼り合わせ…
+	Create Embedded Layer after Loading Layers	レイヤーの読み込み後にスマートオブジェクトを作成
+	Fill from Surroundings…	コンテンツに応じた塗りつぶし…
+	Content-Preserving Scale	コンテンツに応じた拡大・縮小
+	Pin Warp	パペットワープ
+	Raw Develop…	Camera Raw…
+	New Embedded Layer via Copy	コピーしたスマートオブジェクト
+	Live Filter	スマートフィルター
+	Convert for Live Filters	スマートフィルター用に変換
+	Clear Live Filters	スマートフィルターを消去
+	Disable Live Filters	スマートフィルターを無効にする
+	Embedded Layers	スマートオブジェクト
+	Embedded Layer	スマートオブジェクト
+	Convert to Embedded Layer	スマートオブジェクトに変換
+	Refine Selection…	選択とマスク…
+	Refine Selection (Legacy)	境界線を調整
+	Develop…	Camera Raw フィルター…
+	Fluid Warp…	ゆがみ…
+	Perspective Planes…	消点…
+	Blur Effects	ぼかしギャラリー
+	Save these settings as a Raw Develop .xmp file	この設定を Camera Raw の .xmp ファイルとして保存
+	Load settings from a Raw Develop .xmp file	Camera Raw の .xmp ファイルから設定を読み込む
+	Loaded Raw Develop settings from {file}	{file} から Camera Raw の設定を読み込みました
+	Loaded Raw Develop settings from {file} ({n} not supported)	{file} から Camera Raw の設定を読み込みました（未対応: {n}）
+	Raw Develop isn't open	Camera Raw は開いていません
+	Commit Pin Warp ({key})	パペットワープを確定({key})
+	Contact Sheet	コンタクトシート II
+	Create Batch App	ドロップレットを作成
+	Filter for embedded layers	スマートオブジェクトで絞り込み
+	Fluid Warp is not open	ゆがみは開いていません
+	Pin Warp is not active	パペットワープは有効ではありません
+	Fill from Surroundings needs a selection on a pixel layer	コンテンツに応じた塗りつぶしには、ピクセルレイヤー上の選択範囲が必要です
+	Could not use Pin Warp: no opaque pixels	パペットワープを使えません: 不透明なピクセルがありません
+	Could not use Pin Warp: the layer is empty	パペットワープを使えません: レイヤーが空です
+	Repair Brush Tool	修復ブラシツール
+	Live Filters	スマートフィルター
+	Spot Repair Brush Tool	スポット修復ブラシツール
+	Always create embedded layers when placing	配置時に常にスマートオブジェクトを作成
+	Raw Develop Defaults	Camera Raw の既定値
+	Open as embedded layer	スマートオブジェクトとして開く
+	Embedded Layer Layer	スマートオブジェクトレイヤー
+	Rasterize Embedded Layer	スマートオブジェクトをラスタライズ
+	Develop ({layer})	Camera Raw フィルター ({layer})
+	Raw Develop ({name})	Camera Raw ({name})
+	Move and Fill Tool	コンテンツに応じた移動ツール
+	Develop	Camera Raw フィルター
+	Fill from Surroundings	コンテンツに応じた塗りつぶし
+	Move and Fill	コンテンツに応じた移動
+	Fluid Warp	ゆがみ
+	Panorama	写真を貼り合わせ
+	Refine Selection	選択とマスク
+	Perspective Planes	消点
+	Raw Develop	Camera Raw
+	Commit Pin Warp (↩)	パペットワープを確定 (↩)
+	Delete Live Filters	スマートフィルターを削除
+	Enable Live Filters	スマートフィルターを有効にする
+	Merge to HDR	HDR 合成(Pro)
+	Repair Brush	修復ブラシ
+	Spot Repair Brush	スポット修復ブラシ
+	Perspective Planes: click four corners to create a plane	消点: 4 つの角をクリックして面を作成します
+	Perspective Planes is not active	消点はアクティブではありません
+	Apply Perspective Planes ({key})	消点を適用({key})
+	Refine Selection (Legacy) Brush (R)	境界線調整ブラシ (R)
+@plural	Updated {n} linked embedded layer changed on disk|Updated {n} linked embedded layers changed on disk	ディスク上で変更されたリンクされたスマートオブジェクト {n} 個を更新しました

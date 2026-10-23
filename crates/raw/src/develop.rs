@@ -114,7 +114,13 @@ impl<'a> Scale<'a> {
             return 0.0;
         }
         let n = (v - black) / range;
-        if n.is_finite() { n } else { 0.0 }
+        let mut n = if n.is_finite() { n } else { 0.0 };
+        for p in &s.polynomials {
+            if x >= s.active.x && y >= s.active.y && p.covers(x - s.active.x, y - s.active.y, sample) {
+                n = p.apply(n);
+            }
+        }
+        n
     }
 }
 
@@ -266,7 +272,7 @@ pub fn develop_sensor(s: &Sensor, opts: &DevelopOptions) -> Result<Developed> {
             // Fast path: black varies at most per 2×2 position, so black and gain
             // repeat every `period` columns (the CFA width, made even).
             let bl = &s.black;
-            let periodic = bl.delta_h.is_empty() && bl.delta_v.is_empty() && matches!(bl.rows, 1 | 2) && matches!(bl.cols, 1 | 2) && cfa.width <= 16;
+            let periodic = s.polynomials.is_empty() && bl.delta_h.is_empty() && bl.delta_v.is_empty() && matches!(bl.rows, 1 | 2) && matches!(bl.cols, 1 | 2) && cfa.width <= 16;
             let period = if cfa.width % 2 == 0 { cfa.width.max(2) } else { cfa.width * 2 };
             plane.fill_rows(band, |y0, chunk| {
                 for (r, prow) in chunk.chunks_exact_mut(stride).enumerate() {
@@ -359,9 +365,20 @@ pub fn develop_sensor(s: &Sensor, opts: &DevelopOptions) -> Result<Developed> {
     // Monochrome: the one sample, grey; no colour matrix.
     let pro = |p: &[f32]| if mono { [grey_gain * p[0]; 3] } else { [0, 1, 2].map(|k| out_m[k][0] * p[0] + out_m[k][1] * p[1] + out_m[k][2] * p[2]) };
     let haze = Haze::new(w, h, |i| pro(&rgb[i * 3..i * 3 + 3]), opts.tone.dehaze);
-    // Linear ProPhoto of pixel `i` after Dehaze.
+    // The file's local tone map reads linear ProPhoto after BaselineExposure (not the user's
+    // exposure), at positions relative to the active area.
+    let unexposed = 2f64.powf(-opts.exposure.clamp(-10.0, 10.0)) as f32;
+    let table = s.gain_table.as_ref();
+    let (aw, ah) = (s.active.width.max(1) as f64, s.active.height.max(1) as f64);
+    // Linear ProPhoto of pixel `i` after the tone map and Dehaze.
     let linear = |i: usize, p: &[f32]| {
-        let v = pro(p);
+        let mut v = pro(p);
+        if let Some(t) = table {
+            let ax = (c.x + i % w) as f64 - s.active.x as f64;
+            let ay = (c.y + i / w) as f64 - s.active.y as f64;
+            let g = t.gain((ax + 0.5) / aw, (ay + 0.5) / ah, v.map(|c| c * unexposed));
+            v = v.map(|c| c * g);
+        }
         haze.as_ref().map_or(v, |z| z.apply(i % w, i / w, v))
     };
     let mut map = ToneMap::new(w, h, |i| lum(&linear(i, &rgb[i * 3..i * 3 + 3])), opts.tone, s.black_point);

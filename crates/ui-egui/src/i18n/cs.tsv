@@ -3838,3 +3838,68 @@ navigator	Zoom	Zvětšení
 	Increase Brush Size	Zvětšit velikost štětce
 	Decrease Brush Hardness	Snížit tvrdost štětce
 	Increase Brush Hardness	Zvýšit tvrdost štětce
+# Renamed engine strings (same translations as the names they replaced).
+	Create Batch App…	Vytvořit droplet…
+	Contact Sheet…	Kontaktní arch II…
+	Merge to HDR…	Sloučit do HDR Pro…
+	Panorama…	Spojit fotografie…
+	Create Embedded Layer after Loading Layers	Po načtení vrstev vytvořit chytrý objekt
+	Fill from Surroundings…	Výplň s ohledem na obsah…
+	Content-Preserving Scale	Změna velikosti s ohledem na obsah
+	Pin Warp	Loutková deformace
+	Raw Develop…	Camera Raw…
+	New Embedded Layer via Copy	Nový chytrý objekt kopírováním
+	Live Filter	Chytrý filtr
+	Convert for Live Filters	Převést pro chytré filtry
+	Clear Live Filters	Vymazat chytré filtry
+	Disable Live Filters	Vypnout chytré filtry
+	Embedded Layers	Chytré objekty
+	Embedded Layer	Chytrý objekt
+	Convert to Embedded Layer	Převést na chytrý objekt
+	Refine Selection…	Vybrat a maskovat…
+	Refine Selection (Legacy)	Upřesnit okraj
+	Develop…	Filtr Camera Raw…
+	Fluid Warp…	Zkapalnit…
+	Perspective Planes…	Úběžník…
+	Blur Effects	Galerie rozostření
+	Save these settings as a Raw Develop .xmp file	Uložit toto nastavení jako soubor Camera Raw .xmp
+	Load settings from a Raw Develop .xmp file	Načíst nastavení ze souboru Camera Raw .xmp
+	Loaded Raw Develop settings from {file}	Nastavení Camera Raw načteno ze souboru {file}
+	Loaded Raw Develop settings from {file} ({n} not supported)	Nastavení Camera Raw načteno ze souboru {file} (nepodporováno: {n})
+	Raw Develop isn't open	Camera Raw není otevřen
+	Commit Pin Warp ({key})	Potvrdit loutkovou deformaci ({key})
+	Contact Sheet	Kontaktní arch II
+	Create Batch App	Vytvořit droplet
+	Filter for embedded layers	Filtrovat chytré objekty
+	Fluid Warp is not open	Zkapalnit není otevřeno
+	Pin Warp is not active	Loutková deformace není aktivní
+	Fill from Surroundings needs a selection on a pixel layer	Výplň s ohledem na obsah potřebuje výběr na pixelové vrstvě
+	Could not use Pin Warp: no opaque pixels	Loutkovou deformaci nelze použít: žádné neprůhledné pixely
+	Could not use Pin Warp: the layer is empty	Loutkovou deformaci nelze použít: vrstva je prázdná
+	Repair Brush Tool	Nástroj retušovací štětec
+	Live Filters	Chytré filtry
+	Spot Repair Brush Tool	Nástroj bodový retušovací štětec
+	Always create embedded layers when placing	Při umísťování vždy vytvořit chytré objekty
+	Raw Develop Defaults	Výchozí nastavení Camera Raw
+	Open as embedded layer	Otevřít jako chytrý objekt
+	Embedded Layer Layer	Vrstva chytrého objektu
+	Rasterize Embedded Layer	Rastrovat chytrý objekt
+	Develop ({layer})	Filtr Camera Raw ({layer})
+	Raw Develop ({name})	Camera Raw ({name})
+	Move and Fill Tool	Nástroj přesun s ohledem na obsah
+	Raw Develop	Camera Raw
+	Develop	Filtr Camera Raw
+	Fill from Surroundings	Výplň s ohledem na obsah
+	Move and Fill	Přesun s ohledem na obsah
+	Fluid Warp	Zkapalnit
+	Panorama	Spojit fotografie
+	Refine Selection	Vybrat a maskovat
+	Perspective Planes	Úběžník
+	Repair Brush	Retušovací štětec
+	Spot Repair Brush	Bodový retušovací štětec
+	Perspective Planes: click four corners to create a plane	Úběžník: klepnutím na čtyři rohy vytvoříte rovinu
+	Perspective Planes is not active	Úběžník není aktivní
+	Apply Perspective Planes ({key})	Použít úběžník ({key})
+	Refine Selection (Legacy) Brush (R)	Štětec pro upřesnění okraje (R)
+@plural	Updated {n} linked embedded layer changed on disk|Updated {n} linked embedded layers changed on disk	Aktualizován {n} propojený chytrý objekt změněný na disku|Aktualizovány {n} propojené chytré objekty změněné na disku|Aktualizováno {n} propojených chytrých objektů změněných na disku
+	This Embedded Layer must be rasterized before proceeding. Its contents will no longer be editable. Rasterize the Embedded Layer?	Před pokračováním je nutné tento chytrý objekt rastrovat. Jeho obsah už nebude možné upravovat. Rastrovat chytrý objekt?

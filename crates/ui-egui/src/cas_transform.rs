@@ -1,7 +1,7 @@
 //! Edit › Content-Aware Scale as Photoshop has it (#3096): no dialog, a transform box on the layer
 //! (or the selection) that only scales and moves. The options bar has the reference point X/Y,
 //! W/H, Amount, Protect (an alpha channel) and Protect Skin Tones. While the box changes, the
-//! command's own seam carving runs on a reduced copy in the background and its latest result is
+//! command's own scaling runs on a reduced copy in the background and its latest result is
 //! drawn through the box; ↩ runs `edit.contentAwareScale` with the box's size and position (one
 //! history step) and Esc cancels.
 //!
@@ -20,7 +20,7 @@ use crate::transform_tex::PreviewTextures;
 
 pub const COMMAND: &str = "edit.contentAwareScale";
 
-/// Long side of the live preview's reduced copy, px: carving it takes milliseconds, so the
+/// Long side of the live preview's reduced copy, px: scaling it takes milliseconds, so the
 /// preview follows a drag.
 const PROXY_SIDE: u32 = 384;
 
@@ -49,7 +49,7 @@ pub(crate) struct Live {
 
 impl Drop for Live {
     fn drop(&mut self) {
-        // A closed box stops its preview at the next seam.
+        // A closed box stops its preview at its next check.
         if let Some(r) = &self.running {
             r.job.cancel();
         }
@@ -187,7 +187,7 @@ pub fn tick(app: &mut PhotocraftApp, ctx: &egui::Context) {
         let _ = tx.send(result);
         repaint.request_repaint();
     };
-    // No threads (the browser): the reduced copy is small enough to carve inline.
+    // No threads (the browser): the reduced copy is small enough to scale inline.
     #[cfg(not(target_arch = "wasm32"))]
     {
         let spawned = std::thread::Builder::new().name("content-aware-scale-preview".into()).spawn(compute);
@@ -257,7 +257,7 @@ mod tests {
             crate::transform_tool::pointer(&mut app, ToolEvent::Up { x: to[0], y: to[1] }, shift);
         }
         assert_eq!(app.ui.transform.as_ref().unwrap().quad, [[8.0, 8.0], [32.0, 8.0], [32.0, 32.0], [8.0, 32.0]]);
-        // The live preview carves a reduced copy in the background.
+        // The live preview scales a reduced copy in the background.
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(20);
         while app.transform_preview.as_ref().and_then(|pv| pv.content_aware.as_ref()).is_none_or(|l| l.shown.is_none()) {
             assert!(std::time::Instant::now() < deadline, "no live preview");
@@ -269,7 +269,7 @@ mod tests {
         assert!(app.ui.transform.is_none());
         let st = app.session.active().unwrap();
         assert_eq!(st.history.past_len(), past + 1);
-        assert_eq!(st.history.undo_label(), Some("Content-Aware Scale"));
+        assert_eq!(st.history.undo_label(), Some("Content-Preserving Scale"));
         let b = st.doc.layer(st.active_layer.unwrap()).unwrap().surface().unwrap().content_bounds();
         assert_eq!([b.x0, b.y0, b.width() as i32, b.height() as i32], [8, 8, 24, 24]);
     }

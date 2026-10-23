@@ -3,14 +3,14 @@
 //! Sharpness is measured as local Laplacian energy (the classic "sum of modified Laplacian" /
 //! Laplacian focus measure, Nayar & Nakagawa, "Shape from Focus", PAMI 1994) on a working copy,
 //! normalised by its 99th percentile. `noise` subtracts a noise floor; `range` (0–1, Photoshop's
-//! "In-Focus Range") lowers the threshold as it grows. The thresholded map is smoothed with a
-//! guided filter (image as guide) so it follows object edges, cleaned, and upsampled with a soft
-//! edge.
+//! "In-Focus Range") lowers the threshold as it grows. The thresholded map is smoothed with an
+//! edge-aware filter (image as guide) so it follows object edges, cleaned, and upsampled with a
+//! soft edge.
 
 use photocraft_geom::Rect;
 
 use super::{Region, Sampler, clean_mask};
-use crate::matting::{box_mean, guided_filter_color};
+use crate::matting::{box_mean, edge_aware_smooth};
 
 /// Working-resolution budget (pixels).
 pub const WORK_PX: usize = 1_000_000;
@@ -50,7 +50,7 @@ pub fn focus_area(sampler: &dyn Sampler, canvas: Rect, range: f32, noise: f32) -
     let t = 0.05 + 0.9 * (1.0 - range.clamp(0.0, 1.0)).powi(2);
     let bin: Vec<f32> = s.iter().map(|v| if *v >= t { 1.0 } else { 0.0 }).collect();
     let r = (w.min(h) / 50).max(2);
-    let smooth = guided_filter_color(&img, &bin, r, 1e-2);
+    let smooth = edge_aware_smooth(&img, &bin, r as f32, 0.3);
     let mask: Vec<bool> = smooth.iter().map(|v| *v >= 0.5).collect();
     let mask = clean_mask(&mask, w, h, 0.05, 0.02);
     if !mask.iter().any(|v| *v) {

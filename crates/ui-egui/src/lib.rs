@@ -150,7 +150,7 @@ mod numeric_expression;
 pub mod object_finder;
 mod opacity_keys;
 pub mod open_prompt;
-pub mod outline;
+pub use photocraft_engine::outline;
 pub mod paint_mouse;
 pub mod palette;
 mod panel_docking;
@@ -233,7 +233,6 @@ pub mod view_cmds;
 pub mod vp_ui;
 pub mod warp_preview;
 pub mod wheel_nav;
-pub mod wide_angle_ui;
 pub mod widgets;
 pub mod work_area;
 pub mod workspace_ui;
@@ -765,8 +764,6 @@ pub struct PhotocraftApp {
     pub(crate) pending_raw_open: Option<camera_raw_ui::RawOpen>,
     /// The open-time re-develop (or its Camera Raw step) running in the background.
     pub(crate) raw_redevelop: Option<camera_raw_ui::Redevelop>,
-    /// Filter › Adaptive Wide Angle dialog (wide_angle_ui).
-    pub(crate) wide_angle: Option<wide_angle_ui::WideAngleDialog>,
     /// ⌘Z history of each open parameter dialog (edit_history).
     pub(crate) dialog_edits: edit_history::DialogEdits,
     /// The filter a "Rasterize?" prompt answered for, run after the dialog closes, where the
@@ -969,7 +966,6 @@ impl PhotocraftApp {
             camera_raw: None,
             pending_raw_open: None,
             raw_redevelop: None,
-            wide_angle: None,
             dialog_edits: Default::default(),
             pending_after_prompt: None,
             tone_hist: None,
@@ -2085,7 +2081,6 @@ impl eframe::App for PhotocraftApp {
         targa_options_ui::show(self, &ctx);
         distort_ui::show(self, &ctx);
         camera_raw_ui::show(self, &ctx);
-        wide_angle_ui::show(self, &ctx);
         canvas::extra_windows(self, &ctx);
         notices::show(self, &ctx);
         gpu_status::show_fallback(self, &ctx);

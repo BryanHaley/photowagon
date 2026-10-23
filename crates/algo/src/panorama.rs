@@ -22,12 +22,11 @@
 //! 6. **Photometric**: gain compensation (Brown–Lowe §6) jointly with a radial vignetting model
 //!    `log V(r) = a·r² + b·r⁴` shared by all images (D. Goldman, *Vignette and Exposure
 //!    Calibration and Compensation*, PAMI 2010), solved by linear least squares in log space.
-//! 7. **Seams**: per new image, a minimum-cost path (dynamic programming, as in seam carving:
-//!    S. Avidan, A. Shamir, SIGGRAPH 2007) through its overlap with the composite on the colour
-//!    difference, so seams avoid places where the images disagree (moving objects, parallax).
+//! 7. **Weights**: each image's weight falls off smoothly towards its own border (squared
+//!    distance to the nearest uncovered pixel); weights are normalised across images.
 //! 8. **Multi-band blending**: Laplacian pyramids (P. Burt, E. Adelson, *A Multiresolution
 //!    Spline with Application to Image Mosaics*, ACM TOG 1983) of each image (holes filled by
-//!    push-pull so edges don't darken) weighted by the Gaussian pyramid of its seam mask.
+//!    push-pull so edges don't darken) weighted by the Gaussian pyramid of its weight map.
 //!
 //! Everything is deterministic. Registration works on luminance in `0..=1` at a reduced scale;
 //! [`Placement::scaled`] maps the result back to full resolution.
@@ -869,123 +868,31 @@ pub fn photometric(imgs: &[RoiImage], geometry: Option<Geometry>, gain: bool, vi
     out
 }
 
-// ---------- seams ----------
+// ---------- weights ----------
 
-/// Seam labels on a `w × h` grid (`-1` = no image): images are added in `order`; each new image
-/// takes the part of its overlap with the composite that lies on its side of the cheapest path
-/// through the overlap (cost = colour difference).
-pub fn seam_labels(w: usize, h: usize, luma: &[Vec<f32>], cover: &[Vec<bool>], order: &[usize]) -> Vec<i32> {
-    let mut label = vec![-1i32; w * h];
-    for &img in order {
-        let cov = &cover[img];
-        let mut overlap = vec![false; w * h];
-        let (mut sx, mut sy, mut no) = (0.0f64, 0.0f64, 0usize);
-        let (mut nx, mut ny, mut nn) = (0.0f64, 0.0f64, 0usize);
-        for i in 0..w * h {
-            if !cov[i] {
-                continue;
-            }
-            nx += (i % w) as f64;
-            ny += (i / w) as f64;
-            nn += 1;
-            if label[i] >= 0 {
-                overlap[i] = true;
-                sx += (i % w) as f64;
-                sy += (i / w) as f64;
-                no += 1;
-            } else {
-                label[i] = img as i32;
-            }
-        }
-        if no == 0 || nn == no {
-            continue;
-        }
-        let (ox, oy) = (sx / no as f64, sy / no as f64);
-        let (cx, cy) = (nx / nn as f64, ny / nn as f64);
-        let vertical = (cx - ox).abs() >= (cy - oy).abs();
-        // Image on the increasing side along the seam's cross axis?
-        let positive = if vertical { cx > ox } else { cy > oy };
-        let cost = |i: usize| -> f32 { 0.002 + (luma[img][i] - luma[label[i] as usize][i]).abs() };
-        let (lines, len) = if vertical { (h, w) } else { (w, h) };
-        let idx = |line: usize, k: usize| if vertical { line * w + k } else { k * w + line };
-        // DP over lines (rows for a vertical seam), within the overlap.
-        let mut acc = vec![f32::INFINITY; w * h];
-        let mut from = vec![usize::MAX; w * h];
-        let mut prev_line: Option<usize> = None;
-        for line in 0..lines {
-            let any = (0..len).any(|k| overlap[idx(line, k)]);
-            if !any {
-                continue;
-            }
-            for k in 0..len {
-                let i = idx(line, k);
-                if !overlap[i] {
-                    continue;
-                }
-                let mut best = (0.0f32, usize::MAX);
-                if let Some(pl) = prev_line.filter(|pl| *pl + 1 == line) {
-                    best = (f32::INFINITY, usize::MAX);
-                    for dk in [-1i64, 0, 1] {
-                        let kk = k as i64 + dk;
-                        if kk < 0 || kk >= len as i64 {
-                            continue;
-                        }
-                        let j = idx(pl, kk as usize);
-                        if acc[j] < best.0 {
-                            best = (acc[j], kk as usize);
-                        }
-                    }
-                    if best.1 == usize::MAX {
-                        best = (0.0, usize::MAX);
-                    }
-                }
-                acc[i] = best.0 + cost(i);
-                from[i] = best.1;
-            }
-            prev_line = Some(line);
-        }
-        // Backtrack from the cheapest end; lines not reached keep their own best cell.
-        let mut seam = vec![usize::MAX; lines];
-        let mut line = lines;
-        while line > 0 {
-            line -= 1;
-            if seam[line] != usize::MAX {
-                continue;
-            }
-            let Some(k) = (0..len).filter(|&k| overlap[idx(line, k)]).min_by(|&a, &b| acc[idx(line, a)].total_cmp(&acc[idx(line, b)])) else { continue };
-            let (mut l, mut k) = (line, k);
-            loop {
-                seam[l] = k;
-                let f = from[idx(l, k)];
-                if f == usize::MAX || l == 0 {
-                    break;
-                }
-                l -= 1;
-                if seam[l] != usize::MAX {
-                    break;
-                }
-                k = f;
-            }
-        }
-        for line in 0..lines {
-            let s = seam[line];
-            if s == usize::MAX {
-                continue;
-            }
-            for k in 0..len {
-                let i = idx(line, k);
-                if overlap[i] && ((positive && k > s) || (!positive && k < s)) {
-                    label[i] = img as i32;
-                }
-            }
-        }
-    }
-    label
+/// Blend weights on a `w × h` grid, one map per image: the squared distance (in cells) from
+/// each covered cell to the nearest cell the image doesn't cover (the grid's outside counts as
+/// uncovered). Zero where the image doesn't cover.
+pub fn border_weights(w: usize, h: usize, cover: &[Vec<bool>]) -> Vec<Vec<f32>> {
+    let (pw, ph) = (w + 2, h + 2);
+    cover
+        .iter()
+        .map(|cov| {
+            let outside: Vec<bool> = (0..pw * ph)
+                .map(|i| {
+                    let (x, y) = (i % pw, i / pw);
+                    x == 0 || y == 0 || x > w || y > h || !cov.get((y - 1) * w + x - 1).copied().unwrap_or(false)
+                })
+                .collect();
+            let d = crate::selection::edt(&outside, pw, ph);
+            (0..w * h).map(|i| d.get((i / w + 1) * pw + i % w + 1).map_or(0.0, |d| d * d)).collect()
+        })
+        .collect()
 }
 
 // ---------- multi-band blending ----------
 
-/// Number of pyramid levels used by [`multiband`] for a seam mask of this size.
+/// Number of pyramid levels used by [`multiband`] for a weight map of this size.
 pub fn blend_levels(w: usize, h: usize) -> usize {
     let mut s = w.min(h);
     let mut n = 1;
@@ -1502,43 +1409,27 @@ mod tests {
     }
 
     #[test]
-    fn seams_avoid_disagreement_and_multiband_is_seamless() {
-        // Two images over a 120×40 strip, overlapping in 40..80; the second has a bright
-        // "moving object" at x 50..58 that the first doesn't.
+    fn border_weights_are_soft_and_multiband_is_seamless() {
+        // Two images over a 120×40 strip, overlapping in 40..80.
         let (w, h) = (120usize, 40usize);
-        let mut luma = vec![vec![0.5f32; w * h], vec![0.5f32; w * h]];
         let cover: Vec<Vec<bool>> = vec![(0..w * h).map(|i| i % w < 80).collect(), (0..w * h).map(|i| i % w >= 40).collect()];
-        for y in 0..h {
-            for x in 50..58 {
-                luma[1][y * w + x] = 1.0;
-            }
+        let wg = border_weights(w, h, &cover);
+        let at = |k: usize, x: usize| wg[k][20 * w + x];
+        // Both images weigh in across the overlap, each falling off towards its own border.
+        for x in 41..79 {
+            assert!(at(0, x) > 0.0 && at(1, x) > 0.0, "x={x}");
+            assert!(at(0, x + 1) <= at(0, x) && at(1, x + 1) >= at(1, x), "x={x}");
         }
-        let labels = seam_labels(w, h, &luma, &cover, &[0, 1]);
-        // The object column belongs to image 0 (the seam passes to its right), or entirely to 1.
-        for y in 0..h {
-            let owner: Vec<i32> = (50..58).map(|x| labels[y * w + x]).collect();
-            assert!(owner.iter().all(|o| *o == owner[0]), "row {y} split the object: {owner:?}");
-        }
-        assert_eq!(labels[5], 0);
-        assert_eq!(labels[w - 1], 1);
+        assert_eq!((at(0, 100), at(1, 10)), (0.0, 0.0));
         // Multi-band blend of two flat images at different levels joins smoothly.
         let mk = |x0: i32, v: f32| RoiImage { x0, y0: 0, w: 80, h, ch: 1, px: vec![v; 80 * h], alpha: vec![1.0; 80 * h] };
         let imgs = [mk(0, 0.3), mk(40, 0.7)];
-        let wts: Vec<Vec<f32>> = (0..2)
-            .map(|k| {
-                (0..80 * h)
-                    .map(|i| {
-                        let x = (i % 80) as i32 + imgs[k].x0;
-                        if (x < 60) == (k == 0) { 1.0 } else { 0.0 }
-                    })
-                    .collect()
-            })
-            .collect();
+        let wts: Vec<Vec<f32>> = (0..2).map(|k| (0..80 * h).map(|i| wg[k][(i / 80) * w + i % 80 + imgs[k].x0 as usize]).collect()).collect();
         let (out, cov) = multiband(w, h, &imgs, &wts, 4);
         let row: Vec<f32> = (0..w).map(|x| out[20 * w + x]).collect();
         assert!((row[2] - 0.3).abs() < 0.02 && (row[w - 3] - 0.7).abs() < 0.02, "{row:?}");
         let max_jump = row.windows(2).map(|p| (p[1] - p[0]).abs()).fold(0.0f32, f32::max);
-        assert!(max_jump < 0.1, "max step {max_jump}");
+        assert!(max_jump < 0.05, "max step {max_jump}");
         assert!(cov.iter().all(|c| *c == 1.0));
     }
 }

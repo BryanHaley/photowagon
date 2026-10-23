@@ -67,7 +67,7 @@ fn rerender(doc: &mut Document) -> Result<usize, String> {
                 if photocraft_engine::smart_cmds::refresh_layer(&snapshot, l).map_err(|e| e.to_string())? {
                     n += 1;
                 } else {
-                    return Err("smart object source unavailable".into());
+                    return Err("embedded layer source unavailable".into());
                 }
             }
             LayerContent::Text(t) => {
@@ -125,7 +125,7 @@ fn photoshop_oracles_rerendered() {
         };
         eprintln!("{name:<60} {n:>7} {m:>9.4} {bad:>7.2}%  {status}");
     }
-    eprintln!("photoshop re-render: {total} files with smart objects or type: {pass} pass (<= 2/255), {errors} errors");
+    eprintln!("photoshop re-render: {total} files with embedded layers or type: {pass} pass (<= 2/255), {errors} errors");
     for (g, (p, n)) in &groups {
         eprintln!("photoshop re-render:   {g:<16} {p:>4} / {n:<4} pass");
     }

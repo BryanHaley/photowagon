@@ -21,7 +21,7 @@ const REFINE: RefineParams = RefineParams { radius: 2.0, smart_radius: true, smo
 /// Remove Background needs an unlocked pixel layer.
 fn check(doc: &Document, l: &Layer) -> std::result::Result<(), String> {
     if !matches!(l.content, LayerContent::Raster(_)) {
-        return Err(format!("the layer is {} {} layer, not a pixel layer", l.content.article(), l.content.kind_name()));
+        return Err(format!("not on {} layers", l.content.kind_name()));
     }
     let locks = doc.effective_locks(l.id);
     if locks.pixels || locks.all {
@@ -41,16 +41,24 @@ fn run(s: &mut Session, p: &Value) -> Result<Value> {
     check(doc, doc.layer(id).ok_or(EngineError::NoLayer(id))?).map_err(EngineError::Other)?;
     let sample_all = p.get("sampleAllLayers").and_then(Value::as_bool).unwrap_or(false);
     let refine = p.get("refine").and_then(Value::as_bool).unwrap_or(true);
+    // A subject mask found elsewhere (the iOS app's Vision) replaces Select Subject.
+    let given = match p.get("mask") {
+        Some(m) => Some(crate::smartselect_cmds::decode_mask(m, doc.bounds(), CMD)?.ok_or_else(|| EngineError::Other("no subject found".into()))?),
+        None => None,
+    };
     crate::jobs::edit_job(
         s,
         "Remove Background",
         move |doc, _, ctx| {
             // Cancel reaches the min cuts inside Select Subject, so Esc doesn't wait for them.
-            let found = ctx
-                .stage(0.1, 0.6, "Finding subject", |ctl| {
-                    with_doc_sampler(doc, Some(id), sample_all, |smp, d| subject::select_subject_with(smp, d.bounds(), ctl))
-                })
-                .map_err(|_| EngineError::Cancelled)?;
+            let found = match given.clone() {
+                Some(r) => Some(r),
+                None => ctx
+                    .stage(0.1, 0.6, "Finding subject", |ctl| {
+                        with_doc_sampler(doc, Some(id), sample_all, |smp, d| subject::select_subject_with(smp, d.bounds(), ctl))
+                    })
+                    .map_err(|_| EngineError::Cancelled)?,
+            };
             let mut region = found.ok_or_else(|| EngineError::Other("no subject found".into()))?;
             if ctx.cancelled() {
                 return Err(EngineError::Cancelled);
@@ -82,7 +90,7 @@ pub fn specs() -> Vec<CommandSpec> {
         label: "Remove Background",
         menu: &[],
         shortcut: None,
-        params: r##"{"layer":id?,"sampleAllLayers":bool=false,"refine":bool=true} → {layer,bounds} (adds a layer mask from Select Subject; the Background becomes a normal layer)"##,
+        params: r##"{"layer":id?,"sampleAllLayers":bool=false,"refine":bool=true,"mask":{"width","height","data":base64 bytes,"rect":[x0,y0,x1,y1]?}? (the subject, found elsewhere, instead of Select Subject; see select.fromMask)} → {layer,bounds} (adds a layer mask from Select Subject; the Background becomes a normal layer)"##,
         enabled,
         run,
         journal: true,
@@ -286,5 +294,16 @@ mod tests {
         s.execute(CMD, json!({"refine": false})).unwrap();
         let masks = s.active().unwrap().doc.walk().into_iter().filter(|(_, _, l)| l.mask.is_some()).count();
         assert_eq!(masks, 1);
+    }
+
+    #[test]
+    fn a_given_subject_mask_skips_the_search() {
+        let mut s = Session::new();
+        s.execute("file.new", json!({"width": 40, "height": 20})).unwrap();
+        let data = photocraft_paint::tile::b64_encode(&[0, 255, 255, 0]);
+        let r = s.execute("layer.removeBackground", json!({"refine": false, "mask": {"width": 4, "height": 1, "data": data}})).unwrap();
+        assert_eq!(r["bounds"], json!([10, 0, 20, 20]));
+        let empty = photocraft_paint::tile::b64_encode(&[0]);
+        assert!(s.execute("layer.removeBackground", json!({"mask": {"width": 1, "height": 1, "data": empty}})).is_err());
     }
 }

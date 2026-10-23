@@ -3,14 +3,13 @@
 //! * [`close_loops`]: a stroke drawn around an object also removes what it encloses (every pixel
 //!   that can't reach the grid's border without crossing the stroke).
 //! * [`dilate`]: the hole grows by a few pixels so an object's soft edge and halo go with it.
-//! * [`remove_with`]: the hole is completed by [`crate::nonlocal::complete_with`] (patch-based,
-//!   with texture features so the fill keeps the grain of its surroundings, thin wires included).
+//! * [`remove_with`]: the hole is completed by [`crate::exemplar::complete`]. The PatchMatch
+//!   completion it used was removed to avoid infringing Adobe's patents (see [`crate::inpaint`]).
 //! * [`hole_radius`]: how thick a hole is, which sets how many scales the completion uses.
 //!
 //! Buffers are interleaved `w × h × ch` normalised floats (any model/depth) with `w × h` masks;
 //! deterministic.
 
-use crate::nonlocal::{Params, complete_with};
 use crate::poisson::membrane_fill_with;
 use photocraft_raster::{Cancelled, Interrupt};
 
@@ -200,7 +199,12 @@ pub fn remove_with(w: usize, h: usize, ch: usize, img: &[f32], hole: &[bool], se
 
 /// Complete one hole, or diffuse it when there is no fully-known patch to copy from.
 fn fill(w: usize, h: usize, ch: usize, img: &[f32], hole: &[bool], seed: u64, ctl: &Interrupt) -> Result<Vec<f32>, Cancelled> {
-    match complete_with(w, h, ch, img, hole, &Params { seed, ..Params::default() }, ctl)? {
+    let filled = {
+        let _ = seed;
+        let px: Vec<crate::inpaint::Px> = hole.iter().map(|m| if *m { crate::inpaint::Px::Hole } else { crate::inpaint::Px::Source }).collect();
+        crate::exemplar::complete(w, h, ch, img, &px, 0.0, ctl)?
+    };
+    match filled {
         Some(out) => Ok(out),
         None => membrane_fill_with(w, h, ch, img, hole, ctl),
     }

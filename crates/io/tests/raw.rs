@@ -80,6 +80,7 @@ fn unsupported_raw_falls_back_to_the_embedded_preview() {
     let r = import("DSC_0001.NEF", &nef_with_preview()).unwrap();
     assert_eq!((r.document.size.width, r.document.size.height), (32, 20));
     assert!(r.warnings.first().is_some_and(|w| w.contains("Nikon compressed NEF") && w.contains("embedded")), "{:?}", r.warnings);
+    assert!(r.preview_only);
 }
 
 #[test]

@@ -11,8 +11,8 @@
 //! reference stays put in the planar projections.
 //!
 //! Auto-Blend gives each selected layer a mask so the composite shows, per pixel, the sharpest
-//! layer (Stack Images, for focus stacking) or one layer per region with seams routed where the
-//! layers agree (Panorama). With Seamless Tones and Colors it also adds a merged layer: the
+//! layer (Stack Images, for focus stacking) or soft masks that, stacked, blend the layers by
+//! their distance to each layer's border (Panorama). With Seamless Tones and Colors it also adds a merged layer: the
 //! panorama blended with Laplacian pyramids so transitions are invisible, the stack fused on the
 //! Laplacian pyramid, each coefficient from the layer sharpest at that scale
 //! ([`pyramid::fuse_stack`]; `haloControl` keeps a bright object's defocused glow out of the
@@ -30,7 +30,7 @@ use photocraft_raster::{Surface, to_rgba};
 use serde_json::{Value, json};
 
 use crate::commands::CommandSpec;
-use crate::photo_cmds::{NO_DETAIL, plane_matrix, register, register_direct, seam_blend, seam_order, warp_placed};
+use crate::photo_cmds::{NO_DETAIL, feather_blend, plane_matrix, register, register_direct, warp_placed};
 use crate::{EngineError, Result, Session};
 
 fn bad(cmd: &str, msg: impl Into<String>) -> EngineError {
@@ -45,7 +45,7 @@ fn selected_pixel_layers(s: &Session) -> Vec<LayerId> {
 
 fn two_layers(s: &Session) -> std::result::Result<(), String> {
     s.active().ok_or("no document open")?;
-    if selected_pixel_layers(s).len() < 2 { Err("select two or more pixel layers in the Layers panel".into()) } else { Ok(()) }
+    if selected_pixel_layers(s).len() < 2 { Err("select two or more pixel layers".into()) } else { Ok(()) }
 }
 
 fn auto_align(s: &mut Session, p: &Value) -> Result<Value> {
@@ -221,11 +221,10 @@ fn auto_blend(s: &mut Session, p: &Value) -> Result<Value> {
         });
         (weights, blended)
     } else {
-        // Panorama: seams routed through agreement, multi-band blended (photo_cmds).
+        // Panorama: feathered weights, multi-band blended (photo_cmds).
         let surfs: Vec<Surface> =
             ids.iter().map(|id| doc.layer(*id).and_then(|l| l.surface()).cloned().ok_or(EngineError::NoLayer(*id))).collect::<Result<_>>()?;
-        let order = seam_order(&surfs, 0);
-        let b = seam_blend(&surfs, area, &order, seamless, false, None);
+        let b = feather_blend(&surfs, area, seamless, false, None);
         let weights: Vec<Vec<f32>> = b.layers.iter().map(|(_, m)| m.read_region(area)).collect();
         let blended = seamless.then(|| b.composite.read_region(area));
         (weights, blended)

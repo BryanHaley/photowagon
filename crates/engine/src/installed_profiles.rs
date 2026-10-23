@@ -115,9 +115,9 @@ fn read_one(path: &Path) -> Option<InstalledProfile> {
 /// within this long.
 const FRESH: std::time::Duration = std::time::Duration::from_secs(10);
 
-/// The installed profiles (cached; see [`FRESH`]). Empty on the web.
+/// The installed profiles (cached; see [`FRESH`]). Empty on the web and iOS.
 pub fn installed() -> Vec<InstalledProfile> {
-    if cfg!(target_arch = "wasm32") {
+    if cfg!(any(target_arch = "wasm32", target_os = "ios")) {
         return Vec::new();
     }
     type Cache = Mutex<Option<(std::time::Instant, Vec<InstalledProfile>)>>;

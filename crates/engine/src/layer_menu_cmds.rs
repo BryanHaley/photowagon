@@ -41,7 +41,7 @@ fn has_raster(s: &Session) -> Enabled {
     if matches!(l.content, LayerContent::Raster(_)) {
         Ok(())
     } else {
-        Err(format!("active layer is {} {} layer, not a pixel layer", l.content.article(), l.content.kind_name()))
+        Err(format!("not on {} layers", l.content.kind_name()))
     }
 }
 
@@ -60,13 +60,13 @@ fn has_doc(s: &Session) -> Enabled {
 }
 
 fn has_smart(s: &Session) -> Enabled {
-    if matches!(active_layer(s)?.content, LayerContent::Smart(_)) { Ok(()) } else { Err("the active layer is not a smart object".into()) }
+    if matches!(active_layer(s)?.content, LayerContent::Smart(_)) { Ok(()) } else { Err("not an embedded layer".into()) }
 }
 
 fn has_linked_smart(s: &Session) -> Enabled {
     match &active_layer(s)?.content {
         LayerContent::Smart(sm) if matches!(sm.source, SmartSource::Linked { .. }) => Ok(()),
-        _ => Err("the active layer is not a linked smart object".into()),
+        _ => Err("not a linked embedded layer".into()),
     }
 }
 
@@ -339,7 +339,7 @@ fn stack_mode(s: &mut Session, p: &Value, mode: Option<StackMode>) -> Result<Val
     s.edit(&format!("Stack Mode: {label}"), |doc, _| {
         let l = doc.layer_mut(id).ok_or(EngineError::NoLayer(id))?;
         let LayerContent::Smart(sm) = &mut l.content else {
-            return Err(other("the active layer is not a smart object"));
+            return Err(other("not an embedded layer"));
         };
         sm.stack_mode = mode;
         crate::smart_cmds::refresh(doc, id)?;
@@ -353,7 +353,7 @@ macro_rules! stack_spec {
         CommandSpec {
             id: concat!("layer.smartObjects.stackMode.", $id),
             label: $label,
-            menu: &["Layer", "Smart Objects", "Stack Mode"],
+            menu: &["Layer", "Embedded Layers", "Stack Mode"],
             shortcut: None,
             params: r##"{"layer":id?}"##,
             enabled: has_smart,
@@ -368,10 +368,10 @@ fn reveal_in_finder(s: &mut Session, p: &Value) -> Result<Value> {
     let d = s.active().ok_or(EngineError::NoDocument)?;
     let l = d.active_layer.and_then(|id| d.doc.layer(id)).ok_or_else(|| other("no active layer"))?;
     let LayerContent::Smart(sm) = &l.content else {
-        return Err(other("the active layer is not a smart object"));
+        return Err(other("not an embedded layer"));
     };
     let SmartSource::Linked { path } = &sm.source else {
-        return Err(other("embedded smart objects have no file to reveal"));
+        return Err(other("embedded embedded layers have no file to reveal"));
     };
     // The path is stored in the document: shown only when it would be followed.
     let file =
@@ -426,18 +426,24 @@ fn reveal_command_on(os: &str, path: &str) -> Result<(&'static str, Vec<String>)
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(any(target_arch = "wasm32", target_os = "ios")))]
 fn spawn(program: &str, args: &[String]) -> Result<()> {
     std::process::Command::new(program).args(args).spawn().map(|_| ()).map_err(|e| other(format!("{program}: {e}")))
 }
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(target_arch = "wasm32", target_os = "ios"))]
 fn spawn(_: &str, _: &[String]) -> Result<()> {
     Err(other("Reveal in Finder needs the desktop app"))
 }
 
 fn native(_: &Session) -> Enabled {
-    if cfg!(target_arch = "wasm32") { Err("not available in the browser".into()) } else { Ok(()) }
+    if cfg!(target_arch = "wasm32") {
+        Err("not available in the browser".into())
+    } else if cfg!(target_os = "ios") {
+        Err("not available on iOS".into())
+    } else {
+        Ok(())
+    }
 }
 
 // ---------- layer style ----------
@@ -611,16 +617,26 @@ fn blend_if_channel(v: &Value, mode: ColorMode) -> Option<usize> {
         return usize::try_from(i).ok().filter(|i| *i <= n);
     }
     let name = v.as_str().unwrap_or("gray").to_ascii_lowercase();
-    let names: &[&str] = match mode {
+    if name == "gray" || name == "grey" {
+        return Some(usize::from(n == 1));
+    }
+    blend_if_color_channels(mode).iter().position(|c| *c == name).map(|i| i + 1)
+}
+
+/// The mode's colour channels as Blend If names them (after Gray).
+fn blend_if_color_channels(mode: ColorMode) -> &'static [&'static str] {
+    match mode {
         ColorMode::Rgb | ColorMode::Indexed => &["red", "green", "blue"],
         ColorMode::Cmyk => &["cyan", "magenta", "yellow", "black"],
         ColorMode::Lab => &["lightness", "a", "b"],
         _ => &[],
-    };
-    if name == "gray" || name == "grey" {
-        return Some(usize::from(n == 1));
     }
-    names.iter().position(|c| *c == name).map(|i| i + 1)
+}
+
+/// Every Blend If channel of `mode` with its range index, Gray first.
+pub(crate) fn blend_if_channels(mode: ColorMode) -> Vec<(&'static str, usize)> {
+    let gray = usize::from(mode.color_channels() == 1);
+    std::iter::once(("gray", gray)).chain(blend_if_color_channels(mode).iter().enumerate().map(|(i, c)| (*c, i + 1))).collect()
 }
 
 /// `[black, white]` (unsplit) or `[blackLow, blackHigh, whiteLow, whiteHigh]`, each 0..=255 and
@@ -969,7 +985,7 @@ pub fn specs() -> Vec<CommandSpec> {
         spec!(
             "layer.smartObjects.revealInFinder",
             "Reveal in Finder",
-            ["Layer", "Smart Objects"],
+            ["Layer", "Embedded Layers"],
             r##"{"dryRun":bool=false}"##,
             |s| native(s).and_then(|_| has_linked_smart(s)),
             reveal_in_finder

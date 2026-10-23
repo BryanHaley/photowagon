@@ -52,7 +52,7 @@ fn has_pixel_layer(s: &Session) -> std::result::Result<(), String> {
     if matches!(l.content, LayerContent::Raster(_)) {
         Ok(())
     } else {
-        Err(format!("active layer is {} {} layer, not a pixel layer", l.content.article(), l.content.kind_name()))
+        Err(format!("not on {} layers", l.content.kind_name()))
     }
 }
 

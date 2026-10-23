@@ -87,6 +87,16 @@ fn destructive_adjustments_respect_selection() {
 }
 
 #[test]
+fn shadows_highlights_takes_one_radius() {
+    let mut s = session(8, "rgb");
+    for key in ["shadowRadius", "highlightRadius"] {
+        let e = s.execute("image.adjustments.shadowsHighlights", json!({ key: 10 })).unwrap_err();
+        assert!(e.to_string().contains("radius"), "{e}");
+    }
+    s.execute("image.adjustments.shadowsHighlights", json!({"radius": 10, "highlightAmount": 50})).unwrap();
+}
+
+#[test]
 fn match_color_from_another_document() {
     let mut s = session(8, "rgb");
     s.execute("file.new", json!({"width": 16, "height": 16, "background": "#e05010"})).unwrap();
@@ -419,7 +429,7 @@ fn smart_filters_of(s: &Session) -> Vec<photocraft_doc::SmartFilter> {
     let d = s.active().unwrap();
     match &d.doc.layer(d.active_layer.unwrap()).unwrap().content {
         LayerContent::Smart(sm) => sm.smart_filters.clone(),
-        other => panic!("not a smart object: {}", other.kind_name()),
+        other => panic!("not an embedded layer: {}", other.kind_name()),
     }
 }
 
@@ -435,7 +445,7 @@ fn adjustments_on_a_smart_object_record_a_smart_filter() {
     plain.execute("image.adjustments.invert", json!({})).unwrap();
     let baked = flatten(&plain);
     assert!(max_diff(&original, &baked) > 0.5, "the control changes the pixels");
-    assert!(s.is_enabled("image.adjustments.invert"), "an adjustment runs on a smart object");
+    assert!(s.is_enabled("image.adjustments.invert"), "an adjustment runs on an embedded layer");
     let steps = s.active().unwrap().history.past_len();
     s.execute("image.adjustments.invert", json!({})).unwrap();
     assert_eq!(s.active().unwrap().history.past_len(), steps + 1, "one history step");
@@ -444,7 +454,7 @@ fn adjustments_on_a_smart_object_record_a_smart_filter() {
     assert_eq!(sf[0].command, "image.adjustments.invert");
     assert!(sf[0].visible && sf[0].opacity == 1.0 && sf[0].blend == photocraft_color::BlendMode::Normal);
     assert!(sf[0].params.get("__kind").is_none(), "the engine's private key is not recorded");
-    assert_eq!(max_diff(&flatten(&s), &baked), 0.0, "the smart filter renders the destructive result");
+    assert_eq!(max_diff(&flatten(&s), &baked), 0.0, "the live filter renders the destructive result");
     // Hiding the filter shows the original exactly.
     s.execute("layer.smartFilter.setVisible", json!({"index": 0})).unwrap();
     assert_eq!(flatten(&s), original);
@@ -490,8 +500,8 @@ fn a_bad_adjustment_param_on_a_smart_object_is_an_error() {
     assert_eq!(smart_filters_of(&s).len(), filters, "nothing recorded");
     assert_eq!(s.active().unwrap().history.past_len(), steps, "no history step");
     assert_eq!(flatten(&s), flat, "pixels untouched");
-    assert!(!s.is_enabled("image.adjustments.replaceColor"), "only adjustments that re-render become smart filters");
-    assert!(!s.is_enabled("image.adjustments.matchColor"), "only adjustments that re-render become smart filters");
+    assert!(!s.is_enabled("image.adjustments.replaceColor"), "only adjustments that re-render become live filters");
+    assert!(!s.is_enabled("image.adjustments.matchColor"), "only adjustments that re-render become live filters");
 }
 
 /// #780: a targeted mask enables Invert (and filters) on layers without pixels, such as an

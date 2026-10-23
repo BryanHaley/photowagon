@@ -3230,3 +3230,60 @@ curves	Smooth	Glätten
 	GPU Memory (MB, 0 = Automatic)	GPU-Speicher (MB, 0 = Automatisch)
 	{name} was changed by another app after it was opened or saved here.	{name} wurde von einer anderen App geändert, nachdem es hier geöffnet oder gespeichert wurde.
 	Replace it with this document, or cancel and use File › Save As to keep both.	Ersetze die Datei durch dieses Dokument oder brich ab und nutze Datei › Speichern unter, um beide zu behalten.
+# Renamed engine strings (same translations as the names they replaced).
+	Create Batch App…	Droplet erstellen…
+	Contact Sheet…	Kontaktabzug II…
+	Merge to HDR…	Zu HDR Pro zusammenfügen…
+	Panorama…	Photomerge…
+	Create Embedded Layer after Loading Layers	Nach dem Laden der Ebenen Smart-Objekt erstellen
+	Fill from Surroundings…	Inhaltsbasiert füllen…
+	Content-Preserving Scale	Inhaltsbasiert skalieren
+	Pin Warp	Marionetten-Verkrümmung
+	Raw Develop…	Camera Raw…
+	New Embedded Layer via Copy	Neues Smart-Objekt durch Kopieren
+	Live Filter	Smart-Filter
+	Convert for Live Filters	Für Smart-Filter konvertieren
+	Clear Live Filters	Smart-Filter löschen
+	Disable Live Filters	Smart-Filter deaktivieren
+	Embedded Layers	Smart-Objekte
+	Embedded Layer	Smart-Objekt
+	Convert to Embedded Layer	In Smart-Objekt konvertieren
+	Refine Selection…	Auswählen und maskieren…
+	Refine Selection (Legacy)	Kante verbessern
+	Develop…	Camera-Raw-Filter…
+	Fluid Warp…	Verflüssigen…
+	Perspective Planes…	Fluchtpunkt…
+	Blur Effects	Weichzeichnen-Galerie
+	Save these settings as a Raw Develop .xmp file	Diese Einstellungen als Camera-Raw-.xmp-Datei speichern
+	Load settings from a Raw Develop .xmp file	Einstellungen aus einer Camera-Raw-.xmp-Datei laden
+	Loaded Raw Develop settings from {file}	Camera-Raw-Einstellungen aus {file} geladen
+	Loaded Raw Develop settings from {file} ({n} not supported)	Camera-Raw-Einstellungen aus {file} geladen ({n} nicht unterstützt)
+	Raw Develop isn't open	Camera Raw ist nicht geöffnet
+	Commit Pin Warp ({key})	Marionetten-Verkrümmung übernehmen ({key})
+	Contact Sheet	Kontaktabzug II
+	Create Batch App	Droplet erstellen
+	Filter for embedded layers	Filter für Smart-Objekte
+	Fluid Warp is not open	Verflüssigen ist nicht geöffnet
+	Pin Warp is not active	Marionetten-Verkrümmung ist nicht aktiv
+	Fill from Surroundings needs a selection on a pixel layer	Inhaltsbasiertes Füllen braucht eine Auswahl auf einer Pixelebene
+	Could not use Pin Warp: no opaque pixels	Marionetten-Verkrümmung nicht möglich: keine deckenden Pixel
+	Could not use Pin Warp: the layer is empty	Marionetten-Verkrümmung nicht möglich: Die Ebene ist leer
+	Repair Brush Tool	Korrektur-Pinsel-Werkzeug
+	Live Filters	Smart-Filter
+	Spot Repair Brush Tool	Punktkorrektur-Pinsel-Werkzeug
+	Always create embedded layers when placing	Beim Platzieren immer Smart-Objekte erstellen
+	Raw Develop Defaults	Camera-Raw-Standardeinstellungen
+	Open as embedded layer	Als Smart-Objekt öffnen
+	Embedded Layer Layer	Smart-Objekt-Ebene
+	Rasterize Embedded Layer	Smart-Objekt rasterisieren
+	Develop ({layer})	Camera-Raw-Filter ({layer})
+	Raw Develop ({name})	Camera Raw ({name})
+	Move and Fill Tool	Inhaltsbasiert-verschieben-Werkzeug
+	Repair Brush	Korrektur-Pinsel
+	Spot Repair Brush	Punktkorrektur-Pinsel
+	Perspective Planes: click four corners to create a plane	Fluchtpunkt: Klicken Sie auf vier Ecken, um eine Ebene zu erstellen
+	Perspective Planes is not active	Fluchtpunkt ist nicht aktiv
+	Apply Perspective Planes ({key})	Fluchtpunkt anwenden ({key})
+	Refine Selection (Legacy) Brush (R)	Kante-verbessern-Pinsel (R)
+@plural	Updated {n} linked embedded layer changed on disk|Updated {n} linked embedded layers changed on disk	{n} verknüpftes Smart-Objekt aktualisiert, das auf dem Datenträger geändert wurde|{n} verknüpfte Smart-Objekte aktualisiert, die auf dem Datenträger geändert wurden
+	Fill from Surroundings	Inhaltsbasiert füllen

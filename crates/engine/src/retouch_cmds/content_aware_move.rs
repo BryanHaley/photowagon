@@ -18,8 +18,7 @@
 //!   ([`photocraft_algo::content_aware::color_amount`]).
 //!
 //! The selection moves with the content, as in Photoshop. A soft selection counts wherever it is
-//! above zero (as the Patch Tool's); the band does the blending. The fills are PatchMatch
-//! completions and can take seconds on large selections, so the command runs as a background job
+//! above zero (as the Patch Tool's); the band does the blending. The fills can take seconds on large selections, so the command runs as a background job
 //! (#210): with progress, cancellable, and the document unchanged until it applies. The Patch
 //! Tool's Content-Aware mode lands its content the same way ([`land`]).
 //!
@@ -486,7 +485,7 @@ fn run_move(doc: &mut Document, sel: &Surface, plan: &Plan, p: &Value, ctx: &cra
 
 pub(super) fn content_aware_move(s: &mut Session, p: &Value) -> Result<Value> {
     let plan = plan(s, p, MAX_MARGIN)?;
-    let label = if plan.mode == Mode::Move { "Content-Aware Move" } else { "Content-Aware Extend" };
+    let label = if plan.mode == Mode::Move { "Move and Fill" } else { "Extend and Fill" };
     let d = s.active().ok_or(EngineError::NoDocument)?;
     let doc = d.doc.clone();
     let p = p.clone();
@@ -548,7 +547,7 @@ impl ContentAwarePreview {
     pub fn run(&self, ctx: &crate::jobs::JobCtx) -> Result<(Document, Rect)> {
         let mut work = (*self.doc).clone();
         let sel = self.doc.selection.as_ref().ok_or_else(|| bad(CMD, "select the area to move first"))?;
-        let (_, damage, _) = run_move(&mut work, sel, &self.plan, &self.params, ctx, "Content-Aware Move preview")?;
+        let (_, damage, _) = run_move(&mut work, sel, &self.plan, &self.params, ctx, "Move and Fill preview")?;
         Ok((work, damage))
     }
 }

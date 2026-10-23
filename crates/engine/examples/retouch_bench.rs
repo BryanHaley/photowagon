@@ -46,7 +46,7 @@ fn main() {
         s.execute("paint.healingBrush", json!({"points": [[x, y]], "offset": [-150, -130], "size": size, "hardness": 50})).unwrap();
         println!("healingBrush                size {size:>4}: {:>8.1?}", t.elapsed());
     }
-    for kind in ["contentAware", "proximityMatch", "createTexture"] {
+    for kind in ["contentAware", "matchNearby", "createTexture"] {
         for size in [50.0, 100.0, 200.0, 300.0] {
             let (x, y) = spot();
             let t = Instant::now();

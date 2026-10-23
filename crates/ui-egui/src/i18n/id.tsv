@@ -3225,3 +3225,63 @@ curves	Smooth	Haluskan
 	Increase Brush Size	Perbesar ukuran kuas
 	Decrease Brush Hardness	Kurangi kekerasan kuas
 	Increase Brush Hardness	Tambah kekerasan kuas
+# Renamed engine strings (same translations as the names they replaced).
+	Create Batch App…	Buat Droplet…
+	Contact Sheet…	Contact Sheet II…
+	Merge to HDR…	Gabung ke HDR Pro…
+	Panorama…	Photomerge…
+	Create Embedded Layer after Loading Layers	Buat Smart Object setelah Memuat Layer
+	Fill from Surroundings…	Isi Content-Aware…
+	Content-Preserving Scale	Skala Content-Aware
+	Pin Warp	Puppet Warp
+	Raw Develop…	Camera Raw…
+	New Embedded Layer via Copy	Smart Object Baru via Salin
+	Live Filter	Smart Filter
+	Convert for Live Filters	Konversi untuk Smart Filter
+	Clear Live Filters	Hapus Smart Filter
+	Disable Live Filters	Nonaktifkan Smart Filter
+	Embedded Layers	Smart Object
+	Embedded Layer	Smart Object
+	Convert to Embedded Layer	Konversi ke Smart Object
+	Refine Selection…	Seleksi dan Mask…
+	Refine Selection (Legacy)	Perbaiki Tepi
+	Develop…	Filter Camera Raw…
+	Fluid Warp…	Liquify…
+	Perspective Planes…	Vanishing Point…
+	Blur Effects	Galeri Blur
+	Save these settings as a Raw Develop .xmp file	Simpan pengaturan ini sebagai berkas .xmp Camera Raw
+	Load settings from a Raw Develop .xmp file	Muat pengaturan dari berkas .xmp Camera Raw
+	Loaded Raw Develop settings from {file}	Pengaturan Camera Raw dimuat dari {file}
+	Loaded Raw Develop settings from {file} ({n} not supported)	Pengaturan Camera Raw dimuat dari {file} ({n} tidak didukung)
+	Raw Develop isn't open	Camera Raw tidak terbuka
+	Commit Pin Warp ({key})	Terapkan Puppet Warp ({key})
+	Contact Sheet	Contact Sheet II
+	Create Batch App	Buat Droplet
+	Filter for embedded layers	Filter untuk smart object
+	Fluid Warp is not open	Liquify tidak terbuka
+	Pin Warp is not active	Puppet Warp tidak aktif
+	Fill from Surroundings needs a selection on a pixel layer	Isi Content-Aware butuh seleksi pada layer piksel
+	Could not use Pin Warp: no opaque pixels	Tidak bisa pakai Puppet Warp: tidak ada piksel opak
+	Could not use Pin Warp: the layer is empty	Tidak bisa pakai Puppet Warp: layernya kosong
+	Repair Brush Tool	Alat Healing Brush
+	Live Filters	Smart Filter
+	Spot Repair Brush Tool	Alat Spot Healing Brush
+	Always create embedded layers when placing	Selalu buat smart object saat menempatkan
+	Raw Develop Defaults	Default Camera Raw
+	Open as embedded layer	Buka sebagai smart object
+	Embedded Layer Layer	Layer Smart Object
+	Rasterize Embedded Layer	Rasterisasi Smart Object
+	Delete Live Filters	Hapus Smart Filter
+	Enable Live Filters	Aktifkan Smart Filter
+	Move and Fill	Content-Aware Move
+	Commit Pin Warp (↩)	Terapkan Puppet Warp (↩)
+	Develop ({layer})	Filter Camera Raw ({layer})
+	Raw Develop ({name})	Camera Raw ({name})
+	Move and Fill Tool	Alat Content-Aware Move
+	Repair Brush	Healing Brush
+	Spot Repair Brush	Spot Healing Brush
+	Perspective Planes: click four corners to create a plane	Vanishing Point: klik empat sudut untuk membuat bidang
+	Perspective Planes is not active	Vanishing Point tidak aktif
+	Apply Perspective Planes ({key})	Terapkan Vanishing Point ({key})
+	Refine Selection (Legacy) Brush (R)	Kuas Perhalus Tepi (R)
+	Fill from Surroundings	Isi Content-Aware

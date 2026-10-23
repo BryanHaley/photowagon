@@ -9,6 +9,7 @@
 
 pub mod actions_cmds;
 pub mod actions_edit_cmds;
+pub mod anim_cmds;
 pub mod adjust_cmds;
 pub mod adjust_params;
 pub mod align_cmds;
@@ -81,6 +82,7 @@ pub mod mode_cmds;
 pub mod multichannel_cmds;
 pub mod new_layer;
 pub mod notes_cmds;
+pub mod outline;
 pub mod paint_cmds;
 mod param_check;
 mod path_edit_cmds;
@@ -113,9 +115,12 @@ pub mod smartselect_cmds;
 pub mod snap;
 pub mod solid_fill_cmds;
 pub mod stamp_cmds;
+pub mod stats_cmds;
+pub mod visibility_cmds;
 pub mod swatch_cmds;
 pub mod symmetry_cmds;
 mod timeline_cmds;
+pub mod tone_cmds;
 pub mod transform_cmds;
 mod trap_cmds;
 pub mod type_caret_cmds;

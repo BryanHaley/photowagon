@@ -264,7 +264,7 @@ fn place_embedded_centres_fits_and_embeds() {
         let d = s.active().unwrap();
         let l = d.doc.layer(d.active_layer.unwrap()).unwrap();
         assert_eq!(l.name, "big");
-        let LayerContent::Smart(so) = &l.content else { panic!("smart object expected") };
+        let LayerContent::Smart(so) = &l.content else { panic!("embedded layer expected") };
         assert!(matches!(&so.source, SmartSource::Embedded { file_name, bytes } if file_name == "big.png" && !bytes.is_empty()));
         assert_eq!(so.transform.m[0], 0.5);
         // Fitted to the canvas width, centred vertically: rows 25..75 red.

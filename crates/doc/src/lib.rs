@@ -47,7 +47,7 @@ pub use variables::{DataSet, DataValue, PixelAlign, PixelMethod, VarKind, Variab
 pub use vector::{
     ClippingPath, FillRule, Knot, LineCap, LineJoin, LiveShape, NamedPath, Path, PathOp, ShapeLayer, ShapeStroke, StrokeAlign, Subpath, VectorMask,
 };
-pub use video::{Timeline, VideoData, VideoSource};
+pub use video::{AnimationFrame, DEFAULT_FRAME_DELAY, FrameAnimation, FrameLayer, Timeline, VideoData, VideoSource};
 
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
 
@@ -598,14 +598,14 @@ impl LayerContent {
             LayerContent::Fill(_) => "Fill",
             LayerContent::Text(_) => "Type",
             LayerContent::Shape(_) => "Shape",
-            LayerContent::Smart(_) => "Smart Object",
+            LayerContent::Smart(_) => "Embedded",
         }
     }
 
-    /// English indefinite article for this layer kind ("an" for Adjustment, "a" for all others).
+    /// English indefinite article for this layer kind ("an" for Adjustment and Embedded, "a" for all others).
     pub fn article(&self) -> &'static str {
         match self {
-            LayerContent::Adjustment(_) => "an",
+            LayerContent::Adjustment(_) | LayerContent::Smart(_) => "an",
             _ => "a",
         }
     }
@@ -912,6 +912,8 @@ pub struct Document {
     pub variables: Variables,
     /// Window › Timeline (None until a video timeline is created).
     pub timeline: Option<Timeline>,
+    /// Window › Timeline's frame animation (None until one is created).
+    pub animation: Option<FrameAnimation>,
     /// How the document's lossy file was encoded (its JPEG quality, WebP lossy or lossless), so
     /// a save writes it back the same way rather than at fixed defaults.
     pub file_encoding: FileEncoding,
@@ -977,6 +979,7 @@ impl Document {
             slices: Slices::default(),
             variables: Variables::default(),
             timeline: None,
+            animation: None,
             file_encoding: FileEncoding::default(),
         }
     }

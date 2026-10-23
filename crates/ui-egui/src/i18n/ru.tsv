@@ -3203,3 +3203,59 @@ curves	Smooth	Сгладить
 	Increase Brush Size	Увеличить размер кисти
 	Decrease Brush Hardness	Уменьшить жёсткость кисти
 	Increase Brush Hardness	Увеличить жёсткость кисти
+# Renamed engine strings (same translations as the names they replaced).
+	Fill from Surroundings…	Заливка с учётом содержимого…
+	Convert to Embedded Layer	Преобразовать в смарт-объект
+	Convert for Live Filters	Преобразовать для смарт-фильтров
+	New Embedded Layer via Copy	Новый смарт-объект копированием
+	Live Filters	Смарт-фильтры
+	Delete Live Filters	Удалить смарт-фильтры
+	Enable Live Filters	Включить смарт-фильтры
+	Disable Live Filters	Отключить смарт-фильтры
+	Clear Live Filters	Очистить смарт-фильтры
+	Refine Selection…	Выделение и маска…
+	Refine Selection (Legacy)	Уточнить край
+	Fluid Warp…	Пластичность…
+	Develop…	Фильтр Camera Raw…
+	Perspective Planes…	Точка схода…
+	Blur Effects	Галерея размытия
+	Panorama…	Фотослияние…
+	Content-Preserving Scale	Масштабирование с учётом содержимого
+	Move and Fill	Перемещение с учётом содержимого
+	Live Filter	Смарт-фильтр
+	Raw Develop…	Camera Raw…
+	Raw Develop isn't open	Camera Raw не открыт
+	Create Batch App…	Создать модуль-дроплет…
+	Create Batch App	Создать модуль-дроплет
+	Contact Sheet	Контактный лист II
+	Contact Sheet…	Контактный лист II…
+	Merge to HDR…	Объединить в HDR Pro…
+	Commit Pin Warp ({key})	Принять кукольную деформацию ({key})
+	Embedded Layer Layer	Смарт-объект
+	Spot Repair Brush Tool	Точечная восстанавливающая кисть
+	Repair Brush Tool	Восстанавливающая кисть
+	Embedded Layer	Смарт-объект
+	Save these settings as a Raw Develop .xmp file	Сохранить эти настройки в файл Camera Raw .xmp
+	Load settings from a Raw Develop .xmp file	Загрузить настройки из файла Camera Raw .xmp
+	Loaded Raw Develop settings from {file}	Настройки Camera Raw загружены из {file}
+	Loaded Raw Develop settings from {file} ({n} not supported)	Настройки Camera Raw загружены из {file} (не поддерживается: {n})
+	Pin Warp	Кукольная деформация
+	Pin Warp is not active	Кукольная деформация не активна
+	Fluid Warp is not open	Пластичность не открыта
+	Create Embedded Layer after Loading Layers	Создать смарт-объект после загрузки слоёв
+	Embedded Layers	Смарт-объекты
+	Always create embedded layers when placing	Всегда создавать смарт-объекты при помещении
+	Raw Develop Defaults	Значения Camera Raw по умолчанию
+	Open as embedded layer	Открывать как смарт-объект
+	Develop ({layer})	Фильтр Camera Raw ({layer})
+	Raw Develop ({name})	Camera Raw ({name})
+	Move and Fill Tool	Перемещение с учётом содержимого
+	Filter for embedded layers	Фильтр смарт-объектов
+	Repair Brush	Восстанавливающая кисть
+	Spot Repair Brush	Точечная восстанавливающая кисть
+	Perspective Planes: click four corners to create a plane	Точка схода: щелкните четыре угла, чтобы создать плоскость
+	Perspective Planes is not active	Точка схода не активна
+	Apply Perspective Planes ({key})	Применить точку схода ({key})
+	Refine Selection (Legacy) Brush (R)	Кисть уточнения края (R)
+@plural	Updated {n} linked embedded layer changed on disk|Updated {n} linked embedded layers changed on disk	Обновлён {n} связанный смарт-объект, изменённый на диске|Обновлены {n} связанных смарт-объекта, изменённых на диске|Обновлено {n} связанных смарт-объектов, изменённых на диске
+	Fill from Surroundings	Заливка с учётом содержимого

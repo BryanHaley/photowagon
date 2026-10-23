@@ -38,7 +38,7 @@ macro_rules! gallery {
 gallery! {
     // ---- Artistic ----
     ColoredPencil = "coloredPencil", "Colored Pencil", "Artistic", r#"{"pencilWidth":1..24=4,"strokePressure":0..15=8,"paperBrightness":0..50=25}"#;
-    Cutout = "cutout", "Cutout", "Artistic", r#"{"numberOfLevels":2..8=4,"edgeSimplicity":0..10=4,"edgeFidelity":1..3=2}"#;
+    Cutout = "cutout", "Cut Paper", "Artistic", r#"{"numberOfLevels":2..8=4,"edgeSimplicity":0..10=4,"edgeFidelity":1..3=2}"#;
     DryBrush = "dryBrush", "Dry Brush", "Artistic", r#"{"brushSize":0..10=2,"brushDetail":0..10=8,"texture":1..3=1}"#;
     FilmGrain = "filmGrain", "Film Grain", "Artistic", r#"{"grain":0..20=4,"highlightArea":0..20=0,"intensity":0..10=10}"#;
     Fresco = "fresco", "Fresco", "Artistic", r#"{"brushSize":0..10=2,"brushDetail":0..10=8,"texture":1..3=1}"#;

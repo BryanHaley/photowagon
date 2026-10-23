@@ -42,7 +42,7 @@ fn smart(doc: &Document) -> (u64, SmartObject) {
             LayerContent::Smart(sm) => Some((l.id.0, sm.clone())),
             _ => None,
         })
-        .expect("a smart object")
+        .expect("an embedded layer")
 }
 
 fn max_diff(a: &[[f32; 4]], b: &[[f32; 4]]) -> f32 {
@@ -219,7 +219,7 @@ fn camera_raw_psd_filters_survive_re_editing_native_save_and_undo() {
 /// Private, user-supplied files remain outside the repository. Set PHOTOCRAFT_CAMERA_RAW_PSD
 /// to check a Camera Raw fixture and PHOTOCRAFT_SMART_PSD_OUT to retain exports for manual checks.
 #[test]
-#[ignore = "requires a user-supplied Camera Raw PSD"]
+#[ignore = "requires a user-supplied Raw Develop PSD"]
 fn camera_raw_psd_fixture() {
     let path = std::env::var("PHOTOCRAFT_CAMERA_RAW_PSD").expect("set PHOTOCRAFT_CAMERA_RAW_PSD");
     let bytes = std::fs::read(&path).unwrap();
@@ -230,13 +230,13 @@ fn camera_raw_psd_fixture() {
         .iter()
         .position(|f| {
             photocraft_io::smart_map::item_for_filter(f).ok().is_some_and(
-                |item| matches!(item.get("Fltr"), Some(photocraft_psd::descriptor::Value::Descriptor(d)) if d.class_id.is("Adobe Camera Raw Filter")),
+                |item| matches!(item.get("Fltr"), Some(photocraft_psd::descriptor::Value::Descriptor(d)) if d.class_id.is("Adobe Camera Raw")),
             )
         })
-        .expect("a Camera Raw filter");
+        .expect("a Raw Develop filter");
     let original_item = photocraft_io::smart_map::item_for_filter(&sm.smart_filters[index]).unwrap();
     let out = photocraft_io::export(&imported.document, "psd", &Default::default()).unwrap();
-    assert!(!out.warnings.iter().any(|w| w.contains("smart filter")), "{:?}", out.warnings);
+    assert!(!out.warnings.iter().any(|w| w.contains("live filter")), "{:?}", out.warnings);
     assert!(structure_errors(&out.bytes).is_empty());
     keep("camera-raw-roundtrip.psd", &out.bytes);
     let back = photocraft_io::import("roundtrip.psd", &out.bytes).unwrap().document;
@@ -246,14 +246,14 @@ fn camera_raw_psd_fixture() {
     assert_eq!(smart(&photocraft_format::load_from_bytes(&native).unwrap()).1.smart_filters, smart(&back).1.smart_filters);
     if sm.smart_filters[index].command == photocraft_io::smart_map::UNSUPPORTED_FILTER {
         assert_eq!(smart(&back).1.smart_filters[index].command, photocraft_io::smart_map::UNSUPPORTED_FILTER);
-        println!("Camera Raw settings survive PSD and native saves; active unmapped controls keep this filter opaque");
+        println!("Raw Develop settings survive PSD and native saves; active unmapped controls keep this filter opaque");
         return;
     }
     let mut s = Session::new();
     s.add_document(back, None);
     s.execute("layer.smartFilter.setParams", json!({"layer": layer, "index": index, "params": {"exposure": 0.5}})).unwrap();
     let out = photocraft_io::export(&s.active().unwrap().doc, "psd", &Default::default()).unwrap();
-    assert!(!out.warnings.iter().any(|w| w.contains("smart filter")), "{:?}", out.warnings);
+    assert!(!out.warnings.iter().any(|w| w.contains("live filter")), "{:?}", out.warnings);
     assert!(structure_errors(&out.bytes).is_empty());
     keep("camera-raw-edited.psd", &out.bytes);
     let back = photocraft_io::import("edited.psd", &out.bytes).unwrap().document;
@@ -369,13 +369,13 @@ fn perf_24mp_smart_object_export() {
     assert!(wg.is_empty(), "{wg:?}");
     let mb = |b: usize| b as f64 / 1e6;
     eprintln!(
-        "24 MP PSD export: pixels {tf:.2} s {:.1} MB | smart object {ts:.2} s {:.1} MB | + Gaussian Blur smart filter {tg:.2} s {:.1} MB",
+        "24 MP PSD export: pixels {tf:.2} s {:.1} MB | embedded layer {ts:.2} s {:.1} MB | + Gaussian Blur live filter {tg:.2} s {:.1} MB",
         mb(sf),
         mb(ss),
         mb(sg)
     );
     // The embedded file is about one more copy of the layer; the filter cache one more again.
-    assert!(ss < sf * 5 / 2, "smart object {ss} vs pixels {sf}");
+    assert!(ss < sf * 5 / 2, "embedded layer {ss} vs pixels {sf}");
     assert!(sg < sf * 4, "with filters {sg} vs pixels {sf}");
 }
 

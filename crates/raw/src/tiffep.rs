@@ -250,6 +250,8 @@ pub(crate) fn decode(t: &Tiff, format: RawFormat, limits: &Limits) -> Result<Sen
         orientation: crate::tiff::orientation(ifd0.and_then(|i| t.tag_uint(&i, tag::ORIENTATION))),
         baseline_exposure: 0.0,
         gain_maps: Vec::new(),
+        polynomials: Vec::new(),
+        gain_table: None,
         tone_curve: Vec::new(),
         black_point: 0.0,
         warnings,

@@ -68,15 +68,15 @@ pub(crate) fn fill_uncovered(doc: &mut Document, active: Option<LayerId>, cov: &
     let canvas = doc.bounds();
     let (w, h) = (canvas.width(), canvas.height());
     if u64::from(w) * u64::from(h) > MAX_PIXELS {
-        return Err(EngineError::Other(format!("the {w} x {h} crop is too large for Content-Aware fill")));
+        return Err(EngineError::Other(format!("the {w} x {h} crop is too large for Fill from Surroundings")));
     }
     let (w, h) = (w as usize, h as usize);
-    let len = w.checked_mul(h).ok_or_else(|| EngineError::Other("the crop is too large for Content-Aware fill".into()))?;
+    let len = w.checked_mul(h).ok_or_else(|| EngineError::Other("the crop is too large for Fill from Surroundings".into()))?;
     if len == 0 {
         return Ok(());
     }
     let margin = cov.margin();
-    let mut labels = crate::allocation::filled(len, 0u32, "Content-Aware crop fill")?;
+    let mut labels = crate::allocation::filled(len, 0u32, "Fill from Surroundings (crop)")?;
     labels.par_chunks_mut(w).enumerate().for_each(|(y, row)| {
         for (x, l) in row.iter_mut().enumerate() {
             if !cov.covered(x as i32, y as i32, margin) {
@@ -88,11 +88,11 @@ pub(crate) fn fill_uncovered(doc: &mut Document, active: Option<LayerId>, cov: &
         return Ok(());
     }
     if !labels.contains(&0) {
-        return Err(EngineError::Other("Content-Aware fill needs some of the image inside the crop to sample from".into()));
+        return Err(EngineError::Other("Fill from Surroundings needs some of the image inside the crop to sample from".into()));
     }
     let id = target_layer(doc, active)?;
     let pieces = label_components(&mut labels, w, h)?;
-    let surf = doc.layer(id).and_then(|l| l.surface()).ok_or_else(|| EngineError::Other("Content-Aware fill needs a pixel layer".into()))?;
+    let surf = doc.layer(id).and_then(|l| l.surface()).ok_or_else(|| EngineError::Other("Fill from Surroundings needs a pixel layer".into()))?;
     let label = |x: i32, y: i32| -> u32 {
         if x < 0 || y < 0 {
             return 0;
@@ -124,7 +124,7 @@ pub(crate) fn fill_uncovered(doc: &mut Document, active: Option<LayerId>, cov: &
             Ok((*bounds, out))
         })
         .collect::<Result<_>>()?;
-    let surf = doc.layer_mut(id).and_then(|l| l.surface_mut()).ok_or_else(|| EngineError::Other("Content-Aware fill needs a pixel layer".into()))?;
+    let surf = doc.layer_mut(id).and_then(|l| l.surface_mut()).ok_or_else(|| EngineError::Other("Fill from Surroundings needs a pixel layer".into()))?;
     for (r, px) in filled {
         surf.write_region(r, &px);
     }
@@ -138,7 +138,7 @@ fn target_layer(doc: &Document, active: Option<LayerId>) -> Result<LayerId> {
     }
     active
         .filter(|id| doc.layer(*id).is_some_and(|l| matches!(l.content, photocraft_doc::LayerContent::Raster(_))))
-        .ok_or_else(|| EngineError::Other("Content-Aware crop fill needs a Background or an active pixel layer".into()))
+        .ok_or_else(|| EngineError::Other("Fill from Surroundings (crop) needs a Background or an active pixel layer".into()))
 }
 
 /// Numbers the 8-connected pieces of `UNLABELLED` pixels 1, 2, … and returns each one's bounds.

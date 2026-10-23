@@ -762,6 +762,17 @@ fn object_at_on_the_background_or_off_canvas_finds_nothing() {
     assert!(grabcut::object_at(&s, canvas, 400.0, 10.0, 0).is_none());
 }
 
+#[test]
+fn a_mask_spanning_the_frame_is_the_backdrop() {
+    let (w, h) = (40, 30);
+    // The lower half: every side, half the frame.
+    let ground: Vec<bool> = (0..w * h).map(|i| i / w >= h / 2 || i % w == 20).collect();
+    assert!(grabcut::is_backdrop(&ground, w, h));
+    // As large, but inside the frame.
+    let blob: Vec<bool> = (0..w * h).map(|i| (2..w - 2).contains(&(i % w)) && (2..h - 2).contains(&(i / w))).collect();
+    assert!(!grabcut::is_backdrop(&blob, w, h));
+}
+
 // ---------- Select Subject on the cases reported in #2788 ----------
 
 /// A figure whose upper part is close to the background colour (a cream shirt on a near-white

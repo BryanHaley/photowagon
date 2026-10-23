@@ -1,16 +1,14 @@
-//! Filter › Lens Correction, Filter › Adaptive Wide Angle, Filter › Camera Raw Filter and
-//! File › Automate › Lens Correction (the batch twin).
+//! Filter › Lens Correction, Filter › Camera Raw Filter and File › Automate › Lens Correction
+//! (the batch twin). Adaptive Wide Angle was deleted: its method is patented (US 8,525,871).
 //!
-//! The three filters act on the active pixel layer (inside the selection) or, on a smart
+//! The filters act on the active pixel layer (inside the selection) or, on a smart
 //! object, record a smart filter whose params are fully resolved (EXIF-derived values are
 //! written into them), so re-rendering is deterministic. Algorithms: [`photocraft_algo::lens`],
-//! [`photocraft_algo::wideangle`], [`photocraft_algo::camera_raw`].
+//! [`photocraft_algo::camera_raw`].
 
 use photocraft_algo::camera_raw::{self, CameraRaw};
 use photocraft_algo::exif;
 use photocraft_algo::lens::{self, EdgeMode, LensCorrection};
-use photocraft_algo::transform::Interp;
-use photocraft_algo::wideangle::{self, WideAngle};
 use photocraft_color::{ColorMode, SampleType};
 use photocraft_doc::{Document, Layer, LayerContent, LayerId, SmartFilter};
 use photocraft_geom::Rect;
@@ -22,7 +20,6 @@ use crate::photo_cmds::Stopwatch;
 use crate::{EngineError, Result, Session};
 
 pub const LENS: &str = "filter.lensCorrection";
-pub const WIDE: &str = "filter.adaptiveWideAngle";
 pub const RAW: &str = "filter.cameraRaw";
 pub const LENS_BATCH: &str = "file.automate.lensCorrection";
 
@@ -106,31 +103,6 @@ fn resolved_lens_params(p: &Value, lc: &LensCorrection) -> Value {
         }
     }
     q
-}
-
-/// Adaptive Wide Angle settings; a zero focal length is taken from EXIF when present.
-pub fn wide_params(cmd: &str, p: &Value, info: Option<&exif::CameraInfo>) -> Result<WideAngle> {
-    let mut wa: WideAngle = serde_json::from_value(p.clone())
-        .map_err(|e| bad(cmd, format!("bad params: {e} (constraints: [{{\"a\":[x,y],\"b\":[x,y],\"orientation\":\"free|horizontal|vertical\"}}])")))?;
-    if wa.constraints.iter().any(|c| c.a.iter().chain(&c.b).any(|v| !v.is_finite())) {
-        return Err(bad(cmd, "constraint points must be finite"));
-    }
-    wa.scale = wa.scale.clamp(50.0, 150.0);
-    wa.crop_factor = wa.crop_factor.clamp(0.1, 10.0);
-    if wa.focal_length <= 0.0
-        && let Some(i) = info
-    {
-        if let Some(f) = i.focal_length {
-            wa.focal_length = f;
-            if let Some(f35) = i.focal_length_35mm {
-                wa.crop_factor = (f35 / f).clamp(0.1, 10.0);
-            }
-        } else if let Some(f35) = i.focal_length_35mm {
-            wa.focal_length = f35;
-            wa.crop_factor = 1.0;
-        }
-    }
-    Ok(wa)
 }
 
 /// Camera Raw settings (ACR names in camelCase).
@@ -240,7 +212,8 @@ fn mix_by_selection(old: &Surface, new: &Surface, sel: &Surface) -> Surface {
 pub fn apply_to_surface(id: &str, params: &Value, surf: &Surface, canvas: Rect) -> Option<Surface> {
     match id {
         LENS => Some(lens::correct(surf, canvas, &lens_params(id, params, canvas, None).ok()?)),
-        WIDE => Some(wideangle::apply(surf, canvas, &wide_params(id, params, None).ok()?, Interp::Bicubic)),
+        // Adaptive Wide Angle was deleted: an old document's filter draws nothing.
+        "filter.adaptiveWideAngle" => Some(surf.clone()),
         RAW => Some(camera_raw_surface(surf, canvas, &raw_params(id, params).ok()?)),
         _ => None,
     }
@@ -265,7 +238,7 @@ fn filterable(s: &Session) -> std::result::Result<(), String> {
     match &d.doc.layer(id).ok_or("no active layer")?.content {
         LayerContent::Raster(_) => Ok(()),
         LayerContent::Smart(sm) if sm.cache.is_some() => Ok(()),
-        other => Err(format!("filters need a pixel layer (active layer is {} {} layer)", other.article(), other.kind_name())),
+        other => Err(format!("not on {} layers", other.kind_name())),
     }
 }
 
@@ -274,7 +247,7 @@ fn raw_enabled(s: &Session) -> std::result::Result<(), String> {
     let d = s.active().ok_or("no document open")?;
     match d.doc.mode {
         ColorMode::Rgb | ColorMode::Grayscale => Ok(()),
-        m => Err(format!("Camera Raw Filter needs an RGB or Grayscale document (this one is {m:?})")),
+        m => Err(format!("Develop needs an RGB or Grayscale document (this one is {m:?})")),
     }
 }
 
@@ -330,48 +303,6 @@ fn lens_correction(s: &mut Session, p: &Value) -> Result<Value> {
     Ok(json!({"layer": id.0, "profile": lc.profile.as_ref().map(|p| p.name.clone()), "angle": lc.angle, "scale": lc.scale, "params": stored, "ms": t0.ms()}))
 }
 
-fn adaptive_wide_angle(s: &mut Session, p: &Value) -> Result<Value> {
-    let st = s.active().ok_or(EngineError::NoDocument)?;
-    let frame = st.doc.bounds();
-    let info = camera_info(&st.doc);
-    let wa = wide_params(WIDE, p, info.as_ref())?;
-    let t0 = Stopwatch::start();
-    let mesh = wideangle::solve(&wa, frame);
-    let cam = wideangle::Camera::new(&wa, frame);
-    let mut stored = serde_json::to_value(&wa).unwrap_or(Value::Null);
-    if let Some(l) = p.get("layer") {
-        stored["layer"] = l.clone();
-    }
-    let interp = Interp::parse(p.get("interpolation").and_then(Value::as_str).unwrap_or("bicubic"));
-    let id = run_filter(s, WIDE, "Adaptive Wide Angle", stored.clone(), true, &|surf, canvas| {
-        let tris = mesh.triangles();
-        if canvas == frame {
-            photocraft_algo::warp::warp_triangles(surf, canvas, &mesh.verts, &tris, interp)
-        } else {
-            wideangle::apply(surf, canvas, &wa, interp)
-        }
-    })?;
-    let model = match cam.model {
-        wideangle::WideModel::Fisheye => "fisheye",
-        wideangle::WideModel::Perspective => "perspective",
-        wideangle::WideModel::FullSpherical => "fullSpherical",
-        wideangle::WideModel::Auto => "auto",
-    };
-    if let Some(m) = stored.as_object_mut() {
-        m.remove("layer");
-    }
-    Ok(json!({
-        "layer": id.0,
-        "model": model,
-        "focalPx": cam.f,
-        "constraints": wa.constraints.len(),
-        "curves": mesh.curves,
-        "residual": mesh.residual,
-        "params": stored,
-        "ms": t0.ms(),
-    }))
-}
-
 /// The transfer curve Camera Raw decodes `doc`'s values with ([`CameraRaw::encoding_gamma`]):
 /// ProPhoto's gamma 1.8 (raws open in it), Adobe RGB's 563/256, 1 for linear sRGB, else 0 for
 /// the sRGB curve.
@@ -406,12 +337,12 @@ fn camera_raw_cmd(s: &mut Session, p: &Value) -> Result<Value> {
         if raw_pixels(area).is_none() {
             return Err(bad(
                 RAW,
-                format!("the image is too large for Camera Raw ({}×{} px; max {} megapixels)", area.width(), area.height(), MAX_RAW_PIXELS / 1_000_000),
+                format!("the image is too large for Raw Develop ({}×{} px; max {} megapixels)", area.width(), area.height(), MAX_RAW_PIXELS / 1_000_000),
             ));
         }
     }
     let t0 = Stopwatch::start();
-    let id = run_filter(s, RAW, "Camera Raw Filter", p.clone(), false, &|surf, canvas| camera_raw_surface(surf, canvas.union(&surf.content_bounds()), &cr))?;
+    let id = run_filter(s, RAW, "Develop", p.clone(), false, &|surf, canvas| camera_raw_surface(surf, canvas.union(&surf.content_bounds()), &cr))?;
     Ok(json!({"layer": id.0, "identity": cr.is_identity(), "ms": t0.ms()}))
 }
 
@@ -452,21 +383,11 @@ pub fn specs() -> Vec<CommandSpec> {
             journal: true,
         },
         CommandSpec {
-            id: WIDE,
-            label: "Adaptive Wide Angle…",
-            menu: &["Filter"],
-            shortcut: Some("Cmd+Alt+Shift+A"),
-            params: r##"{"model":"auto|fisheye|perspective|fullSpherical","focalLength":0..200=0,"cropFactor":0.1..10=1,"scale":50..150=100,"constraints":[{"a":[x,y],"b":[x,y],"orientation":"free|horizontal|vertical"}]}"##,
-            enabled: filterable,
-            run: adaptive_wide_angle,
-            journal: true,
-        },
-        CommandSpec {
             id: RAW,
-            label: "Camera Raw Filter…",
+            label: "Develop…",
             menu: &["Filter"],
             shortcut: Some("Cmd+Shift+A"),
-            params: r##"{"temperature":-100..100=0,"tint":-100..100=0,"exposure":-5..5=0,"contrast":-100..100=0,"highlights":-100..100=0,"shadows":-100..100=0,"whites":-100..100=0,"blacks":-100..100=0,"texture":-100..100=0,"clarity":-100..100=0,"dehaze":-100..100=0,"vibrance":-100..100=0,"saturation":-100..100=0,"curveHighlights":-100..100=0,"curveLights":-100..100=0,"curveDarks":-100..100=0,"curveShadows":-100..100=0,"curveSplits":[25,50,75],"pointCurve":[[in,out]],"pointCurveRed":[[in,out]],"pointCurveGreen":[[in,out]],"pointCurveBlue":[[in,out]],"hslHue":[8],"hslSat":[8],"hslLum":[8],"gradeShadows":{"hue":deg,"sat":0..100,"lum":-100..100},"gradeMidtones":{},"gradeHighlights":{},"gradeGlobal":{},"gradeBlending":0..100=50,"gradeBalance":-100..100=0,"sharpenAmount":0..150=0,"sharpenRadius":0.5..3=1,"sharpenDetail":0..100=25,"sharpenMasking":0..100=0,"noiseLuminance":0..100=0,"noiseLuminanceDetail":0..100=50,"noiseColor":0..100=0,"noiseColorDetail":0..100=50,"grainAmount":0..100=0,"grainSize":0..100=25,"grainRoughness":0..100=50,"vignetteAmount":-100..100=0,"vignetteMidpoint":0..100=50,"vignetteRoundness":-100..100=0,"vignetteFeather":0..100=50,"vignetteHighlights":0..100=0,"vignetteStyle":"highlightPriority|colorPriority|paintOverlay","seed":u32=0}"##,
+            params: r##"{"temperature":-100..100=0,"tint":-100..100=0,"exposure":-5..5=0,"contrast":-100..100=0,"highlights":-100..100=0,"shadows":-100..100=0,"whites":-100..100=0,"blacks":-100..100=0,"texture":-100..100=0,"clarity":-100..100=0,"dehaze":-100..100=0,"vibrance":-100..100=0,"saturation":-100..100=0,"curveHighlights":-100..100=0,"curveLights":-100..100=0,"curveDarks":-100..100=0,"curveShadows":-100..100=0,"curveSplits":[25,50,75],"pointCurve":[[in,out]],"pointCurveRed":[[in,out]],"pointCurveGreen":[[in,out]],"pointCurveBlue":[[in,out]],"hslHue":[8],"hslSat":[8],"hslLum":[8],"gradeShadows":{"hue":deg,"sat":0..100,"lum":-100..100},"gradeMidtones":{},"gradeHighlights":{},"gradeGlobal":{},"gradeBlending":0..100=50,"gradeBalance":-100..100=0,"sharpenAmount":0..150=0,"sharpenRadius":0.5..3=1,"sharpenDetail":0..100=25,"sharpenMasking":0..100=0,"noiseLuminance":0..100=0,"noiseLuminanceDetail":0..100=50,"noiseColor":0..100=0,"noiseColorDetail":0..100=50,"grainAmount":0..100=0,"grainSize":0..100=25,"grainRoughness":0..100=50,"vignetteAmount":-100..100=0,"vignetteMidpoint":0..100=50,"vignetteRoundness":-100..100=0,"vignetteFeather":0..100=50,"vignetteHighlights":0..100=0,"vignetteStyle":"highlightPriority|colorPriority|paintOverlay","seed":u32=0,"convertToGrayscale":bool=false}"##,
             enabled: raw_enabled,
             run: camera_raw_cmd,
             journal: true,
@@ -558,22 +479,6 @@ mod tests {
     }
 
     #[test]
-    fn adaptive_wide_angle_straightens() {
-        let mut s = session(8);
-        let r = s
-            .execute(WIDE, json!({"model": "fisheye", "focalLength": 10, "constraints": [{"a": [10, 15], "b": [110, 15], "orientation": "horizontal"}]}))
-            .unwrap();
-        assert_eq!(r["model"], "fisheye");
-        assert!(r["residual"].as_f64().unwrap() < 2.0, "{r}");
-        assert!(s.execute(WIDE, json!({"constraints": [{"a": [0, 0]}]})).is_err());
-        // Smart filter re-render.
-        let mut s = session(16);
-        s.execute("layer.smartObjects.convertToSmartObject", json!({})).unwrap();
-        s.execute(WIDE, json!({"model": "perspective", "scale": 90})).unwrap();
-        assert!(active_px(&s, 1, 1)[3] < 0.5);
-    }
-
-    #[test]
     fn camera_raw_filter_on_layers_selection_and_smart_objects() {
         for depth in [8, 16, 32] {
             let mut s = session(depth);
@@ -608,6 +513,16 @@ mod tests {
     }
 
     #[test]
+    fn camera_raw_monochrome_profile_turns_the_layer_gray() {
+        let mut s = session(8);
+        let before = active_px(&s, 60, 40);
+        assert!((before[0] - before[2]).abs() > 0.05, "{before:?}");
+        s.execute(RAW, json!({"convertToGrayscale": true})).unwrap();
+        let p = active_px(&s, 60, 40);
+        assert!((p[0] - p[1]).abs() < 0.01 && (p[1] - p[2]).abs() < 0.01, "{p:?}");
+    }
+
+    #[test]
     fn camera_raw_decodes_light_with_the_documents_curve() {
         // A raw opens in ProPhoto (gamma 1.8): the filter keeps that with its settings, so Whites,
         // Blacks, Shadows and Highlights work on the same light as when it was applied.
@@ -619,7 +534,7 @@ mod tests {
         let d = s.active().unwrap();
         let filters = match &d.doc.layer(d.active_layer.unwrap()).unwrap().content {
             LayerContent::Smart(so) => so.smart_filters.clone(),
-            _ => panic!("smart object expected"),
+            _ => panic!("embedded layer expected"),
         };
         assert_eq!(filters[0].params["encodingGamma"], json!(1.8));
         // sRGB documents use the sRGB curve, the default, and store nothing.

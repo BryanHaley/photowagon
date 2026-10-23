@@ -45,7 +45,7 @@ pub mod liquify;
 pub mod magnetic;
 pub mod matting;
 mod noise;
-pub mod nonlocal;
+pub mod exemplar;
 mod oil;
 mod other;
 mod other2;
@@ -65,9 +65,10 @@ pub mod remove;
 mod render;
 pub mod render2;
 pub mod resample;
+pub mod resynth;
+pub mod retarget;
 pub mod retouch;
 pub mod scancrop;
-pub mod seam;
 pub mod segment;
 pub mod selection;
 mod selection_blur;
@@ -83,7 +84,6 @@ pub mod vanishing;
 pub mod vectorscope;
 mod video;
 pub mod warp;
-pub mod wideangle;
 
 pub use artistic::{GALLERY_CATEGORIES, GalleryEffect, GalleryFilter, GalleryParam, GalleryParamKind};
 pub use image::{Edge, Image};
@@ -505,8 +505,12 @@ pub enum FilterParams {
     IrisBlur {
         pins: Vec<IrisPin>,
     },
-    FieldBlur {
-        pins: Vec<FieldPin>,
+    /// Blur up to `radius` px; each pixel's share of it is `mask` (channel 0, 0–1, document
+    /// coordinates, 0 outside it), supplied by the caller. No mask blurs every pixel fully.
+    VariableBlur {
+        radius: f32,
+        #[serde(skip)]
+        mask: Option<std::sync::Arc<Image>>,
     },
     SpinBlur {
         pins: Vec<SpinPin>,
@@ -662,7 +666,7 @@ impl FilterParams {
             FilterParams::ShapeBlur { .. } => "Shape Blur",
             FilterParams::TiltShift { .. } => "Tilt-Shift",
             FilterParams::IrisBlur { .. } => "Iris Blur",
-            FilterParams::FieldBlur { .. } => "Field Blur",
+            FilterParams::VariableBlur { .. } => "Variable Blur",
             FilterParams::SpinBlur { .. } => "Spin Blur",
             FilterParams::PathBlur { .. } => "Path Blur",
             FilterParams::Custom { .. } => "Custom",
@@ -706,7 +710,7 @@ fn halo_ext(p: &FilterParams) -> Halo {
         FilterParams::ShapeBlur { radius, .. } => r(shape_blur::radius(*radius)),
         FilterParams::TiltShift { blur, .. } => r(gallery::reach(*blur)),
         FilterParams::IrisBlur { pins } => r(gallery::reach(pins.iter().map(|p| p.blur).fold(0.0, f32::max))),
-        FilterParams::FieldBlur { pins } => r(gallery::reach(pins.iter().map(|p| p.blur).fold(0.0, f32::max))),
+        FilterParams::VariableBlur { radius, .. } => r(gallery::reach(*radius)),
         FilterParams::PathBlur { paths } => r(paths.iter().map(|p| p.speed.abs()).fold(0.0, f32::max) / 2.0 + 1.0),
         FilterParams::Custom { .. } => r(2.0),
         FilterParams::DeInterlace { .. } => r(1.0),
@@ -895,7 +899,7 @@ pub fn kernel(params: &FilterParams, src: &Image, out: Rect, ctx: &Ctx) -> Vec<f
             gallery::tilt_shift(src, out, ctx, *blur, (*center_x, *center_y), *angle, *focus, *transition)
         }
         FilterParams::IrisBlur { pins } => gallery::iris(src, out, ctx, pins),
-        FilterParams::FieldBlur { pins } => gallery::field(src, out, ctx, pins),
+        FilterParams::VariableBlur { radius, mask } => gallery::variable(src, out, ctx, *radius, mask.as_deref()),
         FilterParams::SpinBlur { pins } => gallery::spin(src, out, ctx, pins),
         FilterParams::PathBlur { paths } => gallery::path(src, out, ctx, paths),
         FilterParams::Custom { kernel, scale, offset } => other2::custom(src, out, ctx, kernel, *scale, *offset),

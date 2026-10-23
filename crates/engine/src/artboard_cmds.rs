@@ -59,7 +59,7 @@ fn active_artboard(s: &Session) -> Option<LayerId> {
 }
 
 fn has_active_artboard(s: &Session) -> std::result::Result<(), String> {
-    active_artboard(s).map(|_| ()).ok_or_else(|| "select an artboard (or a layer inside one)".into())
+    active_artboard(s).map(|_| ()).ok_or_else(|| "select an artboard".into())
 }
 
 fn has_plain_group(s: &Session) -> std::result::Result<(), String> {

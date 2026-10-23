@@ -169,37 +169,6 @@ fn periodic_clone_source_bounds_allocations_and_accepts_far_coordinates() {
 }
 
 #[test]
-fn proximity_match_reads_original_pixels_for_overlapping_offsets() {
-    // Shifting source one pixel to the left overlaps the destination in a
-    // left-to-right traversal: reading the output would repeat the first value.
-    let img = vec![10.0, 20.0, 30.0, 40.0, 50.0, 60.0];
-    let mask = [false, true, true, true, false, false];
-    let result = proximity_source_patch(&img, 6, 1, 1, &mask, -1, 0).unwrap();
-    assert_eq!(result, vec![10.0, 10.0, 20.0, 30.0, 50.0, 60.0]);
-    assert_eq!(img, vec![10.0, 20.0, 30.0, 40.0, 50.0, 60.0], "source remains untouched");
-}
-
-#[test]
-fn proximity_match_preserves_channels_and_unmasked_pixels() {
-    // A two-channel image shifted from the row above.
-    let img = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
-    let mask = [false, false, true, false];
-    let result = proximity_source_patch(&img, 2, 2, 2, &mask, 0, -1).unwrap();
-    assert_eq!(result, vec![1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 7.0, 8.0]);
-}
-
-#[test]
-fn proximity_match_rejects_invalid_translations_without_panicking() {
-    let img = vec![1.0, 2.0, 3.0, 4.0];
-    let mask = [true, false, false, false];
-    assert!(proximity_source_patch(&img, 2, 2, 1, &mask, -1, 0).is_none());
-    assert!(proximity_source_patch(&img, 2, 2, 1, &mask, 0, -1).is_none());
-    assert!(proximity_source_patch(&img, 2, 2, 1, &mask, i32::MAX, 0).is_none());
-    assert!(proximity_source_patch(&img, 2, 2, 1, &mask[..3], 0, 0).is_none());
-    assert!(proximity_source_patch(&img, usize::MAX, 2, 1, &mask, 0, 0).is_none());
-}
-
-#[test]
 fn clone_preview_matches_source_without_mutating_session() {
     use crate::presets::clone_source::Mapping;
     for depth in DEPTHS {
@@ -375,7 +344,7 @@ fn healing_brush_takes_destination_colour_and_source_texture() {
 
 #[test]
 fn spot_healing_removes_blemish_all_types() {
-    for (depth, kind) in [(8u64, "contentAware"), (16, "contentAware"), (32, "contentAware"), (8, "proximityMatch"), (16, "createTexture")] {
+    for (depth, kind) in [(8u64, "contentAware"), (16, "contentAware"), (32, "contentAware"), (8, "matchNearby"), (8, "proximityMatch"), (16, "createTexture")] {
         let mut s = session(160, 120, depth, "rgb");
         paint_layer(&mut s, |x, y| {
             let d = ((x - 80) as f32).hypot((y - 60) as f32);
@@ -1016,7 +985,7 @@ fn patch_content_aware_copies_the_dragged_to_content_into_the_selection() {
             let (got, want) = (rgba(&s, x, y), texture(x, y));
             assert!((got[0] - want[0]).abs() <= tol(depth), "depth {depth}: untouched {x},{y}: {got:?}");
         }
-        assert_eq!(s.active().unwrap().history.undo_label(), Some("Patch (Content-Aware)"));
+        assert_eq!(s.active().unwrap().history.undo_label(), Some("Patch (From Surroundings)"));
         s.execute("edit.undo", json!({})).unwrap();
         assert_eq!(rgba(&s, 44, 24)[1], 0.0, "depth {depth}: undo brings the blemish back");
     }
@@ -1232,7 +1201,7 @@ fn content_aware_extend_keeps_the_original() {
     assert_eq!(r["mode"], "extend");
     assert!(is_object(rgba(&s, 25, 31)), "the original stays");
     assert!(is_object(rgba(&s, 85, 21)), "the copy lands");
-    assert_eq!(s.active().unwrap().history.undo_label(), Some("Content-Aware Extend"));
+    assert_eq!(s.active().unwrap().history.undo_label(), Some("Extend and Fill"));
 }
 
 #[test]
@@ -1851,7 +1820,7 @@ fn spot_healing_keeps_film_grain_through_overlapping_strokes() {
         let m = v.iter().sum::<f32>() / v.len() as f32;
         (m, (v.iter().map(|a| (a - m).powi(2)).sum::<f32>() / v.len() as f32).sqrt())
     };
-    for (depth, kind) in [(8u64, "contentAware"), (8, "proximityMatch"), (8, "createTexture"), (16, "createTexture")] {
+    for (depth, kind) in [(8u64, "contentAware"), (8, "matchNearby"), (8, "createTexture"), (16, "createTexture")] {
         let mut s = session(400, 300, depth, "rgb");
         paint_layer(&mut s, film_grain);
         let (m0, sd0) = red(&s, 0, 100, 0, 100);
@@ -2142,5 +2111,191 @@ fn periodic_clone_interior_matches_ordinary_brush_masks_and_transparency() {
             let error = a.iter().zip(&b).map(|(a, b)| (a - b).abs()).fold(0.0_f32, f32::max);
             assert!(error <= tolerance, "depth={depth}, brush={brush}, max native-channel error={error}");
         }
+    }
+}
+
+/// A stand-in for the model: its input 60 levels too bright, with gray stripes in the hole.
+fn striped_and_too_bright(image: &[u8], mask: &[u8]) -> Vec<u8> {
+    let side = (mask.len() as f64).sqrt() as usize;
+    let mut out = Vec::with_capacity(image.len());
+    for (i, (px, m)) in image.as_chunks::<3>().0.iter().zip(mask).enumerate() {
+        let v = |c: u8| if *m > 0 { 128 + 60 + if (i % side).is_multiple_of(2) { 40 } else { 0 } } else { c.saturating_add(60) };
+        out.extend([v(px[0]), v(px[1]), v(px[2])]);
+    }
+    out
+}
+
+#[test]
+fn ai_remove_hands_out_a_full_size_square_and_pastes_back_only_the_hole() {
+    use photocraft_paint::tile::{b64_decode, b64_encode};
+    for (depth, mode) in [(8, "rgb"), (16, "gray")] {
+        let mut s = square_session(depth, mode);
+        let stroke = json!({"points": [[42, 30], [50, 30]], "size": 4, "ai": {"side": 400}});
+        let v = s.execute("paint.removeAI", stroke.clone()).unwrap();
+        assert_eq!(v["crop"], json!([0, 0, 96, 64]), "{mode}: the whole canvas, smaller than the square");
+        let (image, mask) = (b64_decode(v["image"].as_str().unwrap()).unwrap(), b64_decode(v["mask"].as_str().unwrap()).unwrap());
+        assert_eq!((image.len(), mask.len()), (400 * 400 * 3, 400 * 400));
+        assert_eq!(mask[30 * 400 + 46], 255, "{mode}: the stroke is the hole");
+        assert_eq!(mask[5 * 400 + 5], 0);
+        assert_eq!(image[(30 * 400 + 46) * 3], 13, "{mode}: the square's own pixels, at full size");
+
+        let past = s.active().unwrap().history.past_len();
+        let mut apply = stroke.clone();
+        apply["ai"]["fill"] = json!(b64_encode(&striped_and_too_bright(&image, &mask)));
+        s.execute("paint.remove", apply).unwrap();
+        let (a, b) = (rgba(&s, 46, 30)[0], rgba(&s, 47, 30)[0]);
+        assert!(((a + b) / 2.0 - 0.5).abs() < 0.03, "{mode}: the colour round the hole, not the model's tint: {a} {b}");
+        assert!((a - b).abs() > 0.1, "{mode}: and the model's texture: {a} {b}");
+        assert_eq!(mask[18 * 400 + 46], 0);
+        assert!(near(rgba(&s, 46, 18), [0.5, 0.5, 0.5, 1.0], 0.01), "{mode}: next to the hole stays");
+        let d = s.active().unwrap();
+        assert_eq!(d.history.past_len(), past + 1, "{mode}: one undo step");
+    }
+}
+
+#[test]
+fn ai_remove_pads_a_small_canvas_and_refuses_what_it_cannot_do() {
+    use photocraft_paint::tile::b64_decode;
+    let mut s = session(40, 30, 8, "rgb");
+    paint_layer(&mut s, |x, _| [x as f32 / 39.0, 0.5, 0.5, 1.0]);
+    let v = s.execute("paint.removeAI", json!({"points": [[20, 15]], "size": 6, "ai": {"side": 64}})).unwrap();
+    assert_eq!(v["crop"], json!([0, 0, 40, 30]));
+    let (image, mask) = (b64_decode(v["image"].as_str().unwrap()).unwrap(), b64_decode(v["mask"].as_str().unwrap()).unwrap());
+    assert_eq!(image[(10 * 64 + 41) * 3], image[(10 * 64 + 38) * 3], "past the canvas it's mirrored");
+    assert_eq!(mask[(29 - 15) * 64 + 20], 255, "holes and all: row 44 mirrors row 15");
+
+    let mut s = square_session(8, "rgb");
+    // Too big for the square: the stroke and a margin, scaled down to fit, then back up.
+    let big = json!({"points": [[20, 30], [70, 30]], "size": 8, "ai": {"side": 64}});
+    let v = s.execute("paint.removeAI", big.clone()).unwrap();
+    assert_eq!(v["crop"], json!([0, 0, 96, 64]));
+    assert!((v["scale"].as_f64().unwrap() - 64.0 / 96.0).abs() < 1e-9);
+    let mask = b64_decode(v["mask"].as_str().unwrap()).unwrap();
+    assert_eq!(mask[20 * 64 + 30], 255, "the hole, at two thirds");
+    assert_eq!(mask[50 * 64 + 30], 0, "padding below the scaled window");
+    let image = b64_decode(v["image"].as_str().unwrap()).unwrap();
+    let mut apply = big.clone();
+    apply["ai"]["fill"] = json!(photocraft_paint::tile::b64_encode(&striped_and_too_bright(&image, &mask)));
+    s.execute("paint.remove", apply).unwrap();
+    assert!(near(rgba(&s, 46, 30), [0.5, 0.5, 0.5, 1.0], 0.1), "deep in the hole, scaled back up: {:?}", rgba(&s, 46, 30));
+    assert!(!near(rgba(&s, 46, 30), [0.05, 0.05, 0.05, 1.0], 0.1), "the square is gone");
+    // Without Match Colour the model's picture goes in as it is.
+    let mut s = square_session(8, "rgb");
+    let v = s.execute("paint.removeAI", big.clone()).unwrap();
+    let image = b64_decode(v["image"].as_str().unwrap()).unwrap();
+    let mut apply = big.clone();
+    apply["ai"]["fill"] = json!(photocraft_paint::tile::b64_encode(&striped_and_too_bright(&image, &mask)));
+    apply["ai"]["matchColor"] = json!(false);
+    s.execute("paint.remove", apply).unwrap();
+    assert!(rgba(&s, 46, 30)[0] > 0.7, "the model's tint stays: {:?}", rgba(&s, 46, 30));
+    assert!(near(rgba(&s, 46, 10), [0.5, 0.5, 0.5, 1.0], 0.01), "outside it");
+    let err = s.execute("paint.remove", json!({"points": [[46, 30]], "size": 8, "ai": {"side": 64}})).unwrap_err().to_string();
+    assert!(err.contains("`ai.fill` is missing"), "{err}");
+    let err = s.execute("paint.remove", json!({"points": [[46, 30]], "size": 8, "ai": {"side": 64, "fill": "AAAA"}})).unwrap_err().to_string();
+    assert!(err.contains("bytes, not"), "{err}");
+    for ai in [json!({"side": 8}), json!({"side": "big"})] {
+        assert!(s.execute("paint.removeAI", json!({"points": [[46, 30]], "size": 8, "ai": ai})).is_err(), "{ai}");
+    }
+    let mut s = square_session(8, "cmyk");
+    let err = s.execute("paint.removeAI", json!({"points": [[46, 30]], "size": 8, "ai": {"side": 64}})).unwrap_err().to_string();
+    assert!(err.contains("RGB and Grayscale"), "{err}");
+}
+
+#[test]
+fn ai_remove_takes_the_selection_as_the_hole() {
+    use photocraft_paint::tile::{b64_decode, b64_encode};
+    let mut s = square_session(8, "rgb");
+    let p = json!({"selection": true, "ai": {"side": 400}});
+    assert!(s.execute("paint.removeAI", p.clone()).unwrap_err().to_string().contains("select what to remove"));
+    s.execute("select.rect", json!({"x": 40, "y": 24, "width": 12, "height": 12})).unwrap();
+    let v = s.execute("paint.removeAI", p.clone()).unwrap();
+    let x0 = v["crop"][0].as_i64().unwrap() as usize;
+    let mask = b64_decode(v["mask"].as_str().unwrap()).unwrap();
+    assert_eq!(mask[30 * 400 + 46 - x0], 255);
+    assert_eq!(mask[21 * 400 + 46 - x0], 255, "grown by 4 pixels, past the selection");
+    assert_eq!(mask[18 * 400 + 46 - x0], 0);
+    let mut apply = p.clone();
+    apply["ai"]["fill"] = json!(b64_encode(&vec![128; 400 * 400 * 3]));
+    s.execute("paint.remove", apply).unwrap();
+    assert!(near(rgba(&s, 46, 30), [0.5, 0.5, 0.5, 1.0], 0.01), "{:?}", rgba(&s, 46, 30));
+    // A selection a little inside the square, as Vision's tend to be: the rim goes too, and the
+    // matched colour is the background's, not the square's (here the hole grows 4 pixels, so
+    // a 1-pixel inset leaves background to match).
+    let mut s = square_session(8, "rgb");
+    s.execute("select.rect", json!({"x": 41, "y": 25, "width": 10, "height": 10})).unwrap();
+    let v = s.execute("paint.removeAI", p.clone()).unwrap();
+    let (image, mask) = (b64_decode(v["image"].as_str().unwrap()).unwrap(), b64_decode(v["mask"].as_str().unwrap()).unwrap());
+    let mut apply = p.clone();
+    apply["ai"]["fill"] = json!(b64_encode(&striped_and_too_bright(&image, &mask)));
+    s.execute("paint.remove", apply).unwrap();
+    for (x, y) in [(40, 24), (51, 35), (46, 30)] {
+        assert!(rgba(&s, x, y)[0] > 0.4, "({x}, {y}) isn't the square's dark any more: {:?}", rgba(&s, x, y));
+    }
+    // The surroundings fill takes a selection too.
+    let mut s = square_session(8, "rgb");
+    s.execute("select.rect", json!({"x": 40, "y": 24, "width": 12, "height": 12})).unwrap();
+    s.execute("paint.remove", json!({"selection": true})).unwrap();
+    assert!(near(rgba(&s, 46, 30), [0.5, 0.5, 0.5, 1.0], 0.03), "{:?}", rgba(&s, 46, 30));
+}
+
+#[test]
+fn ai_remove_fades_the_fill_in_over_the_margin_the_hole_grew_by() {
+    use photocraft_paint::tile::{b64_decode, b64_encode};
+    let mut s = session(400, 200, 8, "rgb");
+    paint_layer(&mut s, |_, _| [0.5, 0.5, 0.5, 1.0]);
+    s.execute("select.rect", json!({"x": 180, "y": 80, "width": 40, "height": 40})).unwrap();
+    let p = json!({"selection": true, "ai": {"side": 400, "matchColor": false}});
+    let v = s.execute("paint.removeAI", p.clone()).unwrap();
+    let mask = b64_decode(v["mask"].as_str().unwrap()).unwrap();
+    // 400 / 50 = 8 pixels of growth; the fade covers the outer 2 (4 at most, half of 8).
+    assert_eq!((mask[100 * 400 + 171], mask[100 * 400 + 172]), (0, 255));
+    let mut apply = p.clone();
+    apply["ai"]["fill"] = json!(b64_encode(&vec![255; 400 * 400 * 3]));
+    s.execute("paint.remove", apply).unwrap();
+    let row: Vec<f32> = (170..178).map(|x| rgba(&s, x, 100)[0]).collect();
+    assert!((row[1] - 0.5).abs() < 0.01, "outside the hole: {row:?}");
+    assert!(row[2] > 0.55 && row[2] < 0.95, "the edge, partway: {row:?}");
+    assert!((row[7] - 1.0).abs() < 0.01, "then the fill: {row:?}");
+}
+
+
+#[test]
+fn ai_remove_matches_colour_to_the_holes_edge_not_the_models_redraw_round_it() {
+    use photocraft_paint::tile::{b64_decode, b64_encode};
+    let mut s = session(300, 300, 8, "rgb");
+    paint_layer(&mut s, |_, _| [0.5, 0.5, 0.5, 1.0]);
+    let p = json!({"points": [[140, 130], [150, 170]], "size": 22, "ai": {"side": 512}});
+    let v = s.execute("paint.removeAI", p.clone()).unwrap();
+    let mask = b64_decode(v["mask"].as_str().unwrap()).unwrap();
+    // Right in the hole, 40 levels too bright everywhere else.
+    let fill: Vec<u8> = mask.iter().flat_map(|m| [if *m > 0 { 128 } else { 168 }; 3]).collect();
+    let mut apply = p.clone();
+    apply["ai"]["fill"] = json!(b64_encode(&fill));
+    s.execute("paint.remove", apply).unwrap();
+    for (x, y) in [(145, 150), (145, 135), (152, 165)] {
+        assert!(near(rgba(&s, x, y), [0.5, 0.5, 0.5, 1.0], 0.02), "({x}, {y}): {:?}", rgba(&s, x, y));
+    }
+}
+
+#[test]
+fn ai_remove_ignores_the_models_edge_pixels_when_matching_colour() {
+    use photocraft_paint::tile::{b64_decode, b64_encode};
+    let mut s = session(300, 300, 8, "rgb");
+    paint_layer(&mut s, |_, _| [0.5, 0.5, 0.5, 1.0]);
+    let p = json!({"points": [[140, 130], [150, 170]], "size": 22, "ai": {"side": 512}});
+    let v = s.execute("paint.removeAI", p.clone()).unwrap();
+    let mask = b64_decode(v["mask"].as_str().unwrap()).unwrap();
+    // Right in the hole but for its outermost pixel, which is far too bright (as models do).
+    let side = 512;
+    let edge = |i: usize| {
+        let (x, y) = (i % side, i / side);
+        mask[i] > 0 && [(x.wrapping_sub(1), y), (x + 1, y), (x, y.wrapping_sub(1)), (x, y + 1)].iter().any(|&(x, y)| x >= side || y >= side || mask[y * side + x] == 0)
+    };
+    let fill: Vec<u8> = (0..side * side).flat_map(|i| [if edge(i) { 250 } else { 128 }; 3]).collect();
+    let mut apply = p.clone();
+    apply["ai"]["fill"] = json!(b64_encode(&fill));
+    s.execute("paint.remove", apply).unwrap();
+    for (x, y) in [(145, 150), (145, 135), (152, 165)] {
+        assert!(near(rgba(&s, x, y), [0.5, 0.5, 0.5, 1.0], 0.02), "({x}, {y}): {:?}", rgba(&s, x, y));
     }
 }

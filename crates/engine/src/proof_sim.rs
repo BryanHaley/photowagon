@@ -238,7 +238,7 @@ fn has_doc(s: &Session) -> std::result::Result<(), String> {
 
 fn is_32(s: &Session) -> std::result::Result<(), String> {
     let d = s.active().ok_or("no document open")?;
-    if d.doc.depth == SampleType::F32 { Ok(()) } else { Err("32-bit Preview Options apply to 32-bit documents".into()) }
+    if d.doc.depth == SampleType::F32 { Ok(()) } else { Err("only for 32-bit documents".into()) }
 }
 
 /// Select a simulated proof (`kind`) and turn Proof Colors on. Plates use the working CMYK.

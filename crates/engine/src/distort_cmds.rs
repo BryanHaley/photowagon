@@ -163,6 +163,99 @@ pub fn puppet_surface(surf: &Surface, w: &PuppetWarp, interp: Interp) -> Option<
     puppet_warp(surf, b, w, interp)
 }
 
+/// Edit › Puppet Warp's live preview (the iOS app): the layer warped on a copy of the document.
+pub struct PuppetPreview {
+    doc: Document,
+    layer: LayerId,
+    warp: PuppetWarp,
+}
+
+/// [`PuppetPreview`] for `edit.puppetWarp` params (cheap; the work is in [`PuppetPreview::render`]).
+pub fn puppet_preview(s: &Session, p: &Value) -> Result<PuppetPreview> {
+    let warp = puppet_params(PUPPET, p)?;
+    let layer = target(s, p)?;
+    let st = s.active().ok_or(EngineError::NoDocument)?;
+    if st.doc.layer(layer).and_then(|l| l.surface()).is_none() {
+        return Err(bad(PUPPET, "the layer has no pixels to warp"));
+    }
+    Ok(PuppetPreview { doc: (*st.doc).clone(), layer, warp })
+}
+
+impl PuppetPreview {
+    /// The warped document and the mesh's edges where they end up, `[x0, y0, x1, y1, …]` in
+    /// document pixels (slow for a big layer: run it off the UI thread).
+    pub fn render(mut self) -> Result<(Document, Vec<f32>)> {
+        let Some(surf) = self.doc.layer(self.layer).and_then(|l| l.surface()) else { return Err(bad(PUPPET, "the layer has no pixels to warp")) };
+        let fmt = surf.format();
+        let src = if fmt.alpha { surf.clone() } else { surf.convert(PixelFormat::new(fmt.mode, fmt.sample, true)) };
+        let b = src.content_bounds();
+        if b.is_empty() {
+            return Ok((self.doc, Vec::new()));
+        }
+        let (solver, v, order) = photocraft_algo::puppet::deform(&src, b, &self.warp, photocraft_algo::puppet::ITERATIONS);
+        let mut seen = std::collections::BTreeSet::new();
+        let mut edges = Vec::new();
+        for t in &solver.mesh.tris {
+            for (a, c) in [(t[0], t[1]), (t[1], t[2]), (t[2], t[0])] {
+                if seen.insert((a.min(c), a.max(c)))
+                    && let (Some(p), Some(q)) = (v.get(a), v.get(c))
+                {
+                    edges.extend([p[0] as f32, p[1] as f32, q[0] as f32, q[1] as f32]);
+                }
+            }
+        }
+        if solver.mesh.tris.is_empty() || self.warp.is_identity() {
+            return Ok((self.doc, edges));
+        }
+        let (mut x0, mut y0, mut x1, mut y1) = (f64::MAX, f64::MAX, f64::MIN, f64::MIN);
+        for p in &v {
+            (x0, y0, x1, y1) = (x0.min(p[0]), y0.min(p[1]), x1.max(p[0]), y1.max(p[1]));
+        }
+        let area = (x1 - x0 + 1.0) * (y1 - y0 + 1.0);
+        if area.is_nan() || area > photocraft_algo::puppet::MAX_WARP_PIXELS {
+            return Err(bad(PUPPET, "the pins stretch the content too far"));
+        }
+        let out = photocraft_algo::puppet::render(&src, b, &solver.mesh, &v, &order, Interp::Bilinear);
+        if let Some(s) = self.doc.layer_mut(self.layer).and_then(|l| l.surface_mut()) {
+            *s = out;
+        }
+        Ok((self.doc, edges))
+    }
+}
+
+/// Fluid Warp's live preview (the iOS app paints strokes on the canvas): the layer warped on a
+/// copy of the document.
+pub struct LiquifyPreview {
+    doc: Document,
+    layer: LayerId,
+    strokes: Vec<LiquifyStroke>,
+    cell: f64,
+}
+
+/// [`LiquifyPreview`] for `filter.liquify` params (cheap; the work is in [`LiquifyPreview::render`]).
+pub fn liquify_preview(s: &Session, p: &Value) -> Result<LiquifyPreview> {
+    let st = s.active().ok_or(EngineError::NoDocument)?;
+    let (strokes, cell) = liquify_params(LIQUIFY, p, st.doc.bounds())?;
+    let layer = target(s, p)?;
+    if st.doc.layer(layer).and_then(|l| l.surface()).is_none() {
+        return Err(bad(LIQUIFY, "the layer has no pixels to warp"));
+    }
+    Ok(LiquifyPreview { doc: (*st.doc).clone(), layer, strokes, cell })
+}
+
+impl LiquifyPreview {
+    /// The warped document (slow for a big layer: run it off the UI thread).
+    pub fn render(mut self) -> Result<Document> {
+        let canvas = self.doc.bounds();
+        let Some(l) = self.doc.layer_mut(self.layer) else { return Err(EngineError::NoLayer(self.layer)) };
+        let Some(surf) = l.surface() else { return Err(bad(LIQUIFY, "the layer has no pixels to warp")) };
+        let out = liquify_surface(surf, &self.strokes, self.cell, canvas);
+        // The copy is thrown away: an embedded layer can show plain pixels.
+        l.content = LayerContent::Raster(out);
+        Ok(self.doc)
+    }
+}
+
 /// Perspective-warps a surface's content.
 pub fn perspective_surface(surf: &Surface, planes: &[Plane], interp: Interp) -> Surface {
     let b = surf.content_bounds();
@@ -203,7 +296,7 @@ fn pixel_layer(s: &Session) -> std::result::Result<(), String> {
     match &d.doc.layer(id).ok_or("no active layer")?.content {
         LayerContent::Raster(_) => Ok(()),
         LayerContent::Smart(sm) if sm.cache.is_some() => Ok(()),
-        other => Err(format!("needs a pixel layer or smart object (active layer is {} {} layer)", other.article(), other.kind_name())),
+        other => Err(format!("not on {} layers", other.kind_name())),
     }
 }
 
@@ -211,7 +304,7 @@ fn smart_layer(s: &Session) -> std::result::Result<(), String> {
     let d = s.active().ok_or("no document open")?;
     match d.active_layer.and_then(|id| d.doc.layer(id)).map(|l| &l.content) {
         Some(LayerContent::Smart(_)) => Ok(()),
-        _ => Err("the active layer is not a smart object".into()),
+        _ => Err("not an embedded layer".into()),
     }
 }
 
@@ -284,7 +377,7 @@ fn liquify(s: &mut Session, p: &Value) -> Result<Value> {
     let r = run_on_layer(
         s,
         LIQUIFY,
-        "Liquify",
+        "Fluid Warp",
         p,
         false,
         &|surf, sel, _| {
@@ -346,7 +439,7 @@ fn puppet(s: &mut Session, p: &Value, cmd: &str) -> Result<Value> {
         })
     };
     let mask_fn = |m: &Surface, _: Option<&Surface>| Ok(moved_mask.borrow_mut().take().unwrap_or_else(|| m.clone()));
-    run_on_layer(s, cmd, "Puppet Warp", p, true, &layer_fn, Some(&mask_fn))
+    run_on_layer(s, cmd, "Pin Warp", p, true, &layer_fn, Some(&mask_fn))
 }
 
 fn perspective(s: &mut Session, p: &Value, cmd: &str) -> Result<Value> {
@@ -381,13 +474,13 @@ fn perspective(s: &mut Session, p: &Value, cmd: &str) -> Result<Value> {
 }
 
 pub fn specs() -> Vec<CommandSpec> {
-    const L: &str = r##"{"strokes":[{"tool":"forwardWarp|reconstruct|smooth|twirlCw|twirlCcw|pucker|bloat|pushLeft|freeze|thaw|lassoMask|reconstructAll","size":px=100,"density":0-100=50,"pressure":0-100=100,"rate":0-100=80,"points":[[x,y,pressure?]…],"amount":%? (reconstructAll; lassoMask: 1 freezes the polygon in points, 0 thaws it)}…],"meshSize":px? (field resolution, px per node; default 2, or 4 above 4 MP),"layer":id?} — strokes replay in order on a fresh field; a selection limits the effect; on a smart object it becomes a smart filter"##;
-    const P: &str = r##"{"pins":[{"src":[x,y],"dst":[x,y],"rotate":deg?,"depth":n?}…],"mode":"rigid|normal|distort"="normal","density":"fewer|normal|more"="normal","expansion":px=2,"interpolation":"bicubic|bilinear|nearest","layer":id?} — mesh over the opaque region, as-rigid-as-possible; on a smart object it becomes a smart filter"##;
+    const L: &str = r##"{"strokes":[{"tool":"forwardWarp|reconstruct|smooth|twirlCw|twirlCcw|pucker|bloat|pushLeft|freeze|thaw|lassoMask|reconstructAll","size":px=100,"density":0-100=50,"pressure":0-100=100,"rate":0-100=80,"points":[[x,y,pressure?]…],"amount":%? (reconstructAll; lassoMask: 1 freezes the polygon in points, 0 thaws it)}…],"meshSize":px? (field resolution, px per node; default 2, or 4 above 4 MP),"layer":id?} — strokes replay in order on a fresh field; a selection limits the effect; on an embedded layer it becomes a live filter"##;
+    const P: &str = r##"{"pins":[{"src":[x,y],"dst":[x,y],"rotate":deg?,"depth":n?}…],"mode":"rigid|normal|distort"="normal","density":"fewer|normal|more"="normal","expansion":px=2,"interpolation":"bicubic|bilinear|nearest","layer":id?} — mesh over the opaque region, as-rigid-as-possible; on an embedded layer it becomes a live filter"##;
     const Q: &str = r##"{"planes":[{"src":[[x,y]×4],"dst":[[x,y]×4]}…] (corners clockwise from top-left; corners that coincide in src are linked),"straighten":"horizontal|vertical|auto"?,"interpolation":"bicubic|bilinear|nearest","layer":id?}"##;
     vec![
         CommandSpec {
             id: LIQUIFY,
-            label: "Liquify…",
+            label: "Fluid Warp…",
             menu: &["Filter"],
             shortcut: Some("Cmd+Shift+X"),
             params: L,
@@ -397,7 +490,7 @@ pub fn specs() -> Vec<CommandSpec> {
         },
         CommandSpec {
             id: PUPPET,
-            label: "Puppet Warp",
+            label: "Pin Warp",
             menu: &["Edit"],
             shortcut: None,
             params: P,
@@ -407,8 +500,8 @@ pub fn specs() -> Vec<CommandSpec> {
         },
         CommandSpec {
             id: PUPPET_SMART,
-            label: "Puppet Warp",
-            menu: &["Layer", "Smart Objects"],
+            label: "Pin Warp",
+            menu: &["Layer", "Embedded Layers"],
             shortcut: None,
             params: P,
             enabled: smart_layer,
@@ -428,7 +521,7 @@ pub fn specs() -> Vec<CommandSpec> {
         CommandSpec {
             id: PERSPECTIVE_SMART,
             label: "Perspective Warp",
-            menu: &["Layer", "Smart Objects"],
+            menu: &["Layer", "Embedded Layers"],
             shortcut: None,
             params: Q,
             enabled: smart_layer,

@@ -7,15 +7,15 @@
 //!    4-connected neighbours that stay likely-sky and change colour gradually.
 //! 3. Sky seen through gaps (between branches) is not connected to the top: likely-sky pixels
 //!    that fit a colour model (GMM) of the grown sky are added too. Small holes are filled.
-//! 4. The binary working-resolution mask is upsampled and refined at full resolution with a
-//!    guided filter (He, Sun & Tang, "Guided Image Filtering", ECCV 2010) on the luminance, tile
-//!    by tile and only where the mask is mixed, which gives soft edges around foliage.
+//! 4. The binary working-resolution mask is upsampled and refined at full resolution with an
+//!    edge-aware smoothing (image as guide), tile by tile and only where the mask is mixed, so
+//!    its edge settles on the image's edges around foliage.
 
 use photocraft_geom::Rect;
 
 use super::gmm::Gmm;
 use super::{Region, RgbImage, Sampler, clean_mask, scale_for, subsample, trim_region};
-use crate::matting::{box_mean, guided_filter_gray};
+use crate::matting::{box_mean, edge_aware_smooth};
 
 /// Working-resolution budget (pixels).
 pub const WORK_PX: usize = 160_000;
@@ -169,7 +169,7 @@ pub fn select_sky(sampler: &dyn Sampler, canvas: Rect, p: SkyParams) -> Option<R
     let lowf: Vec<f32> = low.iter().map(|v| if *v { 1.0 } else { 0.0 }).collect();
     let soft = p.softness.clamp(0.0, 100.0) / 100.0;
     let r = ((step as f32 * (1.0 + 2.0 * soft)).ceil() as usize).max(3);
-    let eps = 1e-4 + 4e-3 * soft;
+    let sigma_r = 0.05 + 0.2 * soft;
     // Contrast after filtering: soft 0 → narrow ramp, 1 → the filter output as is.
     let k = 0.08 + 0.42 * soft;
     let (w, h) = (canvas.width() as usize, canvas.height() as usize);
@@ -195,7 +195,8 @@ pub fn select_sky(sampler: &dyn Sampler, canvas: Rect, p: SkyParams) -> Option<R
         }
         ty += T;
     }
-    let ri = r as i32;
+    // The smoothing's reach.
+    let ri = 4 * r as i32;
     let run = |t: &Rect| -> (Rect, Vec<u8>) {
         let win = t.inflate(ri).intersect(&canvas);
         let (ww, wh) = (win.width() as usize, win.height() as usize);
@@ -215,8 +216,7 @@ pub fn select_sky(sampler: &dyn Sampler, canvas: Rect, p: SkyParams) -> Option<R
         if hi <= 0.0 || lo >= 1.0 {
             return (*t, vec![if lo >= 1.0 { 255 } else { 0 }; t.width() as usize * t.height() as usize]);
         }
-        let guide: Vec<f32> = sampler.rgb(win).px.iter().map(|q| luma(*q)).collect();
-        let q = guided_filter_gray(&guide, &pm, ww, wh, r, eps);
+        let q = edge_aware_smooth(&sampler.rgb(win), &pm, r as f32, sigma_r);
         (*t, crop(&q))
     };
     #[cfg(not(target_arch = "wasm32"))]

@@ -1,10 +1,9 @@
 //! Edge refinement ("Select and Mask" / Refine Edge) and colour decontamination.
 //!
-//! * Soft edges come from the **guided filter** (K. He, J. Sun and X. Tang, "Guided Image
-//!   Filtering", ECCV 2010 / PAMI 2013): filtering the binary selection with the image as guide
-//!   fits a local linear model `α ≈ aᵀI + b` in every window, so the mask takes on the image's
-//!   soft transitions (hair, blur) inside a band of `radius` pixels around the selection edge.
-//!   "Smart radius" adapts the band per pixel to the transition width observed in the image.
+//! * Soft edges: inside a band of `radius` pixels around the selection edge, the selection is
+//!   smoothed with an edge-aware recursive filter (it spreads along the image and stops at the
+//!   image's edges), so it softens where the image is soft (blur) and stays sharp at sharp
+//!   edges. "Smart radius" narrows the band per pixel to the transition width seen in the image.
 //! * Then, in Photoshop's order: Smooth, Feather (Gaussian, σ = feather / 2), Contrast and
 //!   Shift Edge (grey dilation / erosion).
 //! * **Decontaminate colours** replaces fringe colours by the normalised-convolution average of
@@ -46,8 +45,8 @@ impl Default for RefineParams {
     }
 }
 
-/// Guided-filter regulariser (colour guide, samples in 0–1).
-pub const EPS: f32 = 1e-4;
+/// Colour change (summed over RGB, samples 0–1) at which the edge-aware smoothing stops.
+const SIGMA_R: f32 = 1.0;
 const TILE: i32 = 256;
 
 impl RefineParams {
@@ -80,7 +79,8 @@ impl RefineParams {
     pub fn halo(&self) -> i32 {
         let edge = if self.uses_image() {
             let g = self.gf_radius() as i32;
-            (self.radius.ceil() as i32).max(2 * g + if self.smart_radius { g + 1 } else { 0 })
+            // The smoothing reaches about `2 * g`.
+            (self.radius.ceil() as i32).max(2 * g + if self.smart_radius { g + 1 } else { 0 }) + 2
         } else {
             0
         };
@@ -127,71 +127,48 @@ pub fn box_mean(src: &[f32], w: usize, h: usize, r: usize) -> Vec<f32> {
     out
 }
 
-/// Guided filter with a grayscale guide.
-pub fn guided_filter_gray(guide: &[f32], p: &[f32], w: usize, h: usize, r: usize, eps: f32) -> Vec<f32> {
-    let mi = box_mean(guide, w, h, r);
-    let mp = box_mean(p, w, h, r);
-    let ip: Vec<f32> = guide.iter().zip(p).map(|(a, b)| a * b).collect();
-    let ii: Vec<f32> = guide.iter().map(|a| a * a).collect();
-    let mip = box_mean(&ip, w, h, r);
-    let mii = box_mean(&ii, w, h, r);
-    let mut a = vec![0.0f32; w * h];
-    let mut b = vec![0.0f32; w * h];
-    for i in 0..w * h {
-        let var = mii[i] - mi[i] * mi[i];
-        let cov = mip[i] - mi[i] * mp[i];
-        a[i] = cov / (var + eps);
-        b[i] = mp[i] - a[i] * mi[i];
+/// Edge-aware smoothing of `p` (`img.w × img.h`) with `img` as guide: a recursive filter, run
+/// along rows and columns three times, whose pull towards the neighbour falls off with the
+/// guide's colour change. `sigma_s` is the spatial reach in pixels; a colour change of
+/// `sigma_r` counts as `sigma_s` extra pixels of distance.
+pub fn edge_aware_smooth(img: &RgbImage, p: &[f32], sigma_s: f32, sigma_r: f32) -> Vec<f32> {
+    let (w, h) = (img.w, img.h);
+    let n = w.saturating_mul(h);
+    if n == 0 || p.len() < n || img.px.len() < n || !(sigma_s > 0.0 && sigma_s.is_finite()) || !(sigma_r > 0.0 && sigma_r.is_finite()) {
+        return p.to_vec();
     }
-    let ma = box_mean(&a, w, h, r);
-    let mb = box_mean(&b, w, h, r);
-    (0..w * h).map(|i| ma[i] * guide[i] + mb[i]).collect()
-}
-
-/// Guided filter with a colour guide (He et al., Eq. 19–21: `a_k = (Σ_k + εU)⁻¹ cov_k(I, p)`).
-pub fn guided_filter_color(guide: &RgbImage, p: &[f32], r: usize, eps: f32) -> Vec<f32> {
-    let (w, h) = (guide.w, guide.h);
-    let n = w * h;
-    let ch = |c: usize| -> Vec<f32> { guide.px.iter().map(|q| q[c]).collect() };
-    let chans = [ch(0), ch(1), ch(2)];
-    let m: Vec<Vec<f32>> = chans.iter().map(|c| box_mean(c, w, h, r)).collect();
-    let mp = box_mean(p, w, h, r);
-    let mip: Vec<Vec<f32>> = chans.iter().map(|c| box_mean(&c.iter().zip(p).map(|(a, b)| a * b).collect::<Vec<_>>(), w, h, r)).collect();
-    let pairs = [(0, 0), (0, 1), (0, 2), (1, 1), (1, 2), (2, 2)];
-    let mii: Vec<Vec<f32>> = pairs.iter().map(|&(a, b)| box_mean(&chans[a].iter().zip(&chans[b]).map(|(x, y)| x * y).collect::<Vec<_>>(), w, h, r)).collect();
-    let mut av = [vec![0.0f32; n], vec![0.0f32; n], vec![0.0f32; n]];
-    let mut bv = vec![0.0f32; n];
-    for i in 0..n {
-        let mu = [m[0][i] as f64, m[1][i] as f64, m[2][i] as f64];
-        let s = |k: usize, a: usize, b: usize| mii[k][i] as f64 - mu[a] * mu[b];
-        let e = eps as f64;
-        let (rr, rg, rb, gg, gb, bb) = (s(0, 0, 0) + e, s(1, 0, 1), s(2, 0, 2), s(3, 1, 1) + e, s(4, 1, 2), s(5, 2, 2) + e);
-        let cov = [mip[0][i] as f64 - mu[0] * mp[i] as f64, mip[1][i] as f64 - mu[1] * mp[i] as f64, mip[2][i] as f64 - mu[2] * mp[i] as f64];
-        // Inverse of the symmetric 3×3 matrix.
-        let i00 = gg * bb - gb * gb;
-        let i01 = gb * rb - rg * bb;
-        let i02 = rg * gb - gg * rb;
-        let i11 = rr * bb - rb * rb;
-        let i12 = rb * rg - rr * gb;
-        let i22 = rr * gg - rg * rg;
-        let det = rr * i00 + rg * i01 + rb * i02;
-        let (a0, a1, a2) = if det.abs() < 1e-30 {
-            (0.0, 0.0, 0.0)
-        } else {
-            (
-                (i00 * cov[0] + i01 * cov[1] + i02 * cov[2]) / det,
-                (i01 * cov[0] + i11 * cov[1] + i12 * cov[2]) / det,
-                (i02 * cov[0] + i12 * cov[1] + i22 * cov[2]) / det,
-            )
-        };
-        av[0][i] = a0 as f32;
-        av[1][i] = a1 as f32;
-        av[2][i] = a2 as f32;
-        bv[i] = (mp[i] as f64 - a0 * mu[0] - a1 * mu[1] - a2 * mu[2]) as f32;
+    let ratio = sigma_s / sigma_r;
+    let step = |a: usize, b: usize| {
+        let (x, y) = (img.px[a], img.px[b]);
+        1.0 + ratio * ((x[0] - y[0]).abs() + (x[1] - y[1]).abs() + (x[2] - y[2]).abs())
+    };
+    // Distance from the previous pixel along the row (dx) and the column (dy).
+    let dx: Vec<f32> = (0..n).map(|i| if i % w == 0 { 0.0 } else { step(i, i - 1) }).collect();
+    let dy: Vec<f32> = (0..n).map(|i| if i < w { 0.0 } else { step(i, i - w) }).collect();
+    let mut j = p[..n].to_vec();
+    const PASSES: i32 = 3;
+    for k in 0..PASSES {
+        let sh = sigma_s * 3f32.sqrt() * 2f32.powi(PASSES - k - 1) / (4f32.powi(PASSES) - 1.0).sqrt();
+        let ln_a = -(2f32.sqrt()) / sh;
+        let wx: Vec<f32> = dx.iter().map(|d| (ln_a * d).exp()).collect();
+        let wy: Vec<f32> = dy.iter().map(|d| (ln_a * d).exp()).collect();
+        for y in 0..h {
+            let row = y * w;
+            for i in row + 1..row + w {
+                j[i] += wx[i] * (j[i - 1] - j[i]);
+            }
+            for i in (row..row + w - 1).rev() {
+                j[i] += wx[i + 1] * (j[i + 1] - j[i]);
+            }
+        }
+        for i in w..n {
+            j[i] += wy[i] * (j[i - w] - j[i]);
+        }
+        for i in (0..n - w).rev() {
+            j[i] += wy[i + w] * (j[i + w] - j[i]);
+        }
     }
-    let ma: Vec<Vec<f32>> = av.iter().map(|a| box_mean(a, w, h, r)).collect();
-    let mb = box_mean(&bv, w, h, r);
-    (0..n).map(|i| ma[0][i] * chans[0][i] + ma[1][i] * chans[1][i] + ma[2][i] * chans[2][i] + mb[i]).collect()
+    j
 }
 
 /// Separable Gaussian blur (edge-clamped).
@@ -235,10 +212,7 @@ pub fn morph(src: &[f32], w: usize, h: usize, r: usize, grow: bool) -> Vec<f32> 
     morphology::morph(src, w, h, r, grow)
 }
 
-mod brush;
 mod morphology;
-
-pub use brush::{EdgeBrush, EdgeStroke, MAX_SWEPT_AREA, SIZE_RANGE as BRUSH_SIZE_RANGE, swept_area};
 
 /// Running max (or min) over a window of radius `r` (edge-clipped), van Herk / Gil–Werman:
 /// three comparisons per sample whatever the radius.
@@ -307,18 +281,10 @@ pub fn edge_width(img: &RgbImage, r: usize) -> Vec<f32> {
 
 /// Refines a soft mask buffer `m` (`w × h`) with `img` as guide (required when `radius > 0`).
 pub fn refine_buffer(img: Option<&RgbImage>, m: &[f32], w: usize, h: usize, p: &RefineParams) -> Vec<f32> {
-    refine_buffer_with(img, m, w, h, p, None, morph)
+    refine_buffer_with(img, m, w, h, p, morph)
 }
 
-/// The Refine Edge Brush over one buffer: signed coverage (`w × h`, see [`EdgeBrush`]) and the
-/// box radius of its colour estimate.
-#[derive(Clone, Copy)]
-struct BrushBuf<'a> {
-    v: &'a [f32],
-    window: usize,
-}
-
-fn refine_buffer_with<F>(img: Option<&RgbImage>, m: &[f32], w: usize, h: usize, p: &RefineParams, brush: Option<BrushBuf>, morphology: F) -> Vec<f32>
+fn refine_buffer_with<F>(img: Option<&RgbImage>, m: &[f32], w: usize, h: usize, p: &RefineParams, morphology: F) -> Vec<f32>
 where
     F: Fn(&[f32], usize, usize, usize, bool) -> Vec<f32> + Copy,
 {
@@ -339,30 +305,17 @@ where
         if any {
             let dist = edt(&boundary, w, h);
             let r = p.gf_radius();
-            let q = guided_filter_color(img, m, r, EPS);
+            let q = edge_aware_smooth(img, m, (r as f32 / 2.0).max(1.0), SIGMA_R);
             let widths = p.smart_radius.then(|| edge_width(img, r));
             for i in 0..w * h {
                 let reff = match &widths {
                     Some(wd) => wd[i].clamp(1.5, p.radius.max(1.5)),
                     None => p.radius,
                 };
-                let mut wgt = (reff + 1.0 - dist[i]).clamp(0.0, 1.0);
-                // Restored by the brush: the original edge.
-                if let Some(b) = brush.and_then(|b| b.v.get(i)).filter(|b| **b < 0.0) {
-                    wgt *= 1.0 + b;
-                }
+                let wgt = (reff + 1.0 - dist[i]).clamp(0.0, 1.0);
                 if wgt > 0.0 {
                     a[i] = m[i] + (q[i].clamp(0.0, 1.0) - m[i]) * wgt;
                 }
-            }
-        }
-    }
-    // Added by the brush: coverage estimated from the image.
-    if let (Some(b), Some(img)) = (brush.filter(|b| b.v.iter().any(|v| *v > 0.0)), img) {
-        let est = brush::estimate(img, m, b.v, w, h, b.window);
-        for ((ai, ei), bi) in a.iter_mut().zip(&est).zip(b.v) {
-            if *bi > 0.0 {
-                *ai += (ei - *ai) * bi;
             }
         }
     }
@@ -417,21 +370,7 @@ where
 /// its non-zero pixels; the result is clipped to `canvas`. `sampler` supplies the guide image
 /// (only read when `radius > 0`). Returns `None` when nothing remains selected.
 pub fn refine_mask(sampler: &dyn Sampler, mask: &(dyn Fn(Rect) -> Vec<f32> + Sync), content: Rect, canvas: Rect, p: &RefineParams) -> Option<Region> {
-    refine_mask_with(sampler, mask, content, canvas, p, None, morph)
-}
-
-/// [`refine_mask`] with the Refine Edge Brush: where `brush` adds, coverage comes from the image
-/// (the area can reach beyond the edge-detection band); where it restores, the original edge
-/// stays. The sampler is read wherever the brush adds, whatever the radius.
-pub fn refine_mask_brushed(
-    sampler: &dyn Sampler,
-    mask: &(dyn Fn(Rect) -> Vec<f32> + Sync),
-    content: Rect,
-    canvas: Rect,
-    p: &RefineParams,
-    brush: Option<&EdgeBrush>,
-) -> Option<Region> {
-    refine_mask_with(sampler, mask, content, canvas, p, brush, morph)
+    refine_mask_with(sampler, mask, content, canvas, p, morph)
 }
 
 fn refine_mask_with<F>(
@@ -440,7 +379,6 @@ fn refine_mask_with<F>(
     content: Rect,
     canvas: Rect,
     p: &RefineParams,
-    brush: Option<&EdgeBrush>,
     morphology: F,
 ) -> Option<Region>
 where
@@ -450,8 +388,8 @@ where
     if content.is_empty() {
         return None;
     }
-    let bbox = content.inflate(p.spread()).union(&brush.map_or(Rect::EMPTY, EdgeBrush::added_bounds)).intersect(&canvas);
-    let halo = p.halo() + brush.map_or(0, |b| i32::try_from(b.window() * 4).unwrap_or(i32::MAX));
+    let bbox = content.inflate(p.spread()).intersect(&canvas);
+    let halo = p.halo();
     let mut tiles = Vec::new();
     let mut y = bbox.y0;
     while y < bbox.y1 {
@@ -476,17 +414,11 @@ where
             }
             out
         };
-        let painted = brush.filter(|b| !b.bounds().intersect(&r).is_empty()).map(|b| b.read(r));
-        let adds = painted.as_ref().is_some_and(|v| v.iter().any(|v| *v > 0.0));
-        if !adds && (first == 0.0 || first == 1.0) && m.iter().all(|v| *v == first) {
+        if (first == 0.0 || first == 1.0) && m.iter().all(|v| *v == first) {
             return (*t, vec![q(first); cw * ch]);
         }
-        let img = (p.uses_image() || adds).then(|| sampler.rgb(r));
-        let bb = match (&painted, brush) {
-            (Some(v), Some(b)) => Some(BrushBuf { v, window: b.window() }),
-            _ => None,
-        };
-        let out = refine_buffer_with(img.as_ref(), &m, rw, rh, p, bb, morphology);
+        let img = p.uses_image().then(|| sampler.rgb(r));
+        let out = refine_buffer_with(img.as_ref(), &m, rw, rh, p, morphology);
         (*t, core(&out))
     };
     #[cfg(not(target_arch = "wasm32"))]
@@ -717,7 +649,7 @@ mod tests {
     }
 
     #[test]
-    fn guided_filter_matting_softens_blurred_edge() {
+    fn refine_edge_softens_blurred_edge() {
         let (w, h) = (80usize, 20usize);
         let (img, truth) = blurred_edge(w, h, 3.0);
         let m: Vec<f32> = (0..w * h).map(|i| if (i % w) < 40 { 1.0 } else { 0.0 }).collect();

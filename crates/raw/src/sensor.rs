@@ -163,6 +163,10 @@ pub struct Sensor {
     pub baseline_exposure: f64,
     /// DNG OpcodeList2 gain maps (lens shading), applied to the normalized data.
     pub gain_maps: Vec<crate::opcodes::GainMap>,
+    /// DNG OpcodeList2 MapPolynomial, applied to the normalized data before white balance.
+    pub polynomials: Vec<crate::opcodes::Polynomial>,
+    /// DNG ProfileGainTableMap (local tone mapping), applied after BaselineExposure.
+    pub gain_table: Option<crate::gaintable::GainTable>,
     /// The camera profile's default tone curve (like DNG ProfileToneCurve): increasing `[input,
     /// output]` pairs in linear ProPhoto, applied per channel after the colour conversion and
     /// exposure. Below the first point the curve is a line through 0; empty: no curve.
@@ -214,6 +218,25 @@ pub(crate) enum JpegLayout {
 /// DNG 1.7 JPEG XL compression.
 const JPEG_XL: u32 = 52546;
 
+/// A `w × h` image stored as `rf` row fields and `cf` column fields (each field the rows or
+/// columns `f, f + n, f + 2n, …` in one block) back in image order.
+fn deinterleave(v: &[u16], w: usize, h: usize, samples: usize, rf: usize, cf: usize) -> Result<Vec<u16>> {
+    if !h.is_multiple_of(rf) || !w.is_multiple_of(cf) || v.len() != w * h * samples {
+        return Err(RawError::malformed("interleaved JPEG XL raw image doesn't divide into its fields"));
+    }
+    let (fh, fw) = (h / rf, w / cf);
+    let mut out = vec![0u16; v.len()];
+    for sy in 0..h {
+        let y = (sy % fh) * rf + sy / fh;
+        for sx in 0..w {
+            let x = (sx % fw) * cf + sx / fw;
+            let (from, to) = ((sy * w + sx) * samples, (y * w + x) * samples);
+            out[to..to + samples].copy_from_slice(&v[from..from + samples]);
+        }
+    }
+    Ok(out)
+}
+
 /// Inflates one zlib tile into at most `need` bytes. The stream must run to its end: a truncated
 /// stream, or one that holds more than `need` bytes, is an error rather than a silent cut-off.
 fn inflate_tile(src: &[u8], need: usize) -> Result<Vec<u8>> {
@@ -257,6 +280,12 @@ pub(crate) fn read_plane(t: &Tiff, ifd: &Ifd, limits: &Limits, layout: JpegLayou
     let segments = segments(t, ifd, width, height)?;
     let le = t.le;
     let tiled = t.tag_uint(ifd, tag::TILE_WIDTH).is_some();
+    // DNG 1.7: JPEG XL segments may store their rows and columns as interleaved fields.
+    let interleave = |tg| t.tag_uint(ifd, tg).map_or(1, |v| v as usize);
+    let (row_fields, col_fields) = (interleave(tag::ROW_INTERLEAVE_FACTOR), interleave(tag::COLUMN_INTERLEAVE_FACTOR));
+    if compression == JPEG_XL && (!(1..=16).contains(&row_fields) || !(1..=16).contains(&col_fields)) {
+        return Err(RawError::unsupported(format!("JPEG XL raw data interleaved {row_fields} × {col_fields}")));
+    }
     let decoded: Vec<Result<Vec<u16>>> = par::map(segments.len(), |i| {
         let s = &segments[i];
         let rows = s.h.min(height - s.y);
@@ -288,7 +317,7 @@ pub(crate) fn read_plane(t: &Tiff, ifd: &Ifd, limits: &Limits, layout: JpegLayou
             // A JPEG XL segment codes only the rows inside the image (strips) or the whole tile.
             JPEG_XL => {
                 let coded_rows = if tiled { s.h } else { rows };
-                let mut v = jxl::decode(src, s.w, coded_rows, samples, bits, limits)?;
+                let mut v = jxl::decode(src, s.w, coded_rows, samples, limits)?;
                 v.resize(s.w * s.h * samples, 0);
                 Ok(v)
             }
@@ -330,6 +359,9 @@ pub(crate) fn read_plane(t: &Tiff, ifd: &Ifd, limits: &Limits, layout: JpegLayou
             let at = ((s.y + r) * width + s.x) * samples;
             data[at..at + cols * samples].copy_from_slice(src);
         }
+    }
+    if compression == JPEG_XL && (row_fields, col_fields) != (1, 1) {
+        data = deinterleave(&data, width, height, samples, row_fields, col_fields)?;
     }
     Ok(Plane { width, height, samples, bits, data })
 }
@@ -479,6 +511,16 @@ fn unpack(src: &[u8], w: usize, rows: usize, samples: usize, bits: u32, le: bool
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn interleaved_fields_go_back_in_image_order() {
+        let image: Vec<u16> = (0..8).collect();
+        // 4 × 2, two column fields: the even columns of each row, then the odd ones.
+        assert_eq!(deinterleave(&[0, 2, 1, 3, 4, 6, 5, 7], 4, 2, 1, 1, 2).unwrap(), image);
+        // 2 × 4, two row fields: the even rows, then the odd ones.
+        assert_eq!(deinterleave(&[0, 1, 4, 5, 2, 3, 6, 7], 2, 4, 1, 2, 1).unwrap(), image);
+        assert!(deinterleave(&image, 4, 2, 1, 3, 1).is_err(), "2 rows don't divide into 3 fields");
+    }
 
     #[test]
     fn bayer_patterns() {

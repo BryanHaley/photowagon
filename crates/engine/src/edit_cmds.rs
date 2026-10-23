@@ -60,7 +60,7 @@ fn scratch_doc(doc: &Document) -> Document {
 fn copy_linked_sources(source: &Document, copies: &mut Document) -> Result<()> {
     fn collect<'a>(layers: &'a [Layer], depth: usize, paths: &mut std::collections::HashSet<&'a str>) -> Result<()> {
         if depth > photocraft_doc::MAX_GROUP_DEPTH {
-            return Err(EngineError::Other("can't copy linked smart objects from layers nested too deeply".into()));
+            return Err(EngineError::Other("can't copy linked embedded layers from layers nested too deeply".into()));
         }
         for layer in layers {
             if let LayerContent::Smart(sm) = &layer.content
@@ -152,7 +152,7 @@ fn active_layer(s: &Session) -> std::result::Result<&Layer, String> {
 fn has_pixels(s: &Session) -> std::result::Result<(), String> {
     match active_layer(s)?.content {
         LayerContent::Raster(_) => Ok(()),
-        LayerContent::Smart(_) => Err("the smart object is not directly editable".into()),
+        LayerContent::Smart(_) => Err("the embedded layer is not directly editable".into()),
         _ => Err("the active layer has no pixels".into()),
     }
 }
@@ -480,7 +480,15 @@ pub(crate) fn paste_to_target(s: &mut Session, p: &Value, in_place: bool, limit:
         let (surf, _) = crate::channel_cmds::target_surface(doc, layer, p)?;
         crate::fill_cmds::composite_over(surf, &src, area, limit)?;
         surf.prune();
-        doc.selection = None;
+        // As in Photoshop, the pasted area stays selected, ready to transform.
+        doc.selection = match limit {
+            None if !area.is_empty() => {
+                let mut sel = Surface::with_default(PixelFormat::GRAY8, &[0.0]);
+                sel.fill_rect(area, &[1.0]);
+                Some(sel)
+            }
+            _ => None,
+        };
         Ok(())
     })?;
     Ok(json!({"target": p.get("target"), "offset": [dx, dy]}))
@@ -1039,7 +1047,7 @@ pub fn specs() -> Vec<CommandSpec> {
             "New Guide…",
             &["View"],
             None,
-            r##"{"orientation":"horizontal|vertical","position":px or "<number><unit>","color":"lightBlue|lightRed|green|mediumBlue|yellow|magenta|cyan|lightGray|black" or "#rrggbb"?} (units px, in, cm, mm, pt, pc or %; % is of the width for a vertical guide, the height for a horizontal one; without a color the guide uses the guide colour in Preferences)"##,
+            r##"{"orientation":"horizontal|vertical","position":px=0 (or "<number><unit>"),"color":"lightBlue|lightRed|green|mediumBlue|yellow|magenta|cyan|lightGray|black" or "#rrggbb"?} (units px, in, cm, mm, pt, pc or %; % is of the width for a vertical guide, the height for a horizontal one; without a color the guide uses the guide colour in Preferences)"##,
             has_doc,
             |s, p| guide_cmd(s, p, "new")
         ),
@@ -1048,7 +1056,7 @@ pub fn specs() -> Vec<CommandSpec> {
             "Move Guide",
             &[],
             None,
-            r##"{"orientation":"horizontal|vertical","index":n,"position":px or "<number><unit>"} (units as for view.newGuide)"##,
+            r##"{"orientation":"horizontal|vertical","index":n,"position":px=0 (or "<number><unit>")} (units as for view.newGuide)"##,
             has_doc,
             |s, p| guide_cmd(s, p, "move")
         ),
@@ -1057,7 +1065,7 @@ pub fn specs() -> Vec<CommandSpec> {
             "Edit Guide",
             &[],
             None,
-            r##"{"orientation":"horizontal|vertical","index":n,"newOrientation":"horizontal|vertical"?,"position":px or "<number><unit>"?,"color":name or "#rrggbb"?} (Edit Selected Guides: units and colours as for view.newGuide; % is of the new orientation's extent; whatever is left out stays as it was)"##,
+            r##"{"orientation":"horizontal|vertical","index":n,"newOrientation":"horizontal|vertical"?,"position":px=0 (or "<number><unit>")?,"color":name or "#rrggbb"?} (Edit Selected Guides: units and colours as for view.newGuide; % is of the new orientation's extent; whatever is left out stays as it was)"##,
             has_doc,
             edit_guide
         ),
@@ -1393,6 +1401,19 @@ mod tests {
     }
 
     #[test]
+    fn a_paste_into_a_linked_mask_stays_selected_and_transforms_alone() {
+        let (mut s, _, m) = mask_target_session(8);
+        s.execute("edit.pasteSpecial.pasteInPlace", json!({"target": "mask"})).unwrap();
+        let sel = s.active().unwrap().doc.selection.clone().expect("the pasted area is selected");
+        assert_eq!(sel.content_bounds(), Rect::new(5, 5, 15, 15));
+        let pixels = s.active().unwrap().doc.layer(m).unwrap().surface().unwrap().clone();
+        s.execute("edit.transform", json!({"target": "mask", "dx": 20})).unwrap();
+        assert!(mask_at(&s, m, 30, 10) > 0.05, "the pasted square moved right in the mask");
+        assert!(mask_at(&s, m, 10, 10) < 0.01);
+        assert_eq!(s.active().unwrap().doc.layer(m).unwrap().surface().unwrap().pixel(0, 0), pixels.pixel(0, 0), "the layer's pixels stay");
+    }
+
+    #[test]
     fn copy_with_the_mask_targeted_takes_the_mask_as_grayscale() {
         for depth in [8, 16, 32] {
             let (mut s, _, m) = mask_target_session(depth);
@@ -1705,11 +1726,11 @@ mod tests {
     fn copy_a_smart_object_layer() {
         let mut s = session();
         s.execute("layer.smartObjects.convertToSmartObject", json!({})).unwrap();
-        let LayerContent::Smart(original) = active_content(&s) else { panic!("smart object") };
+        let LayerContent::Smart(original) = active_content(&s) else { panic!("embedded layer") };
         assert!(s.is_enabled("edit.copy"));
         assert_eq!(s.execute("edit.copy", json!({})).unwrap()["bounds"], json!([10, 10, 40, 20]), "no selection: the whole layer");
         s.execute("edit.pasteSpecial.pasteInPlace", json!({})).unwrap();
-        let LayerContent::Smart(pasted) = active_content(&s) else { panic!("the paste is a smart object (#2428)") };
+        let LayerContent::Smart(pasted) = active_content(&s) else { panic!("the paste is an embedded layer (#2428)") };
         assert_eq!(pasted.source, original.source, "the same contents");
         assert_ne!(pasted.contents_id, original.contents_id, "but not linked to the copied one");
         assert_eq!(active_bounds(&s), Rect::new(10, 10, 50, 30));
@@ -1730,7 +1751,7 @@ mod tests {
         assert!(matches!(active_content(&s), LayerContent::Smart(_)));
         s.execute("select.deselect", json!({})).unwrap();
         s.execute("layer.new.layerViaCopy", json!({})).unwrap();
-        assert!(matches!(active_content(&s), LayerContent::Smart(_)), "⌘J without a selection duplicates the smart object");
+        assert!(matches!(active_content(&s), LayerContent::Smart(_)), "⌘J without a selection duplicates the embedded layer");
         s.execute("layer.duplicate", json!({})).unwrap();
         assert!(matches!(active_content(&s), LayerContent::Smart(_)));
         assert_eq!(s.active().unwrap().doc.layers.len(), 4);
@@ -1842,7 +1863,7 @@ mod tests {
         s.execute("edit.copy", json!({})).unwrap();
         s.execute("file.new", json!({"width": 60, "height": 40, "depth": 16})).unwrap();
         s.execute("edit.paste", json!({})).unwrap();
-        let LayerContent::Smart(sm) = active_content(&s) else { panic!("the paste is a smart object") };
+        let LayerContent::Smart(sm) = active_content(&s) else { panic!("the paste is an embedded layer") };
         assert_eq!(sm.cache.map(|c| c.format().sample), Some(s.active().unwrap().doc.depth), "converted to 16 bits");
         assert_eq!(active_bounds(&s), Rect::new(10, 10, 50, 30), "on the canvas: in place");
     }
@@ -1857,7 +1878,7 @@ mod tests {
         let outer = s.active().unwrap().active_layer.unwrap();
         s.edit("embedded linked source", |doc, _| {
             let LayerContent::Smart(sm) = &mut doc.layer_mut(outer).ok_or(EngineError::NoDocument)?.content else {
-                return Err(EngineError::Other("not a smart object".into()));
+                return Err(EngineError::Other("not an embedded layer".into()));
             };
             sm.source = photocraft_doc::SmartSource::Linked { path: "uuid-1".into() };
             let linked = photocraft_io::linked::LinkedFile { uuid: "uuid-1".into(), file_name: "in.png".into(), bytes: vec![1, 2, 3, 4] };
@@ -1868,7 +1889,7 @@ mod tests {
         s.execute("edit.copy", json!({})).unwrap();
         s.execute("file.new", json!({"width": 40, "height": 30})).unwrap();
         s.execute("edit.paste", json!({})).unwrap();
-        let LayerContent::Smart(sm) = active_content(&s) else { panic!("the paste is a smart object") };
+        let LayerContent::Smart(sm) = active_content(&s) else { panic!("the paste is an embedded layer") };
         assert!(
             crate::smart_cmds::source_bytes(&s.active().unwrap().doc.metadata, &sm.source).is_some(),
             "the pasted PSD-embedded linked source must resolve (#3584)"

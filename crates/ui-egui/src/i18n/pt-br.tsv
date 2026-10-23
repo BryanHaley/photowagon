@@ -4020,3 +4020,71 @@ layerLabel	No Color	Sem cor
 	Increase Brush Size	Aumentar tamanho do pincel
 	Decrease Brush Hardness	Diminuir dureza do pincel
 	Increase Brush Hardness	Aumentar dureza do pincel
+# Renamed engine strings (same translations as the names they replaced).
+	Create Batch App…	Criar droplet…
+	Contact Sheet…	Folha de contato II…
+	Merge to HDR…	Mesclar para HDR Pro…
+	Panorama…	Photomerge…
+	Create Embedded Layer after Loading Layers	Criar objeto inteligente após carregar as camadas
+	Fill from Surroundings…	Preenchimento sensível ao conteúdo…
+	Content-Preserving Scale	Escala sensível ao conteúdo
+	Pin Warp	Distorção de marionete
+	Raw Develop…	Camera Raw…
+	New Embedded Layer via Copy	Novo objeto inteligente via cópia
+	Live Filter	Filtro inteligente
+	Convert for Live Filters	Converter para filtros inteligentes
+	Clear Live Filters	Limpar filtros inteligentes
+	Disable Live Filters	Desativar filtros inteligentes
+	Embedded Layers	Objetos inteligentes
+	Embedded Layer	Objeto inteligente
+	Convert to Embedded Layer	Converter em objeto inteligente
+	Refine Selection…	Selecionar e mascarar…
+	Refine Selection (Legacy)	Refinar borda
+	Develop…	Filtro Camera Raw…
+	Fluid Warp…	Liquefazer…
+	Perspective Planes…	Ponto de fuga…
+	Blur Effects	Galeria de desfoque
+	Save these settings as a Raw Develop .xmp file	Salvar estas configurações como arquivo .xmp do Camera Raw
+	Load settings from a Raw Develop .xmp file	Carregar configurações de um arquivo .xmp do Camera Raw
+	Loaded Raw Develop settings from {file}	Configurações do Camera Raw carregadas de {file}
+	Loaded Raw Develop settings from {file} ({n} not supported)	Configurações do Camera Raw carregadas de {file} ({n} sem suporte)
+	Raw Develop isn't open	Camera Raw não está aberto
+	Commit Pin Warp ({key})	Confirmar distorção de marionete ({key})
+	Contact Sheet	Folha de contato II
+	Create Batch App	Criar droplet
+	Filter for embedded layers	Filtrar objetos inteligentes
+	Fluid Warp is not open	Liquefazer não está aberto
+	Pin Warp is not active	A distorção de marionete não está ativa
+	Fill from Surroundings needs a selection on a pixel layer	O preenchimento sensível ao conteúdo precisa de uma seleção em uma camada de pixels
+	Could not use Pin Warp: no opaque pixels	Não foi possível usar a distorção de marionete: não há pixels opacos
+	Could not use Pin Warp: the layer is empty	Não foi possível usar a distorção de marionete: a camada está vazia
+	Repair Brush Tool	Ferramenta Pincel de recuperação
+	Live Filters	Filtros inteligentes
+	Spot Repair Brush Tool	Ferramenta Pincel de recuperação para manchas
+	Always create embedded layers when placing	Sempre criar objetos inteligentes ao inserir
+	Raw Develop Defaults	Padrões do Camera Raw
+	Open as embedded layer	Abrir como objeto inteligente
+	Embedded Layer Layer	Camada de objeto inteligente
+	Rasterize Embedded Layer	Rasterizar objeto inteligente
+	Delete Live Filters	Excluir filtros inteligentes
+	Enable Live Filters	Ativar filtros inteligentes
+	Move and Fill	Mover sensível ao conteúdo
+	Commit Pin Warp (↩)	Confirmar distorção de marionete (↩)
+	Develop ({layer})	Filtro Camera Raw ({layer})
+	Raw Develop ({name})	Camera Raw ({name})
+	Move and Fill Tool	Ferramenta Mover sensível ao conteúdo
+	Repair Brush	Pincel de recuperação
+	Spot Repair Brush	Pincel de recuperação para manchas
+	Perspective Planes: click four corners to create a plane	Ponto de fuga: clique em quatro cantos para criar um plano
+	Perspective Planes is not active	Ponto de fuga não está ativo
+	Apply Perspective Planes ({key})	Aplicar ponto de fuga ({key})
+	Refine Selection (Legacy) Brush (R)	Pincel de refinamento de borda (R)
+	Raw Develop	Camera Raw
+	Develop	Filtro do Camera Raw
+	Fill from Surroundings	Preenchimento sensível ao conteúdo
+	Fluid Warp	Dissolver
+	Merge to HDR	Mesclar para HDR Pro
+	Panorama	Photomerge
+	Refine Selection	Selecionar e mascarar
+	Perspective Planes	Ponto de fuga
+@plural	Updated {n} linked embedded layer changed on disk|Updated {n} linked embedded layers changed on disk	{n} objeto inteligente vinculado alterado no disco foi atualizado|{n} objetos inteligentes vinculados alterados no disco foram atualizados

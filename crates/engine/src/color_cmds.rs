@@ -905,19 +905,23 @@ fn always(_: &Session) -> std::result::Result<(), String> {
     Ok(())
 }
 
+/// The ICC data for profile `spec` on a `mode` document; `None` for "none".
+pub(crate) fn profile_bytes(s: &Session, spec: &str, doc: Option<&Document>, mode: ColorMode) -> Result<Option<Arc<Vec<u8>>>> {
+    if spec == "none" {
+        return Ok(None);
+    }
+    let prof = s.color.resolve(spec, doc, Some(mode))?;
+    if prof.color_space != mode_space(mode) {
+        return Err(EngineError::Other(format!("profile `{}` is {:?}; the document is {:?}", prof.description, prof.color_space, mode)));
+    }
+    Ok(Some(prof.to_bytes()))
+}
+
 fn assign_profile(s: &mut Session, p: &Value) -> Result<Value> {
     let spec =
         p.get("profile").and_then(Value::as_str).ok_or_else(|| EngineError::BadParams { cmd: "edit.assignProfile".into(), msg: "missing `profile`".into() })?;
     let doc = &s.active().ok_or(EngineError::NoDocument)?.doc;
-    let bytes = if spec == "none" {
-        None
-    } else {
-        let prof = s.color.resolve(spec, Some(doc), None)?;
-        if prof.color_space != mode_space(doc.mode) {
-            return Err(EngineError::Other(format!("profile `{}` is {:?}; the document is {:?}", prof.description, prof.color_space, doc.mode)));
-        }
-        Some(prof.to_bytes())
-    };
+    let bytes = profile_bytes(s, spec, Some(doc), doc.mode)?;
     let desc = match &bytes {
         Some(b) => profile_from_bytes(b).map(|p| p.description.clone()).unwrap_or_default(),
         None => "none".into(),
@@ -1295,6 +1299,16 @@ mod tests {
         for k in 0..3 {
             assert!((before[k] - after[k]).abs() < 1.0 / 255.0, "{before:?} -> {after:?}");
         }
+    }
+
+    #[test]
+    fn new_document_takes_a_profile() {
+        let mut s = Session::new();
+        s.execute("file.new", json!({"width": 8, "height": 8, "profile": "display-p3"})).unwrap();
+        assert_eq!(document_profile(doc(&s)).description, "Display P3");
+        assert!(s.execute("file.new", json!({"width": 8, "height": 8, "mode": "gray", "profile": "srgb"})).is_err());
+        assert!(s.execute("file.new", json!({"width": 8, "height": 8, "profile": 3})).is_err());
+        assert_eq!(s.documents().len(), 1);
     }
 
     #[test]

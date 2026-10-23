@@ -148,6 +148,11 @@ impl History {
         self.undo.iter().map(|s| s.label.clone()).chain(std::iter::once(self.current_label.clone())).collect()
     }
 
+    /// Labels of the states Redo would bring back, the next one first.
+    pub fn redo_entries(&self) -> Vec<String> {
+        self.redo.iter().rev().map(|s| s.label.clone()).collect()
+    }
+
     /// Document of past entry `i`, indexed like [`History::entries`] (0 = oldest). The last entry is
     /// the current document, which the history does not hold, so it (and any index past it) is `None`.
     pub fn state(&self, i: usize) -> Option<Arc<Document>> {

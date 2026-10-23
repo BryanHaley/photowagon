@@ -1,0 +1,2702 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>PhotoWagon Manual</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <style>
+  :root { color-scheme: light dark; --text: #1c1c1e; --muted: #6e6e73; --line: #d1d1d6; --bg: #ffffff; --link: #0a66d8; }
+  @media (prefers-color-scheme: dark) {
+    :root { --text: #f2f2f7; --muted: #a1a1a6; --line: #3a3a3c; --bg: #111113; --link: #64a8ff; }
+  }
+  html, body { background: var(--bg); color: var(--text); }
+  body { font: 17px/1.5 -apple-system, system-ui, sans-serif; max-width: 40em; margin: 0 auto; padding: 8px 16px 48px; }
+  h1 { font-size: 1.6em; margin: 1.6em 0 0.4em; padding-top: 0.6em; border-top: 1px solid var(--line); }
+  h2 { font-size: 1.25em; margin: 1.4em 0 0.3em; }
+  h3 { font-size: 1.05em; margin: 1.2em 0 0.2em; }
+  header h1.title { border: 0; margin-top: 0.4em; }
+  p { margin: 0.5em 0; }
+  em { color: var(--muted); font-style: normal; font-weight: 600; }
+  a { color: var(--link); text-decoration: none; }
+  img { display: block; max-width: 100%; max-height: 70vh; margin: 0.8em auto; border-radius: 10px; border: 1px solid var(--line); }
+  figure { margin: 0; }
+  figcaption { display: none; }
+  nav#TOC ul { list-style: none; padding-left: 0; }
+  nav#TOC > ul > li { margin: 0.5em 0; font-weight: 600; }
+  nav#TOC ul ul { padding-left: 1em; font-weight: 400; columns: 2; }
+  nav#TOC ul ul li { break-inside: avoid; }
+  code { font: inherit; }
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">PhotoWagon Manual</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#the-basics" id="toc-the-basics">The Basics</a>
+<ul>
+<li><a href="#home" id="toc-home">Home</a></li>
+<li><a href="#the-editing-screen" id="toc-the-editing-screen">The
+editing screen</a></li>
+<li><a href="#moving-around-the-canvas"
+id="toc-moving-around-the-canvas">Moving around the canvas</a></li>
+<li><a href="#colours" id="toc-colours">Colours</a></li>
+<li><a href="#search-commands" id="toc-search-commands">Search
+Commands</a></li>
+<li><a href="#help" id="toc-help">Help</a></li>
+<li><a href="#preferences" id="toc-preferences">Preferences</a></li>
+<li><a href="#apple-pencil" id="toc-apple-pencil">Apple Pencil</a></li>
+<li><a href="#keyboard-shortcuts" id="toc-keyboard-shortcuts">Keyboard
+shortcuts</a></li>
+</ul></li>
+<li><a href="#tools" id="toc-tools">Tools</a>
+<ul>
+<li><a href="#view-tools" id="toc-view-tools">View tools</a></li>
+<li><a href="#move-and-artboard" id="toc-move-and-artboard">Move and
+Artboard</a></li>
+<li><a href="#marquee-tools" id="toc-marquee-tools">Marquee
+tools</a></li>
+<li><a href="#lasso-tools" id="toc-lasso-tools">Lasso tools</a></li>
+<li><a href="#object-selection-quick-selection-and-magic-wand"
+id="toc-object-selection-quick-selection-and-magic-wand">Object
+Selection, Quick Selection and Magic Wand</a></li>
+<li><a href="#crop-and-slice-tools" id="toc-crop-and-slice-tools">Crop
+and Slice tools</a></li>
+<li><a href="#frame" id="toc-frame">Frame</a></li>
+<li><a href="#measuring-tools" id="toc-measuring-tools">Measuring
+tools</a></li>
+<li><a href="#repair-tools" id="toc-repair-tools">Repair tools</a></li>
+<li><a href="#brush-tools" id="toc-brush-tools">Brush tools</a></li>
+<li><a href="#stamp-tools" id="toc-stamp-tools">Stamp tools</a></li>
+<li><a href="#history-brush" id="toc-history-brush">History
+Brush</a></li>
+<li><a href="#eraser-tools" id="toc-eraser-tools">Eraser tools</a></li>
+<li><a href="#gradient-and-paint-bucket"
+id="toc-gradient-and-paint-bucket">Gradient and Paint Bucket</a></li>
+<li><a href="#blur-sharpen-and-smudge"
+id="toc-blur-sharpen-and-smudge">Blur, Sharpen and Smudge</a></li>
+<li><a href="#dodge-burn-and-sponge"
+id="toc-dodge-burn-and-sponge">Dodge, Burn and Sponge</a></li>
+<li><a href="#pen-tools" id="toc-pen-tools">Pen tools</a></li>
+<li><a href="#type-tools" id="toc-type-tools">Type tools</a></li>
+<li><a href="#path-selection-tools" id="toc-path-selection-tools">Path
+selection tools</a></li>
+<li><a href="#shape-tools" id="toc-shape-tools">Shape tools</a></li>
+<li><a href="#fluid-warp" id="toc-fluid-warp">Fluid Warp</a></li>
+</ul></li>
+<li><a href="#file-edit-view-and-window"
+id="toc-file-edit-view-and-window">File, Edit, View and Window</a>
+<ul>
+<li><a href="#file" id="toc-file">File</a></li>
+<li><a href="#edit" id="toc-edit">Edit</a></li>
+<li><a href="#view" id="toc-view">View</a></li>
+<li><a href="#window" id="toc-window">Window</a></li>
+</ul></li>
+<li><a href="#image-select-and-type"
+id="toc-image-select-and-type">Image, Select and Type</a>
+<ul>
+<li><a href="#image" id="toc-image">Image</a></li>
+<li><a href="#select" id="toc-select">Select</a></li>
+<li><a href="#type" id="toc-type">Type</a></li>
+</ul></li>
+<li><a href="#layers" id="toc-layers">Layers</a>
+<ul>
+<li><a href="#the-layers-panel" id="toc-the-layers-panel">The Layers
+panel</a></li>
+<li><a href="#properties" id="toc-properties">Properties</a></li>
+<li><a href="#the-adjustments-panel" id="toc-the-adjustments-panel">The
+Adjustments panel</a></li>
+<li><a href="#layer-style" id="toc-layer-style">Layer Style</a></li>
+<li><a href="#masks" id="toc-masks">Masks</a></li>
+<li><a href="#embedded-layers-and-live-filters"
+id="toc-embedded-layers-and-live-filters">Embedded layers and live
+filters</a></li>
+<li><a href="#the-layer-menu" id="toc-the-layer-menu">The Layer
+menu</a></li>
+<li><a href="#tips" id="toc-tips">Tips</a></li>
+</ul></li>
+<li><a href="#filters-and-develop" id="toc-filters-and-develop">Filters
+and Develop</a>
+<ul>
+<li><a href="#how-filter-settings-work"
+id="toc-how-filter-settings-work">How filter settings work</a></li>
+<li><a href="#live-filters" id="toc-live-filters">Live filters</a></li>
+<li><a href="#filter-menu-the-top" id="toc-filter-menu-the-top">Filter
+menu: the top</a></li>
+<li><a href="#blur" id="toc-blur">Blur</a></li>
+<li><a href="#sharpen" id="toc-sharpen">Sharpen</a></li>
+<li><a href="#noise" id="toc-noise">Noise</a></li>
+<li><a href="#pixelate" id="toc-pixelate">Pixelate</a></li>
+<li><a href="#stylize" id="toc-stylize">Stylize</a></li>
+<li><a href="#distort" id="toc-distort">Distort</a></li>
+<li><a href="#other" id="toc-other">Other</a></li>
+<li><a href="#render" id="toc-render">Render</a></li>
+<li><a href="#blur-effects" id="toc-blur-effects">Blur Effects</a></li>
+<li><a href="#video" id="toc-video">Video</a></li>
+<li><a href="#plug-ins" id="toc-plug-ins">Plug-ins</a></li>
+<li><a href="#develop" id="toc-develop">Develop</a></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="the-basics">The Basics</h1>
+<h2 id="home">Home</h2>
+<p>Home is the first screen you see. It’s where you start a new image,
+open one, or pick up where you left off.</p>
+<figure>
+<img src="images/home.jpg" alt="The Home screen" />
+<figcaption aria-hidden="true">The Home screen</figcaption>
+</figure>
+<p><strong>New file</strong> starts a blank image. Pick a
+<strong>Preset</strong> (Photo, Print, Art &amp; Illustration, Web,
+Mobile, Film &amp; Video) or choose Custom and set it up yourself, then
+tap Create. Options: <em>Name</em>, <em>Units</em> (Pixels, Inches or
+Centimeters), <em>Width</em> and <em>Height</em>, <em>Resolution
+(pixels/inch)</em>, <em>Colour Mode</em> (RGB Color, Grayscale, CMYK
+Color, Lab Color), <em>Colour Profile</em>, <em>Bit Depth</em> (8, 16 or
+32 bit), <em>Background</em> (White, Black, Background Color,
+Transparent).</p>
+<p><strong>Open</strong> shows the images in PhotoWagon’s own folder (On
+My iPhone › PhotoWagon in the Files app). Tap one to open it, or tap
+<strong>Browse Files…</strong> to look anywhere in Files, or
+<strong>Photos…</strong> to pick from your photo library. PhotoWagon
+opens JPEG, PNG, HEIC, JPEG XL, TIFF, PSD, WebP, GIF, camera raw files
+and its own layered files, among others.</p>
+<p><strong>Photos</strong> goes straight to your photo library.</p>
+<p><strong>Open</strong> (the list under the buttons) shows the images
+you already have open. Tap one to go back to it. <strong>Back to
+Workspace</strong>, under the title, also takes you back to the image
+you were working on.</p>
+<p><strong>Recovered</strong> appears only if PhotoWagon closed before
+you saved your work. Tap a row (or its <strong>Open</strong>) to open
+that copy, or tap <strong>Discard</strong> to throw it away. Home keeps
+the 10 newest copies and removes older ones.</p>
+<p><strong>Recent</strong> lists the files you opened or saved lately,
+with a small preview. Tap one to open it again.</p>
+<p><strong>Preferences</strong> is the gear at the top right. See
+Preferences below.</p>
+<p>You can also drag an image from another app onto PhotoWagon to open
+it. Drop it on the canvas instead and it becomes a new layer.</p>
+<h2 id="the-editing-screen">The editing screen</h2>
+<figure>
+<img src="images/editor.jpg" alt="The editing screen" />
+<figcaption aria-hidden="true">The editing screen</figcaption>
+</figure>
+<p>In portrait, the screen has the top bar, the canvas (your image), the
+options bar, and the toolbar along the bottom. Turn your device sideways
+and the tools move to a column on the left, with the options bar along
+the top.</p>
+<p><strong>Document tabs</strong> appear under the top bar when you have
+more than one image open. Tap a tab to switch. A dot after the name
+means unsaved changes. Tap ✕ to close it, and choose Save, Don’t Save or
+Cancel if it has changes. On a phone held sideways, the tabs sit in the
+top bar.</p>
+<p><strong>The options bar</strong> shows the settings of the tool you
+picked, or buttons for what you can do right now, like Commit and Cancel
+while you crop or transform.</p>
+<p><strong>The toolbar</strong> holds the tools. Tap an icon to pick it.
+Icons with more than one tool show that group’s tools in the options
+bar, so you can pick the one you want. Touch and hold an icon to see
+tool names and what they do.</p>
+<p><strong>The status bar</strong> sits at the bottom left of the
+canvas. It shows the zoom and one fact about your image. Tap it to
+choose which fact: <em>Document Dimensions</em>, <em>Layer Count</em> or
+<em>Current Tool</em>. While you record an action, it also says so.</p>
+<h3 id="the-top-bar">The top bar</h3>
+<p><strong>Home</strong> (the house) takes you back to Home. Your open
+images stay open.</p>
+<p><strong>☰</strong> opens the menus: File, Edit, Image, Layer, Type,
+Select, Filter, View, Window and Help. <strong>Quick Share as
+PNG…</strong> sits at the top for sharing your image fast.</p>
+<p><strong>Undo</strong> and <strong>Redo</strong> (the curved arrows)
+step back and forward through your changes.</p>
+<p><strong>Search Commands</strong> (the magnifying glass) finds any
+command by name. See below.</p>
+<p><strong>History</strong> (the clock) lists every step you’ve taken.
+Tap any step to go back to it. Steps after it turn grey, and you can tap
+one of those to go forward again.</p>
+<p><strong>View</strong> (the arrows pointing out) helps when you’ve
+lost your place. Options: <em>Reset Tilt</em> (turns the image level
+again), <em>Reset Position</em> (puts it back in the middle), <em>Reset
+Zoom</em> (back to the size that fits, keeping any tilt), <em>Fit to
+Screen</em> (fits the whole image, level and centred).</p>
+<p><strong>Layers</strong> (the stacked squares) opens the Layers
+panel.</p>
+<h2 id="moving-around-the-canvas">Moving around the canvas</h2>
+<p><strong>Pinch</strong> with two fingers to zoom in and out.
+<strong>Drag with two fingers</strong> to move the image around.</p>
+<p><strong>Twist two fingers</strong> to turn the image, like turning a
+sheet of paper. On a level image nothing happens until you twist past
+about 20°, so pinching won’t tilt it by accident. Once it’s turned, it
+follows your fingers right away. Use View › Reset Tilt to level it
+again.</p>
+<p><strong>Tap with two fingers</strong> to undo. <strong>Tap with three
+fingers</strong> to redo.</p>
+<p>With a trackpad or mouse, scroll to move the image, and hold ⌥ or ⌘
+while you scroll to zoom. Trackpad pinch and twist work too.</p>
+<h2 id="colours">Colours</h2>
+<p><strong>The colour well</strong> sits at the end of the toolbar. The
+front square is the foreground colour (what you paint with). The square
+behind it is the background colour, a second colour some tools and fills
+use. Tap the front square to choose a new foreground colour. Tap the
+back square to swap the two. To pick a colour from your image, use the
+Eyedropper tool.</p>
+<h2 id="search-commands">Search Commands</h2>
+<p><strong>Search Commands</strong> lists every command PhotoWagon has.
+Start typing a name, like “blur” or “crop”, and tap the one you want.
+Each row shows which menu it lives in. Commands that need settings ask
+for them first. If a command can’t run right now, it’s greyed out with a
+short reason in orange.</p>
+<h2 id="help">Help</h2>
+<p><strong>Help › Manual</strong> opens this manual.</p>
+<p><strong>Help › Tutorial</strong> runs a short tour of 11 tips: the
+tools, a group’s tools, tool options, the top bar buttons and the
+colours. Tap <strong>Next</strong> to move on, or <strong>Skip
+Tutorial</strong> to stop. The tour starts by itself the first time you
+open an image, and once you finish or skip it, it only comes back from
+the Help menu. It needs an open image.</p>
+<p><strong>Help › Acknowledgements</strong> (also at the bottom of
+Settings on the Home screen) lists the open-source software inside
+PhotoWagon, with each licence.</p>
+<h2 id="preferences">Preferences</h2>
+<p>Open Preferences from the gear on Home, or from ☰ › Edit ›
+Preferences › General….</p>
+<figure>
+<img src="images/preferences.jpg" alt="Preferences" />
+<figcaption aria-hidden="true">Preferences</figcaption>
+</figure>
+<p><strong>Placing</strong> controls what happens when you add a picture
+to your image with Place. Options: <em>Resize Image During Place</em>
+(fits the picture to your canvas), <em>Always Create Embedded Layers
+When Placing</em> (brings it in as an embedded layer you can resize
+without losing detail).</p>
+<p><strong>File Handling</strong> covers safety copies and opening
+photos. Options: <em>Save Recovery Information</em> (how often
+PhotoWagon keeps a safety copy of unsaved work: Off, Every Minute, or
+every 5 to 60 minutes; 10 minutes to start), <em>Open JPEG and HEIC in
+Develop</em> (opens these photos in Develop first; camera raw files
+always do).</p>
+<p><strong>Apple Pencil</strong> sets how your Pencil behaves. Options:
+<em>Double-Tap</em> and <em>Squeeze</em> (what each does: As in
+Settings, Switch to Eraser, Previous Tool, Show Colors, Brush Settings,
+Undo or Off; Squeeze can also Show Palette and needs Apple Pencil Pro),
+<em>Only Apple Pencil Paints</em> (your finger moves the image while a
+painting tool is picked), <em>Pressure</em> (see below).</p>
+<p><strong>Pressure</strong> sets how hard you need to press for a full
+stroke. Pick <em>Light</em>, <em>Normal</em> or <em>Firm</em>, or drag
+the curve yourself: up for a lighter touch, down for a firmer one. Drag
+a point off the graph to remove it.</p>
+<p><strong>AI</strong> shows whether the AI Remove model is on your
+device. Options: <em>Download Model</em>, <em>Cancel Download</em>
+(while it downloads), <em>Delete Model</em> (frees about 25 MB; it
+downloads again next time you use AI Remove). The model runs on your
+device, so your photos never leave it.</p>
+<p>The other items under ☰ › Edit › Preferences have no settings screen
+yet.</p>
+<h2 id="apple-pencil">Apple Pencil</h2>
+<p>PhotoWagon reads your Pencil’s <strong>pressure</strong>,
+<strong>tilt</strong> and, on Apple Pencil Pro, <strong>barrel
+roll</strong> (turning the Pencil in your fingers). Brushes can use
+these to change size, opacity and angle as you paint; you set that up in
+Brush Settings. Fingers paint at full pressure.</p>
+<p><strong>Hover</strong> your Pencil over the screen (on iPads that
+support it) to see the brush outline before you touch down.</p>
+<p><strong>Double-tap</strong> and <strong>squeeze</strong> run the
+actions you chose in Preferences. <em>As in Settings</em> follows your
+iPad’s own Apple Pencil settings.</p>
+<p><strong>The palette</strong> appears beside your Pencil when you
+squeeze (with Squeeze set to Show Palette). It has the Brush, Eraser,
+Smudge and Eyedropper, your foreground colour, Size and Opacity sliders,
+and Undo and Redo. Tap anywhere else to close it.</p>
+<h2 id="keyboard-shortcuts">Keyboard shortcuts</h2>
+<p>With a hardware keyboard attached, these are the most useful
+keys.</p>
+<p><strong>Files and editing</strong>: ⌘N New, ⌘O Open, ⌘S Save, ⇧⌘S
+Save As, ⌘W Close, ⌘Z Undo, ⇧⌘Z Redo, ⌘X Cut, ⌘C Copy, ⌘V Paste, ⌘J
+Layer via Copy, ⌘T Free Transform, ⌘F Search Commands, ⌘K
+Preferences.</p>
+<p><strong>Selections</strong>: ⌘A select all, ⌘D deselect, ⇧⌘I inverse,
+Q Quick Mask.</p>
+<p><strong>View</strong>: ⌘= zoom in, ⌘− zoom out, ⌘0 fit on screen, ⌘1
+100%, F7 Layers. Hold Space and drag to move the image.</p>
+<p><strong>Tools</strong>: V Move, M Marquee, L Lasso, W selection
+tools, C Crop, I Eyedropper, B Brush, E Eraser, G Gradient, T Type, J
+repair tools, S Clone Stamp, O Dodge, P Pen, U shapes, H Hand, R Rotate
+View, Z Zoom. Press ⇧ with a tool’s key to step through the tools that
+share it.</p>
+<p><strong>Painting</strong>: [ and ] make the brush smaller and bigger,
+and ⇧[ and ⇧] make it softer and harder. Number keys set opacity (1 is
+10%, 0 is 100%, or type two quickly, like 4 then 5 for 45%); add ⇧ to
+set flow. Hold ` to erase with the brush until you let go. ← and → turn
+the brush tip. Caps Lock swaps the brush outline for a small
+crosshair.</p>
+<p><strong>Colours</strong>: X swaps foreground and background, D resets
+them to black and white.</p>
+<p><strong>Finishing</strong>: Return commits a crop, transform or shape
+in progress, and Esc cancels it.</p>
+<h1 id="tools">Tools</h1>
+<p>The tool icons run along the bottom of the screen in the toolbar
+(down the left side when your iPad is sideways). Most icons hold a small
+group of related tools, marked by a tiny triangle in the corner. Tap a
+group’s icon to pick its current tool and list all of its tools in the
+options bar (the row above the toolbar). Tap one there to pick it. Touch
+and hold a group’s icon for a menu of its tools with a short description
+of each, or touch and hold any icon in the options bar to see its name.
+Once you’ve picked, tap the image and the options bar goes back to
+showing the tool’s options.</p>
+<figure>
+<img src="images/tool-group.jpg"
+alt="A tool group’s tools listed in the options bar" />
+<figcaption aria-hidden="true">A tool group’s tools listed in the
+options bar</figcaption>
+</figure>
+<figure>
+<img src="images/options-bar.jpg"
+alt="The Brush’s options in the options bar" />
+<figcaption aria-hidden="true">The Brush’s options in the options
+bar</figcaption>
+</figure>
+<p>A few things work the same with every tool:</p>
+<p><strong>Moving around.</strong> Pinch with two fingers to zoom, drag
+with two fingers to pan, and twist two fingers to turn the view (it
+starts turning once you twist past a small amount). Tap with two fingers
+to undo, and with three fingers to redo.</p>
+<p><strong>The loupe.</strong> When a tool places an exact point (a
+corner, a colour sample, a path point), a magnifier shows the pixels
+under your finger. It stays a moment after you lift so you can see where
+the point went.</p>
+<p><strong>Touch and hold to pick a colour.</strong> With painting
+tools, touch and hold the image to pick the colour under your finger as
+the foreground colour. With Clone Stamp and Repair Brush, touch and hold
+sets the source instead.</p>
+<p><strong>Painting on text or shapes.</strong> If you paint on a type,
+shape, fill or embedded layer, PhotoWagon asks whether to Rasterize it
+first, which turns it into plain pixels.</p>
+<h2 id="view-tools">View tools</h2>
+<p><strong>Hand</strong> lets you drag with one finger to move around
+the image. Touch and hold the group’s icon (or open its tools in the
+options bar) for three view shortcuts: <em>Fit on Screen</em> (show the
+whole image), <em>Actual Size</em> (one image pixel per screen pixel)
+and <em>Straighten View</em> (undo the view’s rotation).</p>
+<p><strong>Rotate View</strong> turns the view as you drag around the
+screen, without changing the image. Use Straighten View to set it
+back.</p>
+<p><strong>Zoom In</strong> zooms in where you tap, or zooms to fit a
+box you drag. Options: <em>Scrubby Zoom</em> (instead of a box, drag
+right to zoom in and left to zoom out).</p>
+<p><strong>Zoom Out</strong> zooms out where you tap.</p>
+<h2 id="move-and-artboard">Move and Artboard</h2>
+<p><strong>Move</strong> drags the active layer around. The layer snaps
+to the canvas edges and centre, with guide lines showing where. Options:
+<em>Auto-Select</em> (picks the layer under your finger before moving
+it), <em>Copy While Moving</em> (moves a copy and leaves the original),
+<em>Align</em> (lines up the layer with the canvas’s Left Edges,
+Horizontal Centers, Right Edges, Top Edges, Vertical Centers or Bottom
+Edges, or with the selection if there is one), <em>Free Transform</em>
+(puts handles round the layer, see below).</p>
+<p><strong>Artboard</strong> makes a new artboard where you drag a
+box.</p>
+<h3 id="free-transform">Free Transform</h3>
+<p>Free Transform puts a box with handles round the layer or selection.
+Drag inside the box to move it, drag a corner to scale it, and drag the
+round handle on top (or anywhere outside the box) to rotate it. The
+small dot in the middle is the reference point: drag it to change what
+the layer turns and scales around. Tap <em>Commit</em> (✓) to apply or
+<em>Cancel</em> (✕) to throw it away.</p>
+<figure>
+<img src="images/transform.jpg"
+alt="Free Transform’s box and handles" />
+<figcaption aria-hidden="true">Free Transform’s box and
+handles</figcaption>
+</figure>
+<p>Options: <em>Keep Proportions</em> (corners scale without
+stretching), <em>Reference Point</em> (move the reference point to a
+corner, edge or the centre), <em>Scale From Reference Point</em> (scale
+around the reference point instead of the opposite corner), <em>Snap
+Rotation to 15°</em>, <em>Rotate 90° Left</em>, <em>Rotate 90°
+Right</em>, an angle box (type an exact angle), <em>Flip
+Horizontal</em>, <em>Flip Vertical</em>.</p>
+<h2 id="marquee-tools">Marquee tools</h2>
+<p>These select regular shapes. Like all selection tools, they have
+three mode buttons at the start of the options bar: <em>Replace</em> (a
+new selection), <em>Add</em> (adds to the selection) and
+<em>Subtract</em> (takes away from it).</p>
+<p><strong>Rectangular Marquee</strong> selects a rectangle you drag.
+After you draw it, drag its edges or corners to adjust it, or drag
+inside to move it. A tap on the image deselects. Options: mode,
+<em>Feather</em> (softens the edge by this many pixels),
+<em>Anti-alias</em> (smooths jagged edges). While the box is showing you
+also get <em>Lock Ratio</em> and <em>X</em>, <em>Y</em>, <em>W</em>,
+<em>H</em> boxes to type its exact position and size.</p>
+<p><strong>Elliptical Marquee</strong> works the same way but selects an
+oval. Same options as Rectangular Marquee.</p>
+<p><strong>Single Row Marquee</strong> and <strong>Single Column
+Marquee</strong> select one row or one column of pixels across the whole
+image where you tap. Options: mode, <em>Subject</em>, <em>All</em>
+(selects the whole image).</p>
+<h2 id="lasso-tools">Lasso tools</h2>
+<p><strong>Lasso</strong> selects a freehand shape. Draw round the area
+with your finger and lift to close it. Options: mode, <em>Feather</em>,
+<em>Anti-alias</em>.</p>
+<p><strong>Polygonal Lasso</strong> selects a shape with straight sides.
+Tap each corner, then tap the first point (or tap <em>Commit</em>) to
+close it. Drag a point to move it. Options while drawing:
+<em>Commit</em>, <em>Cancel</em>, <em>Undo Last Point</em>. Before you
+start: mode, <em>Feather</em>, <em>Anti-alias</em>.</p>
+<p><strong>Magnetic Lasso</strong> follows edges for you. Trace roughly
+along the edge of an object and lift; the outline snaps to the edge it
+finds. Options: mode, <em>Subject</em>, <em>All</em>.</p>
+<h2 id="object-selection-quick-selection-and-magic-wand">Object
+Selection, Quick Selection and Magic Wand</h2>
+<p><strong>Object Selection</strong> finds an object for you. Tap an
+object, or drag a box round it. With Object Finder on, touch and hold to
+highlight the object under your finger, then lift to select it. Options:
+mode, <em>Object Finder</em> (highlights objects as you hold), <em>Show
+All Objects</em> (shows every object it can find), <em>Subject</em>
+(selects the main subject of the photo).</p>
+<p><strong>Quick Selection</strong> grows a selection as you paint over
+an area; it spreads to similar colours and stops at edges. Use the
+Subtract mode to paint parts back out. Options: mode, <em>Size</em>,
+<em>Sample All Layers</em> (looks at every layer, not only the active
+one), <em>Enhance Edge</em> (a smoother, cleaner edge),
+<em>Subject</em>. You can also touch and hold the group’s icon for
+<em>Select Subject</em>.</p>
+<p><strong>Magic Wand</strong> selects colours like the one you tap.
+Options: mode, <em>Tolerance</em> (how different a colour can be and
+still be picked, 0 to 255), <em>Contiguous</em> (only touching pixels;
+off picks that colour everywhere), <em>Sample All Layers</em>.</p>
+<p><strong>Select Subject</strong> (the <em>Subject</em> button) looks
+at the photo and selects the main subject, such as a person, pet or
+product. It uses the active layer unless Sample All Layers is on.</p>
+<p>Every selection tool’s options also have <strong>Select All</strong>,
+and <strong>Paste</strong> once you’ve copied something.</p>
+<h3 id="when-something-is-selected">When something is selected</h3>
+<p>Once there’s a selection, and you’re using a selection tool, a type
+tool, Move, Patch or Move and Fill, the options bar shows buttons for it
+instead.</p>
+<figure>
+<img src="images/selection.jpg"
+alt="A selection with the selection buttons in the options bar" />
+<figcaption aria-hidden="true">A selection with the selection buttons in
+the options bar</figcaption>
+</figure>
+<p><strong>Deselect</strong> removes the selection.
+<strong>Invert</strong> selects everything that wasn’t selected.
+<strong>Fill</strong> fills the selection with the foreground colour.
+<strong>Quick Fill</strong> deletes what’s inside and fills it from the
+area around it. <strong>AI Remove</strong> fills it with the on-device
+AI (see AI Remove below). <strong>Delete</strong> clears what’s inside
+to transparent. <strong>Copy</strong> copies the selected part.
+<strong>Paste</strong> pastes what you copied as a new layer, in this
+image or another open one: switch to its tab first. <strong>Select
+All</strong> selects the whole image. <strong>Copy to Layer</strong>
+copies the selected part to a new layer. <strong>Mask</strong> adds a
+layer mask that shows only the selection. <strong>Transform</strong>
+starts Free Transform on the selected part.</p>
+<h2 id="crop-and-slice-tools">Crop and Slice tools</h2>
+<p><strong>Crop</strong> trims the image. Drag to draw the crop area, or
+tap for the whole image. Drag a corner or edge to resize it (drag past
+the image to add canvas), and drag inside to move it. Parts outside are
+dimmed. Tap <em>Commit</em> to crop or <em>Cancel</em> to stop. Options:
+<em>Straighten</em> (draw a line along something that should be level,
+and the crop turns to match), <em>Delete Cropped Pixels</em> (off keeps
+the cut-away parts hidden, so you can move them back in later).</p>
+<p><strong>Perspective Crop</strong> crops and squares up something
+photographed at an angle, such as a sign or a page. Tap its four corners
+(drag one to move it), then tap <em>Commit</em>. Options while placing:
+<em>Commit</em>, <em>Cancel</em>, <em>Undo Last Point</em>.</p>
+<p><strong>Slice</strong> cuts the image into slices for the web. Drag a
+box to make a slice.</p>
+<p><strong>Slice Select</strong> shows the name and number of the slice
+you tap.</p>
+<h2 id="frame">Frame</h2>
+<p><strong>Frame</strong> makes a picture frame layer where you drag a
+box.</p>
+<h2 id="measuring-tools">Measuring tools</h2>
+<p><strong>Eyedropper</strong> picks the foreground colour from the
+image. Tap, or drag to see the colour change as you go. Options:
+<em>Sample Size</em> (<em>Point Sample</em>, or an average of 3 by 3 up
+to 101 by 101 pixels), <em>Sample</em> (<em>All Layers</em>, <em>Current
+Layer</em>, <em>Current &amp; Below</em>, and the same two without
+adjustment layers).</p>
+<p><strong>Color Sampler</strong> marks a spot so you can read its
+colour. Tap to add a sampler; a message shows its number and its R, G
+and B values. Drag a sampler to move it.</p>
+<p><strong>Ruler</strong> measures distance and angle. Drag a line; the
+options bar shows its width (W), height (H), length (L) in pixels and
+angle (A). Drag either end to change it.</p>
+<p><strong>Note</strong> adds a note to the image. Tap where you want it
+and type your note.</p>
+<p><strong>Count</strong> puts numbered count marks on the image. Tap
+each thing you want to count; a message shows the total.</p>
+<h2 id="repair-tools">Repair tools</h2>
+<p><strong>Spot Repair Brush</strong> fixes small spots and blemishes.
+Paint over them and they’re filled to blend with what’s around. Options:
+<em>Size</em>, <em>Hardness</em>, <em>Sample All Layers</em>,
+<em>Straight Line</em> (see below).</p>
+<p><strong>Quick Fill</strong> removes something by filling it from the
+surroundings, with no AI. Paint over it and lift. Options:
+<em>Size</em>, <em>Sample All Layers</em>, <em>Remove After Each
+Stroke</em> (on: each stroke is filled when you lift; off: paint several
+strokes, then tap <em>Commit</em> to fill them all at once),
+<em>Straight Line</em>.</p>
+<p><strong>AI Remove</strong> removes things with an AI model that fills
+the gap with what should be behind it. It runs on your device, so your
+photos never leave it. Paint over what you want gone, or select it and
+tap <em>Remove Selection</em>. Options: <em>Size</em>, <em>Sample All
+Layers</em>, <em>Remove After Each Stroke</em> (as for Quick Fill),
+<em>Match Colour</em> (blends the fill into the colour round it),
+<em>Remove Selection</em> (shown when something is selected),
+<em>Straight Line</em>.</p>
+<figure>
+<img src="images/ai-remove.jpg" alt="AI Remove’s options" />
+<figcaption aria-hidden="true">AI Remove’s options</figcaption>
+</figure>
+<p>The first time you use AI Remove, PhotoWagon asks to download its
+model (about 25 MB, once). Tap <em>Download</em> to get it, or <em>Not
+Now</em>. When the download finishes, what you painted or selected is
+removed.</p>
+<p><strong>Repair Brush</strong> copies texture from one place to cover
+another, matched to the light and colour where you paint. Touch and hold
+to set the source, then paint over the problem. Options: <em>Size</em>,
+<em>Opacity</em>, <em>Hardness</em>, <em>Straight Line</em>.</p>
+<p><strong>Patch</strong> repairs a selected area with texture from
+somewhere else. Select the area first (with any selection tool), switch
+to Patch, then drag from the selection to a clean area to take the patch
+from.</p>
+<p><strong>Move and Fill</strong> moves a selected part of the image and
+fills the hole it leaves. Select it, switch to Move and Fill, then drag
+it to where you want it.</p>
+<p><strong>Red Eye</strong> fixes red eyes from a camera flash. Tap each
+red eye.</p>
+<h2 id="brush-tools">Brush tools</h2>
+<p><strong>Brush</strong> paints with the foreground colour. Paint with
+your finger or Apple Pencil; pressure works with the Pencil.</p>
+<p>Options: <em>Brush Tip</em> (pick a brush preset from its groups, or
+<em>Import Brush Tips…</em>), <em>Mode</em> (how the paint blends with
+what’s below, such as Normal, Multiply or Screen), <em>Size</em>,
+<em>Opacity</em>, <em>Hardness</em>, <em>Flow</em> (how much paint each
+dab lays down), <em>Smoothing</em> (evens out shaky strokes),
+<em>Pressure for Size</em>, <em>Pressure for Opacity</em> (the Pencil’s
+pressure changes size or opacity), <em>Symmetry</em> (<em>Off</em>,
+<em>Vertical</em>, <em>Horizontal</em>, <em>Dual Axis</em>,
+<em>Diagonal</em>: paints a mirror image across the middle of the
+canvas), <em>Brush Angle</em> (the angle dial), <em>Brush Settings</em>
+(the full brush screen), <em>Straight Line</em>.</p>
+<p>On a narrow screen only the sliders that fit are shown, and the rest
+move into the <em>Brush Options</em> (…) menu: Mode, the two pressure
+buttons, Symmetry, Straight Line, Brush Angle… and Brush Settings….</p>
+<p><strong>Straight Line.</strong> With Straight Line on (or Shift held
+on a keyboard), a tap paints a straight line from where your last stroke
+ended to where you tap. It works with every painting and retouching
+tool.</p>
+<p><strong>Pencil</strong> paints hard-edged lines. Options: as for
+Brush, without Hardness and Flow.</p>
+<p><strong>Color Replacement</strong> paints the foreground colour over
+the colours you paint on, keeping their light and shade. Options:
+<em>Size</em>, <em>Straight Line</em>.</p>
+<p><strong>Mixer Brush</strong> paints colour that mixes with the
+colours already there, like wet paint. Options: <em>Size</em>,
+<em>Flow</em>, <em>Smoothing</em>, <em>Pressure for Size</em>,
+<em>Pressure for Opacity</em>, <em>Brush Angle</em>, <em>Brush
+Settings</em>, <em>Straight Line</em>.</p>
+<h3 id="brush-angle">Brush Angle</h3>
+<p>The Brush Angle dial shows the brush tip’s shape at its angle. Drag
+round the dial to turn it, or tap the turn buttons to move it 15° either
+way. <em>Reset</em> sets it back to 0°.</p>
+<h3 id="brush-settings">Brush Settings</h3>
+<p>Brush Settings opens a screen with every setting of the brush, with a
+preview stroke at the top that updates as you change things. Tap
+<em>Done</em> when you’re finished.</p>
+<figure>
+<img src="images/brush-settings.jpg"
+alt="Brush Settings with its preview stroke" />
+<figcaption aria-hidden="true">Brush Settings with its preview
+stroke</figcaption>
+</figure>
+<p><strong>Brush Tip Shape.</strong> <em>Size</em>, <em>Hardness</em>,
+<em>Angle</em>, <em>Roundness</em> (squashes the tip into an oval),
+<em>Flip X</em>, <em>Flip Y</em>, <em>Spacing</em> (on: sets the gap
+between dabs).</p>
+<p><strong>Shape Dynamics</strong> (turn on with its switch). <em>Size
+Jitter</em> with <em>Minimum Diameter</em>, <em>Tilt Scale</em>,
+<em>Angle Jitter</em>, <em>Roundness Jitter</em> with <em>Minimum
+Roundness</em>, <em>Flip X Jitter</em>, <em>Flip Y Jitter</em>. Each
+jitter adds random change as you paint.</p>
+<p><strong>Scattering</strong> (turn on with its switch).
+<em>Scatter</em> (spreads dabs away from the stroke), <em>Both
+Axes</em>, <em>Count</em> (dabs per step), <em>Count Jitter</em>.</p>
+<p><strong>Transfer</strong> (turn on with its switch). <em>Opacity
+Jitter</em> and <em>Flow Jitter</em>, each with a <em>Minimum</em>.</p>
+<p>Each jitter has a <em>Control</em> that sets what drives it:
+<em>Off</em>, <em>Fade</em>, <em>Pen Pressure</em>, <em>Pen Tilt</em>,
+<em>Pencil Rotation</em>, <em>Initial Direction</em> or
+<em>Direction</em>.</p>
+<p><strong>Flow and Smoothing.</strong> <em>Flow</em>,
+<em>Smoothing</em>, <em>Pulled String Mode</em> (the stroke only moves
+once your finger pulls past a short string), <em>Stroke Catch-up</em>,
+<em>Catch-up on Stroke End</em>, <em>Adjust for Zoom</em>.</p>
+<p><strong>Other settings.</strong> <em>Noise</em> (adds grain to soft
+edges), <em>Wet Edges</em> (darker edges, like watercolour),
+<em>Build-up</em> (paint keeps building while you hold).</p>
+<p><strong>New Brush Preset…</strong> saves the brush under a name you
+give, so it shows up in the Brush Tip menu. <em>Include Tool
+Settings</em> also saves the mode, opacity, flow and the pressure
+buttons with it.</p>
+<h2 id="stamp-tools">Stamp tools</h2>
+<p><strong>Clone Stamp</strong> paints a copy of one part of the image
+onto another. Touch and hold to set the source, then paint; if no source
+is set yet, PhotoWagon reminds you. Options: as for Brush, without Brush
+Tip, Mode and Symmetry.</p>
+<p><strong>Pattern Stamp</strong> paints with a pattern. Options: as for
+Clone Stamp.</p>
+<h2 id="history-brush">History Brush</h2>
+<p><strong>History Brush</strong> paints part of the image back to how
+it was earlier, so you can undo an edit in one area only. Options: as
+for Clone Stamp.</p>
+<h2 id="eraser-tools">Eraser tools</h2>
+<p><strong>Eraser</strong> erases to transparent as you paint. Options:
+as for Brush, without Mode.</p>
+<p><strong>Background Eraser</strong> erases the colour you paint over
+while leaving other colours, handy for removing a plain background round
+an edge. Options: <em>Size</em>, <em>Hardness</em>, <em>Straight
+Line</em>.</p>
+<p><strong>Magic Eraser</strong> erases all colours like the one you
+tap. Options: <em>Tolerance</em>, <em>Contiguous</em>, <em>Sample All
+Layers</em>.</p>
+<h2 id="gradient-and-paint-bucket">Gradient and Paint Bucket</h2>
+<p><strong>Gradient</strong> fills the layer with a smooth blend of
+colours. Drag from where it starts to where it ends. Options:
+<em>Gradient</em> (pick a gradient preset; the default is Foreground to
+Background), the style (<em>Linear</em>, <em>Radial</em>,
+<em>Angle</em>, <em>Reflected</em>, <em>Diamond</em>), <em>Reverse</em>
+(swaps the ends).</p>
+<p><strong>Paint Bucket</strong> fills colours like the one you tap with
+the foreground colour. Options: <em>Tolerance</em>, <em>Contiguous</em>,
+<em>Sample All Layers</em>.</p>
+<h2 id="blur-sharpen-and-smudge">Blur, Sharpen and Smudge</h2>
+<p><strong>Blur</strong> softens detail where you paint. Options:
+<em>Size</em>, <em>Strength</em>, <em>Hardness</em>, <em>Straight
+Line</em>.</p>
+<p><strong>Sharpen</strong> makes detail crisper where you paint.
+Options: as for Blur.</p>
+<p><strong>Smudge</strong> smears colour along your stroke, like a
+finger in wet paint. Options: as for Blur.</p>
+<h2 id="dodge-burn-and-sponge">Dodge, Burn and Sponge</h2>
+<p><strong>Dodge</strong> lightens where you paint. Options:
+<em>Size</em>, <em>Exposure</em> (how strong each stroke is),
+<em>Hardness</em>, <em>Straight Line</em>.</p>
+<p><strong>Burn</strong> darkens where you paint. Options: as for
+Dodge.</p>
+<p><strong>Sponge</strong> takes colour out where you paint. Options:
+<em>Size</em>, <em>Flow</em>, <em>Hardness</em>, <em>Straight
+Line</em>.</p>
+<h2 id="pen-tools">Pen tools</h2>
+<p>The pen tools draw a path, a smooth outline you can turn into a
+selection, a fill, a stroke or a shape. All of them share these options:
+<em>Make Selection</em> (selects the inside of the path, using the
+selection mode), <em>Fill Path</em> (fills it with the foreground
+colour), <em>Stroke Path</em> (paints along it with the brush),
+<em>Shape Layer</em> (makes it a new shape layer), <em>Delete
+Path</em>.</p>
+<p><strong>Pen</strong> draws a path point by point. Tap for a corner,
+or drag to pull out handles for a curve. Tap the first point to close
+the shape.</p>
+<p><strong>Freeform Pen</strong> draws a path as you move your finger,
+like drawing with a pencil.</p>
+<p><strong>Curvature Pen</strong> makes smooth curves. Tap points and
+the path curves through all of them.</p>
+<p><strong>Add Anchor Point</strong> adds a point where you tap on a
+path.</p>
+<p><strong>Delete Anchor Point</strong> removes the point you tap.</p>
+<p><strong>Convert Point</strong> changes the point you tap from a
+corner to a smooth curve, or back.</p>
+<h2 id="type-tools">Type tools</h2>
+<p><strong>Horizontal Type</strong> adds text. Tap for a line of text,
+or drag a box for text that wraps inside it. Type your text and confirm.
+Tap existing text to edit it. The text uses the foreground colour.
+Options: <em>Font</em>, <em>Size</em> (in points), <em>Leading</em> (the
+gap between lines; empty is Auto), <em>Tracking</em> (the space between
+letters), and left, centre or right alignment. With a text layer active,
+changes apply to it straight away.</p>
+<p><strong>Vertical Type</strong> adds text that runs top to bottom.
+Options: as for Horizontal Type.</p>
+<p><strong>Horizontal Type Mask</strong> and <strong>Vertical Type
+Mask</strong> make a selection in the shape of the letters you type,
+instead of a text layer. Options: as for Horizontal Type.</p>
+<h2 id="path-selection-tools">Path selection tools</h2>
+<p><strong>Path Selection</strong> moves a whole path. Drag it where you
+want it.</p>
+<p><strong>Direct Selection</strong> changes a path’s shape. Drag a
+point to move it, or drag a handle to change the curve. Options for
+both: as for the pen tools.</p>
+<h2 id="shape-tools">Shape tools</h2>
+<p>Each shape tool draws a new shape layer filled with the foreground
+colour. Drag to draw the shape; hold Shift on a keyboard for an even
+square or circle.</p>
+<p><strong>Rectangle</strong> draws a rectangle.
+<strong>Ellipse</strong> draws an oval. <strong>Triangle</strong> draws
+a triangle.</p>
+<p><strong>Polygon</strong> draws a shape with straight sides. Options:
+<em>Sides</em> (3 to 100).</p>
+<p><strong>Line</strong> draws a straight line from where you start
+dragging to where you stop. Its thickness depends on how far you’re
+zoomed in.</p>
+<p><strong>Custom Shape</strong> draws a ready-made shape from the shape
+presets.</p>
+<h2 id="fluid-warp">Fluid Warp</h2>
+<p><strong>Fluid Warp</strong> (☰ › Filter › Fluid Warp…) lets you push
+and pull the pixels of a layer by painting on the image. Drag to warp;
+two fingers still zoom and pan. Tap <em>Commit</em> to apply or
+<em>Cancel</em> to stop. Options: the warp tool (<em>Forward Warp</em>
+pushes pixels along, <em>Reconstruct</em> paints back towards the
+original, <em>Smooth</em>, <em>Twirl</em>, <em>Pucker</em> pulls in,
+<em>Bloat</em> pushes out), <em>Size</em>, <em>Pressure</em>, and under
+<em>More</em>, <em>Amount</em> (how much of the warp shows, 0 to 100%)
+and <em>Restore All</em> (removes every warp stroke).</p>
+<h1 id="file-edit-view-and-window">File, Edit, View and Window</h1>
+<p>Tap ☰ at the top left to open the menus. This section goes through
+File, Edit, View and Window from top to bottom, in the order you see
+them. A greyed-out item tells you, in small print under its name, what
+it needs first.</p>
+<figure>
+<img src="images/menu.jpg" alt="The ☰ menu" />
+<figcaption aria-hidden="true">The ☰ menu</figcaption>
+</figure>
+<p>At the very top of ☰, above the menus, <strong>Quick Share as
+PNG…</strong> opens the share sheet with a PNG of your image, ready to
+send.</p>
+<p>Items whose names end in “…” open a settings sheet first. Change what
+you need, then tap <strong>OK</strong> to run it, or
+<strong>Cancel</strong> to leave things as they were.</p>
+<h2 id="file">File</h2>
+<p>New, Open and your recent files are on Home (the house at the top
+left).</p>
+<p><strong>New…</strong> (Home › <strong>New file</strong>) makes a
+blank document. Pick a <em>Preset</em> (Photo, Print, Art &amp;
+Illustration, Web, Mobile, Film &amp; Video) or set the size yourself.
+Options: <em>Name</em>, <em>Units</em> (Pixels, Inches, Centimeters),
+<em>Width</em>, <em>Height</em>, <em>Resolution (pixels/inch)</em>,
+<em>Colour Mode</em> (RGB Color, Grayscale, CMYK Color, Lab Color),
+<em>Colour Profile</em>, <em>Bit Depth</em> (8, 16 or 32 bit),
+<em>Background</em> (White, Black, Background Color, Transparent). Tap
+<strong>Create</strong>.</p>
+<p><strong>Open</strong> (on Home) lists the pictures in On My iPhone ›
+PhotoWagon, newest first. Tap one to open it. <strong>Browse
+Files…</strong> lets you pick from anywhere in Files, and
+<strong>Photos…</strong> from your photo library. You can open JPEG,
+PNG, HEIC, JPEG XL, TIFF, PSD, WebP, GIF, BMP, SVG, EXR, camera raw
+files and more. A JPEG XL file made of layers opens with its layers, and
+an animated one with a layer per frame.</p>
+<p><strong>Photos</strong> (on Home) goes straight to your photo library
+and opens the picture you pick as a new document.</p>
+<p><strong>Recent</strong> (on Home) lists the files you’ve opened or
+saved lately (up to 20). If a file has moved or been deleted, the app
+tells you it can’t be found.</p>
+<p><strong>Close</strong> closes the document in front. If it has
+changes you haven’t saved, you’re asked first: <strong>Save</strong>,
+<strong>Don’t Save</strong> or <strong>Cancel</strong>.</p>
+<p><strong>Save</strong> writes your changes back into the document’s
+own file. If the document is new, or its file can’t hold layers (a JPEG
+with several layers, say), Save As opens instead.</p>
+<p><strong>Save As…</strong> saves the document as a new file, and from
+then on you’re working in that file. Options: <em>Name</em>,
+<em>Format</em>, <em>Where</em> (On My iPhone › PhotoWagon, or Other
+Location… to choose a folder). The formats that keep layers are
+PhotoCraft (the default), PSD and TIFF. A one-layer document can also go
+out as JPEG, PNG, WebP, JPEG XL, GIF or BMP. JPEG adds a
+<em>Quality</em> slider from 0 to 12. JPEG XL adds <em>Lossless</em>
+(on: every pixel kept exactly, at its full depth), <em>Quality</em> from
+1 to 100 when Lossless is off, and <em>Effort</em> from 1 to 10 (higher
+takes longer and makes a smaller file); its alpha channels go into the
+file too.</p>
+<p><strong>Save a Copy…</strong> works like Save As, with every format
+on offer, but your document stays in its own file. Use it for a quick
+JPEG or PNG of a layered piece.</p>
+<p><strong>Place Embedded…</strong> adds a picture from a file as a new
+layer, then opens Free Transform so you can size and position it. Tap
+<strong>Select</strong> to pick several files, then
+<strong>Place</strong> to add them all at once, each a layer named after
+its file.</p>
+<p><strong>Place from Photos…</strong> does the same with a picture from
+your photo library.</p>
+<p><strong>Share</strong> sends a flat copy of your image as a
+<strong>JPEG</strong> or <strong>PNG</strong> through the share sheet
+(Messages, Mail, AirDrop and so on).</p>
+<p><strong>Export</strong> holds three ways to save flat copies in On My
+iPhone › PhotoWagon:</p>
+<ul>
+<li><strong>Quick Export as PNG</strong> saves a PNG straight away,
+named after the document.</li>
+<li><strong>Export As…</strong> saves one or more copies at the sizes
+you choose. Options: <em>Name</em>, <em>Format</em> (PNG, JPEG, WebP,
+JPEG XL, GIF), <em>Lossless</em> (JPEG XL), <em>Quality</em> (1 to 100,
+for JPEG, WebP and lossy JPEG XL), <em>Transparency</em> (off fills
+see-through areas with white; JPEG is always filled), <em>Width</em>
+(the height follows), <em>Sizes</em> (0.25x to 3x; each size is its own
+file, such as name@2x.png), <em>Convert to sRGB</em>.</li>
+<li><strong>Save for Web…</strong> makes a small file for the web, with
+a preview and the file size it will come to. Options: <em>Name</em>,
+<em>Format</em> (GIF, PNG-8, PNG-24, JPEG), <em>Colour Reduction</em>
+(Perceptual, Selective, Adaptive, Restrictive), <em>Colours</em> (2 to
+256), <em>Dither</em> (Diffusion, Pattern, Noise, No Dither),
+<em>Quality</em> (JPEG), <em>Transparency</em>, <em>Percent</em> (the
+size), and for an animation, <em>Looping</em> (Once, 3 Times,
+Forever).</li>
+</ul>
+<figure>
+<img src="images/export.jpg" alt="Export As" />
+<figcaption aria-hidden="true">Export As</figcaption>
+</figure>
+<p><strong>Save to Photos</strong> puts a flat PNG of your image in your
+photo library. The first time, iOS asks if that’s OK.</p>
+<p><strong>Print…</strong> opens the print dialog, with the image scaled
+to fit the page.</p>
+<h3 id="scripts">Scripts</h3>
+<p><strong>Delete All Empty Layers</strong> removes every layer with
+nothing on it. <strong>Flatten All Layer Effects</strong> bakes every
+layer’s effects into its pixels. <strong>Flatten All Masks</strong>
+applies each pixel layer’s mask to its pixels and removes the mask.</p>
+<p><strong>Browse…</strong> can’t load a script on iPhone or iPad yet,
+so it does nothing useful here.</p>
+<p><strong>Script Events Manager…</strong> turns scripts that run on
+events on or off. Options: <em>Enabled</em> (scripts run on events),
+<em>Remove all</em> (clears every one). You can’t add a new one from
+here.</p>
+<h3 id="automate">Automate</h3>
+<p><strong>Fit Image…</strong> is meant to shrink or grow the image to
+fit a box, but the box’s size can’t be set here yet, so the image keeps
+its size. Options: <em>Dont enlarge</em>, <em>Resample</em>.</p>
+<p><strong>Conditional Mode Change…</strong> changes the document to
+another colour mode, whatever mode it’s in now. Options: <em>To</em>
+(Rgb, Grayscale, Cmyk, Lab).</p>
+<p><strong>Crop and Straighten Photos</strong> finds each photo on a
+scan of several prints, straightens it and opens it as its own new
+document.</p>
+<h3 id="import">Import</h3>
+<p><strong>Notes…</strong>, <strong>Video Frames to Layers…</strong>,
+<strong>WIA Support…</strong> and <strong>Variable Data Sets…</strong>
+each need a file or device the app can’t pick for them here, so they
+don’t work on iPhone or iPad yet.</p>
+<h3 id="export-the-second-one">Export (the second one)</h3>
+<p>A second Export submenu sits lower in File, below Import.</p>
+<p><strong>Export Preferences…</strong> sets what Quick Export and
+Export As start with. Options: <em>Quick export format</em> (Png, Jpg,
+Gif, Webp), <em>Quick export location</em>, <em>Jpeg quality</em>,
+<em>Webp lossless</em>, <em>Webp quality</em>, <em>Metadata</em> (None,
+Copyright, All), <em>Convert to srgb</em>. Export As changes these to
+match your last export.</p>
+<p><strong>Render Video…</strong> and <strong>Data Sets as
+Files…</strong> need a folder the app can’t pick for them here, so they
+don’t work yet.</p>
+<h3 id="more-file-items">More File items</h3>
+<p><strong>New from Clipboard</strong> makes a new document the size of
+what you last copied, holding it as one layer. It’s greyed out until
+you’ve copied something.</p>
+<p><strong>Revert</strong> goes back to the last saved version of the
+file, as one step you can undo. If it’s greyed out, tap the first step
+in the History panel instead.</p>
+<p><strong>File Info…</strong> adds details that are saved with the
+file. Options: <em>Title</em>, <em>Author</em>, <em>Author title</em>,
+<em>Description</em>, <em>Copyright</em>, <em>Copyright status</em>
+(Unknown, Copyrighted, Public domain), <em>Copyright url</em>. Fields
+you leave empty stay as they were.</p>
+<h2 id="edit">Edit</h2>
+<p><strong>Free Transform</strong> puts a box with handles round the
+layer (or the selection). Drag inside to move it, drag a corner to
+scale, and drag the round handle (or outside the box) to rotate. The
+options bar has <em>Keep Proportions</em>, <em>Reference Point</em>,
+<em>Scale From Reference Point</em>, <em>Snap Rotation to 15°</em>,
+<em>Rotate 90° Left</em> and <em>Right</em>, an angle box, <em>Flip
+Horizontal</em> and <em>Flip Vertical</em>. Tap <strong>Commit</strong>
+or <strong>Cancel</strong>.</p>
+<p><strong>Pin Warp</strong> bends a layer by pins you put on it. Tap to
+add pins, then drag one to bend the layer round the others. In the
+options bar: <em>Mode</em> (Rigid, Normal, Distort), <em>Density</em>
+(Fewer, Normal, More Points), <em>Expansion</em>, <em>Show Mesh</em>,
+and for the pin you’ve tapped, <em>Rotate</em> and <em>Delete Pin</em>.
+It can’t bend the locked Background.</p>
+<p><strong>Define Brush Preset…</strong> turns the selection into a
+brush tip: black paints, white is clear. Give it a name and tap
+<strong>OK</strong>. It’s greyed out until you’ve made a selection. The
+same item appears again lower in Edit, asking for a <em>Name</em>.</p>
+<p><strong>Import Brush Tips…</strong> adds brushes from a brush file,
+or uses a picture as a tip. Pick from your PhotoWagon folder or tap
+<strong>Browse Files…</strong>.</p>
+<h3 id="paste-special">Paste Special</h3>
+<p><strong>Paste in Place</strong> pastes what you copied at exactly the
+spot it came from. <strong>Paste Into</strong> pastes it as a new layer
+that only shows inside the selection (through a mask you can change
+later). <strong>Paste Outside</strong> does the opposite: it shows
+everywhere except the selection.</p>
+<h3 id="transform">Transform</h3>
+<p><strong>Again</strong> repeats your last transform on the current
+layer, handy for stepping something along or turning it bit by bit.</p>
+<p><strong>Rotate 180°</strong>, <strong>Rotate 90° Clockwise</strong>,
+<strong>Rotate 90° Counter Clockwise</strong>, <strong>Flip
+Horizontal</strong> and <strong>Flip Vertical</strong> turn or flip the
+layer (or just the selected part of it) in one go.</p>
+<p><strong>Warp</strong>, <strong>Split Warp Crosswise</strong>,
+<strong>Split Warp Horizontally</strong>, <strong>Split Warp
+Vertically</strong> and <strong>Remove Warp Split</strong> can’t be set
+up from this menu yet, so they don’t change anything.</p>
+<h3 id="preferences-1">Preferences</h3>
+<p>Edit › Preferences: see The Basics.</p>
+<h3 id="purge">Purge</h3>
+<p>Purge frees memory. <strong>Undo</strong> forgets the undo steps of
+the current document. <strong>Clipboard</strong> empties what you
+copied. <strong>Histories</strong> forgets the history of every open
+document. <strong>Video Cache</strong> has nothing to clear.
+<strong>All</strong> does all of these. None of them can be undone.</p>
+<h3 id="presets">Presets</h3>
+<p><strong>Preset Manager…</strong> is meant to rename, delete or
+reorder your saved brushes, custom shapes and patterns. Options:
+<em>Action</em> (List, Rename, Delete, Move), <em>Kind</em> (Brushes,
+Custom shapes, Patterns), <em>Name</em>, <em>New name</em>. It can’t
+pick which preset to change yet.</p>
+<p><strong>Export/Import Presets…</strong> and <strong>Migrate
+Presets</strong> need a file the app can’t pick for them here, so they
+don’t work yet.</p>
+<h3 id="more-edit-items">More Edit items</h3>
+<p><strong>Undo</strong> steps back one change, and
+<strong>Redo</strong> puts it back. You can also jump to any step in the
+History panel.</p>
+<p><strong>Fill…</strong> fills the selection (or the whole layer) with
+a colour or pattern. Options: <em>Contents</em> (Foreground, Background,
+Color, Surroundings, Pattern, History, Black, Gray, White),
+<em>Color</em>, <em>Scale</em>, <em>Color adaptation</em>, <em>Mode</em>
+(Normal, Multiply), <em>Opacity</em>, <em>Preserve transparency</em>
+(only fill where there are already pixels).</p>
+<p><strong>Clear</strong> deletes the selected pixels, leaving them
+see-through. On the Background they become the background colour.</p>
+<p><strong>Cut</strong>, <strong>Copy</strong> and
+<strong>Paste</strong> work as you’d expect on the current layer’s
+selected pixels. Paste puts what you copied on a new layer. With no
+document open, Paste makes a new document from it.</p>
+<p><strong>Copy Merged</strong> copies what you see in the selection,
+from all the visible layers at once, not only the current one.</p>
+<p><strong>Toggle Last State</strong> flips between your last change and
+the step before it, so you can compare before and after.</p>
+<p><strong>Assign Profile…</strong> tags the document with a different
+colour profile without changing its pixels, so the colours look
+different. Options: <em>Profile</em> (Working, Srgb, Display-p3,
+Adobe-rgb-compat, Prophoto-compat, Linear-srgb, Rec2020, Sgray,
+Dot-gain-20-compat, Lab-d50, Coated-cmyk, None).</p>
+<p><strong>Convert to Profile…</strong> changes the pixels to a new
+colour profile so the colours look the same. Options: <em>Profile</em>
+(the same list), <em>Intent</em> (Perceptual, Relative, Saturation,
+Absolute), <em>Bpc</em> (black point compensation).</p>
+<p><strong>Color Settings…</strong> sets how the app handles colour
+profiles. Options: <em>Working rgb</em>, <em>Working gray</em>,
+<em>Policy rgb</em>, <em>Policy cmyk</em> and <em>Policy gray</em>
+(Preserve, Convert, Off), <em>Ask on mismatch</em>, <em>Ask on
+paste</em>, <em>Ask on missing</em>, <em>Intent</em>, <em>Blend text
+gamma</em>, <em>Bpc</em>, <em>Dither</em>, <em>Monitor profile</em>,
+<em>Reset</em> (back to the defaults).</p>
+<p><strong>Stroke…</strong> draws a line round the selection. Options:
+<em>Width</em> (1 to 250 px), <em>Color</em>, <em>Location</em> (Inside,
+Center, Outside), <em>Opacity</em>, <em>Preserve transparency</em>.</p>
+<p><strong>Check Spelling…</strong> looks for spelling mistakes in your
+text layers. Options: <em>Action</em>, <em>All layers</em>,
+<em>Suggestions</em>. It doesn’t show what it finds yet.</p>
+<p><strong>Keyboard Shortcuts…</strong>, <strong>Menus…</strong> and
+<strong>Toolbar…</strong> are meant for changing shortcuts, menu items
+and the toolbar, but they can only reset them from here.</p>
+<p><strong>Fade…</strong> softens the filter, adjustment or brush stroke
+you’ve just done, or blends it differently. Use it straight after,
+before anything else. Options: <em>Opacity</em>, <em>Mode</em> (Normal,
+Multiply, Screen, Overlay, Soft light, Hard light, Darken, Lighten,
+Difference, Color, Luminosity).</p>
+<p><strong>Fill from Surroundings…</strong> fills the selection with
+picture made up from what’s around it, to remove something. Select round
+the thing first. Options: <em>Sampling</em> (Auto, Rectangular),
+<em>Sample all layers</em>, <em>Color adaptation</em>, <em>Rotation
+adaptation</em>, <em>Scale</em>, <em>Mirror</em>, <em>Output</em>
+(Current, New, Duplicate layer).</p>
+<p><strong>Content-Preserving Scale</strong> stretches or squeezes a
+layer while trying to keep its important parts the same shape. From the
+menu it runs at full size, so nothing changes yet.</p>
+<p><strong>Define Custom Shape…</strong> saves the current path or shape
+as a custom shape you can draw again with the shape tools. Options:
+<em>Name</em>.</p>
+<p><strong>Find and Replace Text…</strong> finds words in your text
+layers and swaps them. Options: <em>Find</em>, <em>Replace</em>,
+<em>Action</em> (Change all, Find, Change, Change find), <em>Case
+sensitive</em>, <em>Whole word</em>, <em>Forward</em>, <em>All
+layers</em>.</p>
+<p><strong>Auto-Align Layers…</strong> lines up layers of the same
+scene, such as photos for a panorama or a group shot. Select two or more
+layers first. Options: <em>Projection</em> (Auto, Perspective,
+Cylindrical, Spherical, Collage, Reposition), <em>Geometric
+correction</em>, <em>Interpolation</em>, <em>Registration</em>.</p>
+<p><strong>Auto-Blend Layers…</strong> blends aligned layers into one
+smooth picture. Options: <em>Method</em> (Panorama, or Stack for
+combining sharp parts of shots focused differently), <em>Seamless
+tones</em>, <em>Halo control</em>, <em>Depth map</em>.</p>
+<p><strong>Define Pattern…</strong> saves the selection (or the whole
+image) as a pattern for Fill and the pattern tools. Options:
+<em>Name</em>.</p>
+<p><strong>Perspective Warp</strong> can’t be set up from this menu yet,
+so it does nothing useful here.</p>
+<h2 id="view">View</h2>
+<p><strong>Zoom In</strong> and <strong>Zoom Out</strong> zoom the
+canvas in steps. You can also pinch.</p>
+<p><strong>Fit Layer(s) on Screen</strong> zooms so the current layer
+fills the view.</p>
+<p><strong>Snap</strong> (ticked when on) makes a layer you’re moving
+snap to the canvas edges and centre. It’s on to start with.</p>
+<p><strong>Fit on Screen</strong> shows the whole image. <strong>Actual
+Size</strong> shows one image pixel per screen pixel. <strong>Straighten
+View</strong> undoes any turn you’ve given the view with two
+fingers.</p>
+<p><strong>Canvas Colour</strong> sets the colour round your image:
+Default, Black, Dark Gray, Medium Gray, Light Gray, White or Custom…
+(pick any colour).</p>
+<h3 id="proof-setup">Proof Setup</h3>
+<p>These preview the image a different way and turn Proof Colors on.
+<strong>Working Cyan Plate</strong>, <strong>Working Magenta
+Plate</strong>, <strong>Working Yellow Plate</strong> and
+<strong>Working Black Plate</strong> show one printing ink on its own,
+and <strong>Working CMY Plate</strong> shows the three colour inks
+without black. <strong>Legacy Macintosh RGB</strong> shows how it would
+look on an older Mac screen.</p>
+<p><strong>Color Blindness (Protanopia-type and
+Deuteranopia-type)</strong> show roughly how the image looks to people
+with two common kinds of colour blindness. They’re handy for checking
+that labels and charts still read well.</p>
+<h3 id="more-view-items">More View items</h3>
+<p><strong>New Guide…</strong> adds a guide line. Options:
+<em>Orientation</em> (Horizontal, Vertical), <em>Position</em>,
+<em>Color</em>. Guides are saved with the file, but the app doesn’t draw
+them on the canvas yet.</p>
+<p><strong>Clear Guides</strong> removes every guide.</p>
+<p><strong>Proof Colors</strong> (on or off) previews the image as it
+would print, using the proof setup.</p>
+<p><strong>Gamut Warning</strong> (on or off) marks the colours that
+won’t print as they look on screen.</p>
+<p><strong>New Guide Layout…</strong> adds rows and columns of guides in
+one go. Options: <em>Columns</em>, <em>Gutter</em>, <em>Rows</em>,
+<em>Center columns</em>, <em>Clear existing</em>, <em>Target</em>
+(Document, Selected artboards).</p>
+<p><strong>New Guides From Shape</strong> adds guides along the edges of
+the selected shape layer.</p>
+<p><strong>Clear Canvas Guides</strong> removes the guides that aren’t
+on an artboard. <strong>Clear Selected Artboard Guides</strong> removes
+the guides inside the current artboard.</p>
+<p><strong>32-bit Preview Options…</strong> sets how a 32-bit image
+shows on screen. It doesn’t change the image. Options: <em>Method</em>
+(Exposure gamma, Highlight compression), <em>Exposure</em>,
+<em>Gamma</em>.</p>
+<p><strong>Lock Slices</strong> (on or off) stops slices from being
+moved by mistake. <strong>Clear Slices</strong> deletes every slice.</p>
+<h2 id="window">Window</h2>
+<p><strong>Layers</strong>, <strong>Properties</strong> and
+<strong>Adjustments</strong> open those panels. They’re covered in
+“Layers”.</p>
+<p><strong>History</strong> lists every change you’ve made to the
+document, oldest at the top. The current step is highlighted. Tap any
+step to go back to it. Steps after it turn grey, and you can tap one to
+go forward again, until you make a new change. Tap <strong>Done</strong>
+to close the panel.</p>
+<figure>
+<img src="images/history.jpg" alt="History panel" />
+<figcaption aria-hidden="true">History panel</figcaption>
+</figure>
+<p><strong>Actions</strong> records a run of steps so you can play them
+again on another image. Along the top:</p>
+<ul>
+<li><strong>New Action</strong> (+) asks for a name, then starts
+recording. Work on your image, then come back and tap <strong>Stop
+Recording</strong>.</li>
+<li><strong>Record</strong> adds more steps to the action you’ve
+tapped.</li>
+<li><strong>Play</strong> runs the action you’ve tapped. If a step
+fails, the app tells you which one and why.</li>
+<li><strong>Delete</strong> removes the action you’ve tapped.</li>
+</ul>
+<p>Actions are listed in sets. Tap the arrow next to an action to see
+its steps, and tick or untick an action or step to turn it on or off.
+Double-tap an action to rename it. The ⋯ menu has <em>Rename…</em>,
+<em>Add to Set…</em>, <em>Load Actions…</em> (open an actions file) and
+<em>Save Actions…</em> (save the set as a file in your PhotoWagon
+folder).</p>
+<p><strong>Brush Settings</strong> opens the full settings for the
+current brush, covered with the Brush tool.</p>
+<p><strong>Timeline</strong> (ticked when showing) docks a strip above
+the toolbar for making a frame animation, such as a GIF. Tap
+<strong>Create Frame Animation</strong> to start. Each frame remembers
+which layers show, how see-through they are and where they sit. The
+pixels are shared by every frame. Its controls:</p>
+<ul>
+<li>The looping menu on the left: <em>Once</em>, <em>3 Times</em>,
+<em>Forever</em> or <em>Other…</em>.</li>
+<li><strong>First Frame</strong>, <strong>Previous Frame</strong>,
+<strong>Play</strong> (or <strong>Stop</strong>) and <strong>Next
+Frame</strong>.</li>
+<li><strong>Duplicate Frame</strong> adds a copy of the current frame
+after it. <strong>Delete Frame</strong> removes the selected
+frames.</li>
+<li>The ⋯ menu: <em>Make Frames From Layers</em> (one frame per layer),
+<em>Select All Frames</em>, <em>Reverse Frames</em>, <em>Delete
+Animation</em>, <em>Close Timeline</em>.</li>
+</ul>
+<p>Tap a frame’s thumbnail to go to it and change it. Under each one,
+tap its delay to choose how long it shows: 0.1 s to 10 s, or
+<em>Other…</em>. After Select All Frames, a delay you pick applies to
+all of them. To save the animation as a GIF, use File › Export › Save
+for Web… with GIF, and set <em>Looping</em> there.</p>
+<h1 id="image-select-and-type">Image, Select and Type</h1>
+<p>These three menus live under ☰ in the top bar. Image changes the
+whole picture (its size, colours and colour mode), Select makes and
+reshapes selections, and Type works on text layers.</p>
+<p>Items whose name ends in “…” open a settings screen first. On iPhone
+it opens as a sheet with a small preview at the top. On iPad it opens in
+a column beside the canvas, so you see the change on the full image.
+Adjustments and Color Range show the result as you change their
+settings: tap the eye button to compare with and without,
+<strong>OK</strong> to keep the result, or <strong>Cancel</strong> to go
+back to how it was. Items without “…” run straight away, and you can
+always undo them.</p>
+<p>In each menu, the submenus come first, then the other items.</p>
+<h2 id="image">Image</h2>
+<h3 id="image-rotation">Image Rotation</h3>
+<p><strong>Flip Canvas Horizontal, Flip Canvas Vertical</strong> mirror
+the whole image, all layers together, left to right or top to
+bottom.</p>
+<p><strong>180°, 90° Clockwise, 90° Counter Clockwise</strong> turn the
+whole image. Use them for a photo that came in sideways or upside
+down.</p>
+<p><strong>Arbitrary…</strong> turns the whole image by any angle, and
+the canvas grows to fit. Options: <em>Angle</em> (in degrees),
+<em>Direction</em> (Cw for clockwise, Ccw for counter clockwise),
+<em>Interpolation</em> (how new pixels are worked out: Bicubic is
+smoothest, Nearest keeps hard edges).</p>
+<h3 id="adjustments">Adjustments</h3>
+<p>Adjustments change the colours and tones of the active layer. If
+you’d rather keep the change separate and editable later, use an
+adjustment layer instead (Layer › New Adjustment Layer, or the
+Adjustments panel).</p>
+<figure>
+<img src="images/adjustments.jpg" alt="An adjustment’s settings" />
+<figcaption aria-hidden="true">An adjustment’s settings</figcaption>
+</figure>
+<p><strong>Desaturate</strong> removes all colour from the layer and
+leaves the greys. It runs straight away.</p>
+<p><strong>Brightness/Contrast…</strong> lightens or darkens the layer
+and adds or removes contrast. Options: <em>Brightness</em>,
+<em>Contrast</em>, <em>Legacy</em> (an older, stronger way of working
+that can clip bright and dark areas).</p>
+<p><strong>Levels…</strong> sets the darkest, middle and brightest tones
+over a histogram. Drag the handles under the histogram or type the
+numbers in <em>Input Levels</em> and <em>Output Levels</em>. Options:
+<em>Preset</em> (Default, Brighter, Darker, More Contrast, Strong
+Contrast, Lift Shadows, Soften Highlights, Faded), <em>Auto</em> (fixes
+the tones for you), <em>Options…</em> (opens Auto Options, below),
+<em>Channel</em> (work on all colours or one), <em>Show Clipping</em>
+(marks what turns pure black or white), and the eyedroppers <em>Set
+Black Point</em>, <em>Set Gray Point</em> and <em>Set White Point</em>
+(tap a spot in the image that should be black, neutral grey or
+white).</p>
+<p><strong>Auto Options</strong> (from Levels or Curves) chooses how
+Auto works. Options: <em>Algorithm</em> (Monochromatic Contrast, Per
+Channel Contrast, Find Dark &amp; Light Colors), <em>Snap Neutral
+Midtones</em> (makes near-grey midtones truly grey), <em>Clip</em>
+<em>Shadows</em> and <em>Highlights</em> (how much of each end may turn
+pure black or white), <em>Save as Defaults</em>.</p>
+<p><strong>Curves…</strong> reshapes the tones with a curve. Tap the
+graph to add a point, drag points to bend the curve, and drag a point
+off the graph to remove it. Options: <em>Preset</em> (Default, Brighter,
+Darker, More Contrast, Strong Contrast, Lift Shadows, Faded, Negative),
+<em>Auto</em> and <em>Options…</em>, <em>Channel</em>, <em>Show
+Clipping</em>, points or pencil (draw the curve with your finger, then
+<em>Smooth</em> it), a grid size button, <em>Input</em> and
+<em>Output</em> for the chosen point, a bin to delete it, and the same
+three eyedroppers as Levels.</p>
+<p><strong>Exposure…</strong> corrects a photo that came out too dark or
+too light, working like a camera’s exposure. Options: <em>Exposure</em>
+(in stops), <em>Offset</em> (lifts or lowers the darkest tones),
+<em>Gamma</em> (the midtones).</p>
+<p><strong>Vibrance…</strong> makes colours richer or calmer. Options:
+<em>Vibrance</em> (boosts dull colours more than strong ones, so skin
+stays natural), <em>Saturation</em> (changes all colours evenly).</p>
+<p><strong>Hue/Saturation…</strong> shifts colours, makes them stronger
+or weaker, and lightens or darkens them. Options: <em>Edit</em> (Master
+for all colours, or one colour range such as Reds or Blues),
+<em>Hue</em>, <em>Saturation</em>, <em>Lightness</em>, <em>Colorize</em>
+(tints the whole layer one colour; Master only), and for a colour range,
+<em>Range</em> sliders (<em>Fade from</em>, <em>From</em>, <em>To</em>,
+<em>Fade to</em>) that set which hues it covers.</p>
+<p><strong>Color Balance…</strong> pushes colours towards one side of a
+pair, for example to warm up shadows or cool down highlights. Options:
+<em>Tone</em> (Shadows, Midtones, Highlights), three sliders (Cyan to
+Red, Magenta to Green, Yellow to Blue), <em>Preserve Luminosity</em>
+(keeps brightness the same).</p>
+<p><strong>Black &amp; White…</strong> turns the layer to greys and lets
+you choose how light each colour becomes, for example darker skies or
+brighter skin. Options: <em>Preset</em> and <em>Auto</em>, sliders for
+<em>Reds</em>, <em>Yellows</em>, <em>Greens</em>, <em>Cyans</em>,
+<em>Blues</em> and <em>Magentas</em>, <em>Tint</em> and <em>Tint
+Color</em> (for a sepia or toned look).</p>
+<p><strong>Photo Filter…</strong> lays a coloured filter over the layer,
+like one on a camera lens. Options: <em>Use</em> (Filter or Color),
+<em>Filter</em> (warming, cooling and colour filters such as Sepia and
+Underwater) or <em>Color</em> (your own), <em>Density</em> (how strong),
+<em>Preserve Luminosity</em>.</p>
+<p><strong>Channel Mixer…</strong> builds each colour channel from a mix
+of red, green and blue. It’s good for custom black and white or for odd
+colour effects. Options: <em>Preset</em> (Default, Monochrome,
+Monochrome with a Red, Green or Blue filter, Swap Red and Blue),
+<em>Output Channel</em>, <em>Monochrome</em>, sliders for <em>Red</em>,
+<em>Green</em> and <em>Blue</em> with their <em>Total</em>,
+<em>Constant</em> (lightens or darkens the whole channel).</p>
+<p><strong>Invert</strong> turns the layer into its negative. It runs
+straight away.</p>
+<p><strong>Posterize…</strong> cuts the layer down to a few tones per
+colour, for a flat, poster-like look. Options: <em>Levels</em> (how many
+tones per colour).</p>
+<p><strong>Threshold…</strong> turns the layer into pure black and
+white, with no greys. Options: <em>Level</em> (pixels lighter than this
+turn white, darker ones black), shown over a histogram.</p>
+<p><strong>Gradient Map…</strong> maps the layer’s tones onto a
+gradient: dark tones take the left colour and light tones the right.
+Options: <em>Colour Stops</em> (tap a stop to change its colour, move
+it, or <em>Add Stop</em>), <em>Presets</em>, <em>Reverse</em>,
+<em>Dither</em> (smooths banding).</p>
+<p><strong>Selective Color…</strong> changes how much cyan, magenta,
+yellow and black goes into one range of colours, such as only the reds
+or only the neutrals. Options: <em>Colors</em> (the range to change),
+<em>Cyan</em>, <em>Magenta</em>, <em>Yellow</em>, <em>Black</em>,
+<em>Method</em> (Relative changes by a share of what’s there, Absolute
+by a fixed amount).</p>
+<p><strong>Color Lookup…</strong> gives the layer a ready-made colour
+grade. Options: <em>Lut</em> (None, Warm, Cool, Teal orange, Bleach
+bypass, Faded film, Day for night, Mono contrast, Cross process),
+<em>File</em>, <em>Interpolation</em> (Trilinear or Tetrahedral, two
+ways of blending between colours), <em>Dither</em>.</p>
+<p><strong>Equalize</strong> spreads the layer’s tones evenly from black
+to white, which can bring out detail in a flat image. It runs straight
+away.</p>
+<p><strong>Shadows/Highlights…</strong> brings back detail in dark
+shadows and bright highlights without changing the middle tones much.
+Good for backlit photos. Options: <em>Shadow amount</em>, <em>Shadow
+tone</em>, <em>Highlight amount</em>, <em>Highlight tone</em>,
+<em>Radius</em> (the size of the area each pixel is compared with),
+<em>Color</em> (saturation), <em>Midtone</em> (contrast), <em>Black
+clip</em>, <em>White clip</em>.</p>
+<p><strong>Replace Color…</strong> finds one colour and changes it, for
+example to make a red car blue. Options: <em>Pick the Colour</em> and
+<em>Add to the Colour</em> (tap the image), <em>Localized Color
+Clusters</em> (only near where you tapped) with <em>Range</em>,
+<em>Fuzziness</em> (how close a colour must be to count), and under
+<em>Replacement</em>, <em>Hue</em>, <em>Saturation</em>,
+<em>Lightness</em> and the <em>Result</em> colour.</p>
+<p><strong>Match Color…</strong> evens out the colour of the layer, or
+takes out a colour cast. Options: <em>Luminance</em>, <em>Intensity</em>
+(colour strength), <em>Fade</em> (blends back towards the original),
+<em>Neutralize</em> (removes a cast), <em>Use selection in source</em>,
+<em>Use selection in target</em>.</p>
+<p><strong>HDR Toning…</strong> gives a strong, detailed, high dynamic
+range look. It flattens the image to one layer. Options:
+<em>Radius</em>, <em>Strength</em>, <em>Gamma</em>, <em>Exposure</em>,
+<em>Detail</em>, <em>Shadow</em>, <em>Highlight</em>, <em>Vibrance</em>,
+<em>Saturation</em>.</p>
+<h3 id="mode">Mode</h3>
+<p><strong>RGB Color, Grayscale, CMYK Color, Lab Color</strong> change
+the image’s colour mode. Use RGB for screens and most editing, Grayscale
+for black and white, CMYK for print, and Lab when you want lightness and
+colour kept apart. They run straight away.</p>
+<p><strong>8 Bits/Channel, 16 Bits/Channel, 32 Bits/Channel</strong>
+change how much detail each colour channel holds. 16 bits leaves more
+room for heavy edits without banding. 32 bits holds tones brighter than
+white.</p>
+<p><strong>Indexed Color…</strong> cuts the image down to a palette of
+at most 256 colours, as used in GIFs. It flattens the image. Options:
+<em>Palette</em> (how the colours are chosen, such as Selective,
+Perceptual, Adaptive or Web), <em>Colors</em> (how many),
+<em>Forced</em> (colours that must stay, such as Black white),
+<em>Transparency</em> (keeps see-through areas), <em>Dither</em> (mixes
+dots to fake missing colours) and its <em>Amount</em>.</p>
+<p><strong>Color Table…</strong> shows the colours of an Indexed Color
+image. Tap a colour to change it, and every pixel that uses it follows.
+Options: <em>Table</em> (Custom, or a ready-made table such as
+Grayscale, Spectrum or Web).</p>
+<p><strong>Bitmap…</strong> turns a Grayscale image into pure black and
+white dots. It flattens the image. Options: <em>Method</em> (Diffusion,
+Threshold, Pattern, Halftone), and for halftone, <em>Frequency</em>
+(lines per inch), <em>Angle</em> and <em>Shape</em>.</p>
+<p><strong>Duotone…</strong> prints a Grayscale image with one to four
+inks, for a toned look. Options: <em>Type</em> (Monotone, Duotone,
+Tritone, Quadtone), and for each ink, its <em>Name</em>, <em>Colour</em>
+and <em>Curve</em> (how much ink each tone gets).</p>
+<p><strong>Multichannel</strong> splits the image into separate ink
+channels with no colour mode linking them. It flattens the image.</p>
+<h3 id="analysis">Analysis</h3>
+<p><strong>Set Measurement Scale…</strong> tells the app how many pixels
+make a real length, so measurements can be in millimetres or other
+units. Options: <em>Preset</em> (Default or Custom), <em>Pixel
+length</em>, <em>Logical length</em>, <em>Units</em>.</p>
+<p><strong>Select Data Points…</strong> chooses what gets measured.
+Option: <em>Reset</em> (back to the standard list).</p>
+<p><strong>Record Measurements</strong> measures the selection, the
+ruler line or the count marks.</p>
+<p><strong>Ruler Tool</strong> and <strong>Count Tool</strong> in this
+menu read the current ruler line and count marks. To measure or count,
+use the Ruler and Count tools in the toolbar instead.</p>
+<p><strong>Place Scale Marker…</strong> adds a scale bar to the image,
+using the measurement scale. Options: <em>Font</em>, <em>Display
+text</em> (shows the length as text), <em>Text position</em> (Top or
+Bottom), <em>Color</em> (Black or White).</p>
+<h3 id="variables">Variables</h3>
+<p><strong>Define…</strong> and <strong>Data Sets…</strong> are in the
+menu but have no settings screen yet, so they don’t do anything useful
+on their own.</p>
+<h3 id="other-image-items">Other Image items</h3>
+<p><strong>Auto Tone</strong> fixes the darkest and lightest tones of
+the active layer for you. <strong>Auto Contrast</strong> does the same
+but keeps the colours as they are. <strong>Auto Color</strong> also
+takes out a colour cast. They run straight away.</p>
+<p><strong>Image Size…</strong> makes the image bigger or smaller in
+pixels, or changes its print resolution. Options: <em>Width</em> and
+<em>Height</em> (in pixels; they start at the current size), <em>Keep
+print size</em>, <em>Resample</em> (how new pixels are worked out:
+Automatic, Preserve details, Bicubic smoother for enlarging, Bicubic
+sharper for shrinking, and more; None changes the resolution only).</p>
+<p><strong>Canvas Size…</strong> adds or trims space around the image
+without stretching it. Options: <em>Width</em> and <em>Height</em>,
+<em>Relative</em> (adds the numbers to the current size),
+<em>Anchor</em> (tap where the image stays), <em>Extension color</em>
+(Background, Foreground, White, Black, Transparent or Custom, for the
+new space).</p>
+<p><strong>Crop</strong> crops the image to the edges of the selection.
+For a free crop, use the Crop tool.</p>
+<p><strong>Trim…</strong> cuts away empty edges. Options: <em>Based
+on</em> (Transparent pixels, or the colour of the Top left or Bottom
+right pixel), <em>Top</em>, <em>Bottom</em>, <em>Left</em>,
+<em>Right</em> (which edges to trim).</p>
+<p><strong>Duplicate…</strong> makes a copy of the image as a new
+document. Options: <em>Name</em>, <em>Merged only</em> (the copy has all
+layers merged into one).</p>
+<p><strong>Reveal All</strong> grows the canvas to show any parts of
+layers that hang off its edges.</p>
+<p><strong>Apply Image…</strong> blends the image’s own merged picture
+into the active layer with a blend mode. Options: <em>Blending</em>
+(Multiply, Screen, Overlay and other modes), <em>Opacity</em>,
+<em>Scale</em> and <em>Offset</em> (for Add and Subtract), <em>Preserve
+transparency</em>.</p>
+<p><strong>Calculations…</strong> blends the image’s channels together
+and puts the result in a new channel, a new document or a selection.
+Options: <em>Opacity</em>, <em>Scale</em>, <em>Offset</em>,
+<em>Result</em> (New channel, New document, Selection),
+<em>Name</em>.</p>
+<p><strong>Trap…</strong> spreads inks slightly at colour edges so small
+gaps don’t show when printed. It works on CMYK images only.</p>
+<p><strong>Apply Data Set…</strong> is in the menu but has no settings
+screen yet, so it doesn’t do anything useful on its own.</p>
+<h2 id="select">Select</h2>
+<p>A selection limits painting, filters and adjustments to part of the
+image. You can also make selections with the selection tools in the
+toolbar.</p>
+<figure>
+<img src="images/selection.jpg"
+alt="A selection and the selection buttons" />
+<figcaption aria-hidden="true">A selection and the selection
+buttons</figcaption>
+</figure>
+<h3 id="modify">Modify</h3>
+<p>These reshape the selection you already have.</p>
+<p><strong>Border…</strong> turns the selection into a ring along its
+edge, for example to paint an outline. Option: <em>Radius</em> (the
+ring’s width in pixels).</p>
+<p><strong>Smooth…</strong> rounds off sharp corners and small bumps.
+Options: <em>Radius</em>, <em>Apply at canvas bounds</em> (also works
+along the image’s edges).</p>
+<p><strong>Expand…</strong> and <strong>Contract…</strong> grow or
+shrink the selection by a number of pixels. Options: <em>Radius</em>,
+<em>Apply at canvas bounds</em>.</p>
+<p><strong>Feather…</strong> softens the selection’s edge so changes
+fade out instead of stopping sharply. Options: <em>Radius</em> (how wide
+the fade is), <em>Apply at canvas bounds</em>.</p>
+<h3 id="other-select-items">Other Select items</h3>
+<p><strong>All</strong> selects the whole image.
+<strong>Deselect</strong> removes the selection.
+<strong>Inverse</strong> swaps what’s selected and what isn’t.</p>
+<p><strong>Subject</strong> finds the main subject of the image and
+selects it.</p>
+<p><strong>Refine Selection…</strong> cleans up the selection’s edge.
+Options: <em>Refine Hair</em> (a button that picks up hair and fur
+around a person), <em>Radius</em> and <em>Smart radius</em> (how far
+from the edge to look), <em>Smooth</em>, <em>Feather</em>,
+<em>Contrast</em>, <em>Shift edge</em> (moves the edge in or out),
+<em>Decontaminate</em> (removes colour fringes) and its <em>Amount</em>,
+<em>Output</em> (Selection, Layer mask, New layer, New layer with mask,
+New document, New document with mask), <em>Sample all layers</em>.</p>
+<p><strong>Focus Area…</strong> selects the parts of the image that are
+in sharp focus. Options: <em>Range</em> (higher takes in softer areas),
+<em>Noise</em> (higher ignores grain), <em>Sample all layers</em>,
+<em>Mode</em> (Replace, Add, Subtract, Intersect with the current
+selection).</p>
+<p><strong>Color Range…</strong> selects by colour or tone. The preview
+shows the selection as you go. Options: <em>Select</em> (Sampled Colors,
+a colour such as Reds or Blues, Highlights, Midtones, Shadows, Skin
+Tones, Out of Gamut), the eyedropper (pick, add to or subtract from the
+sample) and <em>Pick in the Image</em>, <em>Fuzziness</em>,
+<em>Localized Color Clusters</em> with <em>Range</em>, <em>Invert</em>,
+<em>Preview</em> (Selection or Image), <em>Selection</em> (New, Add,
+Subtract, Intersect).</p>
+<p><strong>Grow</strong> adds nearby pixels of a similar colour to the
+selection. <strong>Similar</strong> adds similar colours from anywhere
+in the image.</p>
+<p><strong>Sky</strong> finds the sky and selects it, ready for a new
+sky or a colour change.</p>
+<p><strong>Isolate Layers</strong> is meant to list only the selected
+layers in the Layers panel, but it doesn’t change the panel yet.</p>
+<p><strong>Transform Selection</strong> is in the menu but doesn’t
+change the selection yet.</p>
+<p><strong>Reselect</strong> brings back the selection you last
+removed.</p>
+<p><strong>All Layers</strong> selects every layer in the Layers panel.
+<strong>Deselect Layers</strong> selects none.</p>
+<p><strong>Find Layers</strong> is in the menu but has no way to type a
+name yet, so it doesn’t do anything useful on its own.</p>
+<p><strong>Save Selection…</strong> keeps the selection in the document
+so you can load it again later. Options: <em>Name</em>,
+<em>Operation</em> (New, or Replace, Add, Subtract or Intersect with an
+existing saved selection).</p>
+<p><strong>Edit in Quick Mask Mode</strong> turns the selection into a
+coloured overlay that you can paint on with the Brush. Paint to add or
+remove areas, then choose it again to turn the overlay back into a
+selection.</p>
+<p><strong>Load Selection</strong> lists your saved selections by name,
+plus <em>Layer Transparency</em> (selects the active layer’s visible
+pixels) and, when the layer has one, <em>Layer Mask</em>.</p>
+<h2 id="type">Type</h2>
+<p>You add and edit text with the Type tool. While it’s active, the
+options bar has <em>Font</em>, <em>Size</em>, <em>Leading</em> (line
+spacing, Auto by default), <em>Tracking</em> (letter spacing) and
+<em>Align</em> (left, centre, right). They apply to the selected text
+layer and to the text you add next.</p>
+<figure>
+<img src="images/type.jpg" alt="Editing text" />
+<figcaption aria-hidden="true">Editing text</figcaption>
+</figure>
+<h3 id="anti-alias">Anti-Alias</h3>
+<p><strong>None, Sharp, Crisp, Strong, Smooth, Windows LCD,
+Windows</strong> set how the edges of the selected text layers are
+smoothed. None gives hard, jagged edges; the others give soft edges with
+slightly different looks.</p>
+<h3 id="orientation">Orientation</h3>
+<p><strong>Horizontal</strong> and <strong>Vertical</strong> set whether
+the text runs across or down.</p>
+<h3 id="opentype">OpenType</h3>
+<p><strong>Standard Ligatures, Contextual Alternates, Discretionary
+Ligatures, Swash, Oldstyle, Stylistic Alternates, Titling Alternates,
+Ornaments, Ordinals, Fractions</strong> turn special letter forms on or
+off for the selected text layers, when the font has them. For example,
+Fractions turns “1/2” into a proper fraction and Ordinals raises the
+letters in “1st”.</p>
+<h3 id="other-type-items">Other Type items</h3>
+<p><strong>Create Work Path</strong> makes a path from the outlines of
+the letters, leaving the text layer as it is.</p>
+<p><strong>Convert to Shape</strong> turns the text layer into a shape
+layer, so you can reshape the letters. The text can’t be edited as text
+afterwards.</p>
+<p><strong>Rasterize Type Layer</strong> turns the text into ordinary
+pixels, so you can paint on it or use filters. It can’t be edited as
+text afterwards.</p>
+<p><strong>Convert to Paragraph Text</strong> puts the text in a box
+that wraps lines. <strong>Convert to Point Text</strong> takes it out of
+the box, so each line runs until you start a new one.</p>
+<p><strong>Warp Text…</strong> bends the text into a shape. Options:
+<em>Style</em> (None, Arc, Arch, Bulge, Flag, Wave, Fish, Rise, Fisheye,
+Inflate, Squeeze, Twist and more), <em>Orientation</em> (Horizontal or
+Vertical), <em>Bend</em>, <em>Horizontal distortion</em>, <em>Vertical
+distortion</em>.</p>
+<p><strong>Update All Text Layers</strong> redraws every text layer, for
+example after fonts change.</p>
+<p><strong>Replace All Missing Fonts</strong> swaps fonts the document
+uses but your device doesn’t have for the standard font.</p>
+<p><strong>Resolve Missing Fonts…</strong> has no settings screen yet.
+Use Replace All Missing Fonts instead.</p>
+<p><strong>Paste Lorem Ipsum</strong> adds placeholder text to the end
+of the active text layer, or, when no text layer is active, makes a new
+text box of it over most of the image. It’s handy for trying out a
+layout.</p>
+<p><strong>Save Default Type Styles</strong> keeps the active text
+layer’s style, so new text layers start with it. <strong>Load Default
+Type Styles</strong> applies the saved style.</p>
+<h1 id="layers">Layers</h1>
+<p>A picture in PhotoWagon is a stack of layers, like sheets of clear
+film laid on top of each other. What’s on a higher layer covers what’s
+below it, unless you fade it, blend it or mask parts of it away. Keeping
+things on their own layers means you can change one part later without
+touching the rest.</p>
+<h2 id="the-layers-panel">The Layers panel</h2>
+<p>Tap the layers button at the right of the top bar, or choose ☰ ›
+Window › Layers. On a phone the panel opens at half height so you can
+still see the picture; drag it up for more room. On an iPad it opens as
+a full-height page.</p>
+<figure>
+<img src="images/layers.jpg" alt="The Layers panel" />
+<figcaption aria-hidden="true">The Layers panel</figcaption>
+</figure>
+<h3 id="the-buttons-at-the-top">The buttons at the top</h3>
+<p>Two rows of buttons sit at the top of the panel and stay in view
+however far you scroll. Touch and hold any of them to see its name.</p>
+<p><strong>New Layer</strong> (+) adds an empty layer above the selected
+one.</p>
+<p><strong>New Group</strong> (folder) adds an empty group. If you’ve
+selected several layers, it puts them in a new group instead.</p>
+<p><strong>fx</strong> opens a menu of Blending Options… and every layer
+effect. Pick one to open Layer Style on that page (see <a
+href="#layer-style">Layer Style</a>).</p>
+<p><strong>New Fill or Adjustment Layer</strong> (half-filled circle,
+right side dark) lists Solid Color, Gradient and Pattern fill layers and
+every adjustment layer. Pick one and it’s added right away, with its
+Properties open so you can set it up.</p>
+<p><strong>Add Mask</strong> (half-filled circle, left side dark) adds a
+layer mask. Tap it to reveal everything, or to reveal only the selection
+if you have one. Touch and hold it for Hide All or Hide Selection
+instead. After you add a mask, painting goes on the mask.</p>
+<p><strong>Delete Layer</strong> (trash) deletes the selected layers. If
+the mask is selected, it asks whether to <em>Apply</em> the mask first
+(pixel layers only), <em>Delete</em> it, or <em>Cancel</em>.</p>
+<p><strong>New Layer from Photos</strong> and <strong>New Layer from
+Files</strong> open your photo library or the Files app and add the
+picture you choose as a new layer.</p>
+<p><strong>Duplicate Layer</strong> copies the selected layer.
+<strong>Merge Down</strong> merges the layer into the one below, or
+merges all of them if you’ve selected several. <strong>Move Up</strong>
+and <strong>Move Down</strong> move the layer one step in the stack.</p>
+<h3 id="the-bar-at-the-very-top">The bar at the very top</h3>
+<p><strong>Done</strong> closes the panel. <strong>Select
+Layers</strong> (tick in a circle) turns on picking several layers:
+while it’s on, each tap adds a layer to the selection or takes it out,
+and a tick shows beside each row. <strong>Edit</strong> shows drag
+handles for reordering. The <strong>⋯</strong> menu sets the
+<em>Thumbnail Size</em> (None, Small, Medium or Large), and has
+<strong>Merge Visible</strong> and <strong>Flatten Image</strong>.</p>
+<h3 id="blend-mode-opacity-and-fill">Blend mode, Opacity and Fill</h3>
+<p>Under the buttons are the settings for the selected layer. If several
+layers are selected, changes go to all of them.</p>
+<p><strong>Blend</strong> picks how the layer mixes with what’s under
+it: Normal, Dissolve, the darkening modes (Darken, Multiply, Color Burn
+and so on), the lightening modes (Lighten, Screen, Color Dodge…), the
+contrast modes (Overlay, Soft Light, Hard Light…), Difference,
+Exclusion, Subtract, Divide, Hue, Saturation, Color and Luminosity.
+Groups also have Pass Through. The up and down arrows beside it step
+through the modes one at a time, so you can see what each one does.</p>
+<p><strong>Opacity</strong> fades the whole layer, effects included.
+<strong>Fill</strong> fades only the layer’s own pixels, so its effects
+(like a stroke or a shadow) stay solid. Drag the slider, or drag
+sideways on the word itself to nudge the value.</p>
+<p>The Background (the bottom layer of a new photo) can’t be moved,
+faded or blended. Tap its lock to turn it into a normal layer.</p>
+<h3 id="layer-rows">Layer rows</h3>
+<p>Each layer has a row. From left to right:</p>
+<p><strong>The eye</strong> shows or hides the layer.</p>
+<p><strong>The arrow</strong> (bent arrow) appears when the layer is
+clipped to the one below it. <strong>The chevron</strong> opens or
+closes a group, or shows and hides a layer’s effects and live
+filters.</p>
+<p><strong>The thumbnail</strong> shows the layer’s contents. Type
+layers show a “T”, groups a folder. Embedded layers and shape layers
+carry a small badge. Tap the thumbnail to select the layer. Double-tap
+it to edit what the layer holds: the text of a type layer, the contents
+of an embedded layer, the Properties of a fill or adjustment layer, or
+the name of a pixel layer or group.</p>
+<p><strong>The link and the mask thumbnail</strong> appear when the
+layer has a mask. Tap the link to unlink the mask (so the layer and mask
+move on their own) or link it again. Tap the mask thumbnail to select
+the mask, so painting goes on it; it gets a coloured outline. Double-tap
+it for Mask Properties. A red cross on it means the mask is turned
+off.</p>
+<p><strong>The name</strong> and, under it, the blend mode and opacity
+(if they aren’t the usual ones) or what kind of layer it is. Double-tap
+the name to rename the layer. Double-tap the empty space to the right of
+the name to open Layer Style at Blending Options.</p>
+<p><strong>fx</strong> shows the layer has effects. <strong>The
+lock</strong> shows the layer is locked; tap it to unlock.</p>
+<h3 id="reordering-and-groups">Reordering and groups</h3>
+<p>Tap <strong>Edit</strong>, then drag a layer by its handle to a new
+place. Drop it right under a group’s row to put it into that group. You
+can also use <strong>Move Up</strong> and <strong>Move Down</strong>, or
+the layer’s touch-and-hold menu (Move Into Group, Move Out of
+Group).</p>
+<h3 id="selecting-several-layers">Selecting several layers</h3>
+<p>Tap <strong>Select Layers</strong> at the top, then tap each layer
+you want. A strip appears with the count and quick buttons:
+<strong>Merge</strong>, <strong>Group</strong>, <strong>Clip</strong>
+(clip them to the lowest one), <strong>Embedded Layer</strong> (combine
+them into one embedded layer) and <strong>Fit</strong> (zoom to show
+them). Tap <strong>Select Layers</strong> again to stop.</p>
+<h3 id="the-layers-touch-and-hold-menu">The layer’s touch-and-hold
+menu</h3>
+<p>Touch and hold a layer’s name or thumbnail for more. What you see
+depends on the layer:</p>
+<p><strong>Rename…</strong>, <strong>Edit Text…</strong> (type layers),
+<strong>Edit Contents</strong> (embedded layers),
+<strong>Properties…</strong> (fill and adjustment layers),
+<strong>Blending Options…</strong> and <strong>Clear Layer
+Style</strong>.</p>
+<p><strong>Duplicate Layer</strong>, and <strong>Group Layers</strong>
+or <strong>Ungroup Layers</strong>. If the layer has a mask, the mask’s
+own items appear here too (see <a href="#masks">Masks</a>).</p>
+<p><strong>Merge Down</strong> (or <strong>Merge Layers</strong> when
+several are selected), <strong>Merge Visible</strong>, and <strong>Stamp
+Visible</strong>, which adds a new layer holding a merged copy of
+everything you can see while keeping the other layers.</p>
+<p><strong>Quick Export as PNG</strong> saves the layer as a PNG, named
+after the layer, in the PhotoWagon folder in the Files app. With several
+layers selected it becomes <strong>Quick Export Layers as PNG</strong>
+and saves one file each.</p>
+<p><strong>Convert to Embedded Layer</strong>, <strong>Rasterize
+Layer</strong> (turns type, shapes, fills and embedded layers into plain
+pixels) and <strong>Create Clipping Mask</strong> or <strong>Release
+Clipping Mask</strong>.</p>
+<p><strong>Show This Layer Only</strong> hides every other layer; choose
+it again to bring them back. <strong>Show/Hide All Other Layers</strong>
+does the same as a toggle. <strong>Fit Layer on Screen</strong> zooms to
+the layer. <strong>Select More Layers</strong> turns on Select Layers
+with this one picked. <strong>Background from Layer</strong> makes this
+layer the Background. <strong>Lock</strong> or
+<strong>Unlock</strong>.</p>
+<p><strong>Move Into Group</strong> lists the groups to move it into.
+<strong>Move Out of Group</strong> takes it out of the group it’s in.
+<strong>Delete Layer</strong> removes it.</p>
+<h3 id="effects-and-live-filters-under-a-layer">Effects and live filters
+under a layer</h3>
+<p>A layer with effects shows an <strong>Effects</strong> row under it,
+then a row for each effect. The eye on the Effects row hides or shows
+all of them, and each effect has its own eye. Double-tap an effect to
+change it in Layer Style. Swipe it left to delete it, or touch and hold
+for <strong>Edit Effect…</strong> and <strong>Delete
+Effect</strong>.</p>
+<p>Embedded layers with filters show a <strong>Live Filters</strong> row
+and a row for each filter, covered in <a
+href="#embedded-layers-and-live-filters">Embedded layers and live
+filters</a>.</p>
+<h2 id="properties">Properties</h2>
+<p>Properties shows the settings of the selected layer. Open it from ☰ ›
+Window › Properties, by double-tapping a fill or adjustment layer’s
+thumbnail, or with <strong>Properties…</strong> in its touch-and-hold
+menu. Opened from the Window menu it sits beside the picture, so you can
+keep working on the canvas. Changes show as you make them.</p>
+<p><strong>Adjustment layers</strong> show the same settings screens as
+☰ › Image › Adjustments, so you can change the adjustment at any time
+without touching the pixels underneath. Hue/Saturation has extras here:
+<em>Edit</em> (Master or one colour range), <em>Drag in the image to
+adjust</em> (drag sideways on a colour in the picture to change it),
+<em>Dragging changes</em> (Saturation or Hue), <em>Colorize</em>, and
+for a colour range the <em>Range</em> sliders (<em>Fade from</em>,
+<em>From</em>, <em>To</em>, <em>Fade to</em>).</p>
+<p><strong>Solid colour fill layers</strong> have <strong>Pick
+Colour…</strong> and <strong>Pick from Image</strong>, which samples a
+colour by tapping the picture (using the Eyedropper’s sample
+settings).</p>
+<p><strong>Gradient fill layers</strong> show the gradient and these
+options: <em>Style</em> (Linear, Radial, Angle, Reflected, Diamond),
+<em>Angle</em>, <em>Scale</em>, <em>Reverse</em>, and a section of
+<em>Colour Stops</em> (tap a swatch to change its colour, slide to move
+it, swipe to delete, <strong>Add Stop</strong>), <em>Presets</em>, and
+<em>Opacity Stops</em> (each stop’s opacity and location). In the
+Properties panel you can drag in the picture to move the gradient; from
+the Layers panel, tap <strong>Move It in the Image</strong> to get
+there.</p>
+<p><strong>Shape layers</strong> have <strong>Pick Colour…</strong> for
+the fill and, for rectangles, a <em>Corners</em> slider for
+rounding.</p>
+<p>Under fill and adjustment layers’ settings is a row of three buttons:
+<strong>Clip to Layer Below</strong> (the bent arrow, so the adjustment
+only affects that layer), <strong>Reset to Defaults</strong> (adjustment
+layers) and <strong>Visibility</strong> (the eye).</p>
+<p><strong>Pixel, type and other layers</strong> show the layer’s kind
+and name, the document size, and <strong>Quick Actions</strong>.
+<strong>Remove Background</strong> finds the main subject and adds a
+mask that hides everything else. Your pixels aren’t changed, so you can
+fix the mask later; a Background becomes a normal layer first.
+<strong>Select Subject</strong> selects the main subject. If the layer
+has a mask, a <strong>Mask</strong> section offers <strong>Mask
+Properties</strong>, <strong>Disable / Enable Mask</strong>,
+<strong>Apply Mask</strong> and <strong>Delete Mask</strong>.</p>
+<p>When the mask is selected, Properties shows Mask Properties
+instead.</p>
+<h2 id="the-adjustments-panel">The Adjustments panel</h2>
+<p>☰ › Window › Adjustments opens a small panel for the two adjustments
+you’ll use most. Pick <strong>Brightness/Contrast</strong> or
+<strong>Hue/Saturation</strong> at the top, then move the sliders:
+<em>Brightness</em> and <em>Contrast</em>, or <em>Hue</em>,
+<em>Saturation</em> and <em>Lightness</em>. Your first change adds an
+adjustment layer, and later changes edit it. <strong>Done</strong> keeps
+it, <strong>Cancel</strong> takes it away again. For every other
+adjustment, use the New Fill or Adjustment Layer button in the Layers
+panel.</p>
+<h2 id="layer-style">Layer Style</h2>
+<p>Layer Style adds effects such as shadows, glows and outlines to a
+layer. They follow the layer’s shape, so if you change the layer, the
+effects update. Open it from the <strong>fx</strong> button in the
+Layers panel, by double-tapping to the right of a layer’s name, or from
+☰ › Layer › Layer Style.</p>
+<figure>
+<img src="images/layer-style.jpg" alt="Layer Style" />
+<figcaption aria-hidden="true">Layer Style</figcaption>
+</figure>
+<p>A row of buttons at the top lists <strong>Blending Options</strong>
+and each effect the layer has, with a tick box showing whether it’s on.
+Tap one to see its settings. <strong>Add Effect</strong> adds another.
+On a phone, a preview of the picture sits above the settings.
+<strong>OK</strong> keeps your changes and <strong>Cancel</strong>
+undoes them all.</p>
+<h3 id="blending-options">Blending Options</h3>
+<p><em>Blend Mode</em>, <em>Opacity</em> and <em>Fill Opacity</em> work
+like the ones in the Layers panel.</p>
+<p><em>Transparency Shapes Layer</em> (under Advanced Blending) decides
+whether the layer’s see-through parts limit its effects and blending.
+Leave it on unless you want effects to fill the whole layer.</p>
+<p><strong>Blend If</strong> fades the layer out where it, or what’s
+under it, is dark or bright. Pick <em>Gray</em> or a single colour
+channel, then drag the black and white handles on the <em>This
+Layer</em> and <em>Underlying Layer</em> bars. For example, drag the
+white handle of This Layer to the left to drop out the bright parts.
+Turn on <em>Split</em> to move each half of a handle on its own, which
+gives a soft fade instead of a hard edge.</p>
+<h3 id="the-effects">The effects</h3>
+<p>Each effect page has a switch to turn it on or off, its settings, and
+<strong>Delete Effect</strong>. Stroke, Inner Shadow, Color Overlay,
+Gradient Overlay and Drop Shadow can be added more than once with
+<strong>Add Another</strong>. Every slider has a box where you can type
+the value. Colours open the colour picker.</p>
+<p><strong>Drop Shadow</strong> casts a shadow behind the layer.
+Options: <em>Blend Mode</em>, <em>Color</em>, <em>Opacity</em>,
+<em>Angle</em>, <em>Use Global Light</em>, <em>Distance</em>,
+<em>Spread</em> (makes the edge harder), <em>Size</em> (blur),
+<em>Noise</em>, <em>Layer Knocks Out Drop Shadow</em> (hides the shadow
+under see-through parts of the layer). While its page is open, drag in
+the picture to move the shadow.</p>
+<p><strong>Inner Shadow</strong> puts a shadow inside the layer’s edges,
+so it looks cut in. Options: <em>Blend Mode</em>, <em>Color</em>,
+<em>Opacity</em>, <em>Angle</em>, <em>Use Global Light</em>,
+<em>Distance</em>, <em>Choke</em>, <em>Size</em>, <em>Noise</em>. You
+can drag in the picture to move it too.</p>
+<p><strong>Outer Glow</strong> adds a glow around the outside. Options:
+<em>Blend Mode</em>, <em>Color</em>, <em>Opacity</em>, <em>Spread</em>,
+<em>Size</em>, <em>Range</em>, <em>Noise</em>.</p>
+<p><strong>Inner Glow</strong> adds a glow inside the edges. Options:
+<em>Source</em> (Edge or Center), <em>Blend Mode</em>, <em>Color</em>,
+<em>Opacity</em>, <em>Choke</em>, <em>Size</em>, <em>Noise</em>.</p>
+<p><strong>Stroke</strong> draws an outline. Options: <em>Position</em>
+(Outside, Inside, Center), <em>Blend Mode</em>, <em>Color</em>,
+<em>Opacity</em>, <em>Size</em>.</p>
+<p><strong>Color Overlay</strong> covers the layer with one colour.
+Options: <em>Blend Mode</em>, <em>Color</em>, <em>Opacity</em>.</p>
+<p><strong>Gradient Overlay</strong> covers the layer with a two-colour
+gradient. Options: <em>Style</em> (Linear, Radial, Angle, Reflected,
+Diamond), <em>Blend Mode</em>, <em>From</em>, <em>To</em>,
+<em>Opacity</em>, <em>Angle</em>, <em>Scale</em>, <em>Reverse</em>.</p>
+<p><strong>Pattern Overlay</strong> covers the layer with a pattern.
+Options: <em>Blend Mode</em>, <em>Opacity</em>, <em>Angle</em>,
+<em>Scale</em>.</p>
+<p><strong>Bevel &amp; Emboss</strong> makes the layer look raised or
+pressed in. Options: <em>Style</em> (Inner, Outer, Emboss, Pillow,
+Stroke), <em>Technique</em> (Smooth, Chisel Hard, Chisel Soft),
+<em>Depth</em>, <em>Direction</em> (Up or Down), <em>Size</em>,
+<em>Soften</em>, <em>Angle</em>, <em>Use Global Light</em>,
+<em>Altitude</em> (how high the light is).</p>
+<p><strong>Satin</strong> adds soft, silky shading inside the layer.
+Options: <em>Blend Mode</em>, <em>Color</em>, <em>Opacity</em>,
+<em>Angle</em>, <em>Distance</em>, <em>Size</em>, <em>Invert</em>.</p>
+<p><strong>Use Global Light</strong> links the light angle of all
+effects that have it turned on, across the whole document, so shadows
+and bevels all agree. Change the angle on one and the others follow.</p>
+<h2 id="masks">Masks</h2>
+<p>A mask hides parts of a layer without erasing them. Where the mask is
+white the layer shows, where it’s black the layer is hidden, and grey is
+in between. Paint on the mask in black to hide, in white to bring back.
+Because nothing is deleted, you can always change your mind.</p>
+<p><strong>Adding a mask.</strong> Tap <strong>Add Mask</strong> in the
+Layers panel, or use ☰ › Layer › Layer Mask. With a selection, the new
+mask shows only the selected area; touch and hold the button to hide the
+selected area instead.</p>
+<p><strong>Painting on the mask.</strong> Tap the mask thumbnail in the
+layer’s row. It gets a coloured outline, and painting, filling and
+filters now work on the mask. Tap the layer thumbnail to go back to the
+pixels.</p>
+<p><strong>The mask’s touch-and-hold menu.</strong> Touch and hold the
+mask thumbnail for these:</p>
+<p><strong>View Mask</strong> shows the mask alone on the canvas in
+black and white, with a bar saying “Showing the layer mask”; tap
+<strong>Done</strong> or <strong>Stop Viewing Mask</strong> to go
+back.</p>
+<p><strong>Mask Properties…</strong> opens the mask’s settings
+(below).</p>
+<p><strong>Disable Mask</strong> turns the mask off for now without
+losing it, and <strong>Enable Mask</strong> turns it back on.</p>
+<p><strong>Unlink Mask</strong> lets you move the layer and its mask on
+their own; <strong>Link Mask</strong> joins them again.</p>
+<p><strong>Invert Mask</strong> swaps what’s hidden and shown.</p>
+<p><strong>Load as Selection</strong> turns the mask into a
+selection.</p>
+<p><strong>Copy Mask To</strong> and <strong>Move Mask To</strong> put
+this mask on another layer you pick.</p>
+<p><strong>Apply Mask</strong> (pixel layers) makes the hiding permanent
+and removes the mask.</p>
+<p><strong>Delete Mask</strong> removes it.</p>
+<p><strong>Mask Properties.</strong> Double-tap the mask thumbnail, or
+open ☰ › Window › Properties while the mask is selected.
+<em>Density</em> fades the whole mask, so hidden parts show through a
+little. <em>Feather</em> softens the mask’s edges, up to 1000 pixels.
+Neither changes what you painted, so you can adjust them later. Below
+are <strong>Invert</strong>, <strong>Disable Mask</strong>,
+<strong>Unlink from Layer</strong>, <strong>Apply Mask</strong> and
+<strong>Delete Mask</strong>.</p>
+<p><strong>Vector masks</strong> hide a layer using a path instead of
+pixels, so their edges stay sharp at any size. Add and remove them from
+☰ › Layer › Vector Mask. They don’t show a thumbnail in the Layers
+panel.</p>
+<p><strong>Clipping masks</strong> are another way to hide: a clipped
+layer only shows where the layer below it has pixels. It’s handy for
+putting a photo inside text, or for making an adjustment affect only one
+layer. Use <strong>Create Clipping Mask</strong> from a layer’s
+touch-and-hold menu or the Layer menu.</p>
+<h2 id="embedded-layers-and-live-filters">Embedded layers and live
+filters</h2>
+<p>An <strong>embedded layer</strong> holds other layers, or a whole
+picture, inside it. You can scale, rotate and filter it as often as you
+like without losing quality, because PhotoWagon always works from the
+original inside. Embedded layers have a small badge on their
+thumbnail.</p>
+<p>To make one, choose <strong>Convert to Embedded Layer</strong> from a
+layer’s touch-and-hold menu, or select several layers and tap
+<strong>Embedded Layer</strong>. ☰ › File › Place Embedded… and Place
+from Photos… also add pictures as embedded layers.</p>
+<p>To change what’s inside, double-tap the thumbnail or choose
+<strong>Edit Contents</strong>. The contents open as a separate
+document. Make your changes, then save or close it, and the embedded
+layer updates.</p>
+<p><strong>Live filters.</strong> When you run a filter from ☰ › Filter
+on an embedded layer, it’s added as a live filter instead of changing
+pixels for good. The filters are listed under the layer, newest on top.
+Tap a filter’s eye to hide it. Double-tap it to change its settings;
+Fluid Warp opens on the canvas and Develop opens full screen. Swipe left
+to delete it. Touch and hold a filter for <strong>Edit Live
+Filter…</strong>, <strong>Blending Options…</strong> (a <em>Mode</em>
+and <em>Opacity</em> for how that filter’s result mixes with the layer),
+<strong>Copy to Layer</strong> (adds the same filter to another embedded
+layer) and <strong>Delete Live Filter</strong>.</p>
+<h2 id="the-layer-menu">The Layer menu</h2>
+<p>Choose ☰ › Layer. Items that can’t be used right now are greyed out,
+with the reason written under them. Items ending in “…” ask for settings
+before they run.</p>
+<h3 id="new">New</h3>
+<p><strong>Layer…</strong> opens New Layer. Options: <em>Name</em>,
+<em>Use Previous Layer to Create Clipping Mask</em>, <em>Color</em> (a
+colour label for the row), <em>Mode</em>, <em>Opacity</em>, and <em>Fill
+with (mode)-neutral color</em>, which fills the layer with the colour
+that changes nothing in that mode (for example 50% grey for Overlay),
+ready to paint light and shade on.</p>
+<p><strong>Group…</strong> adds an empty group. Options:
+<em>Name</em>.</p>
+<p><strong>New Type Layer</strong> adds an empty type layer at the
+top-left corner. To type text, the Type tool is easier.</p>
+<p><strong>New Shape Layer</strong> is meant for adding a shape layer;
+draw shapes with the shape tools instead.</p>
+<p><strong>Layer via Copy</strong> copies the selected area to a new
+layer. <strong>Layer via Cut</strong> moves it to a new layer, leaving a
+hole.</p>
+<p><strong>Layer From Background…</strong> turns the Background into a
+normal layer you can move and fade. <strong>Background From
+Layer</strong> makes the selected layer the Background.</p>
+<p><strong>Group from Layers…</strong> puts the selected layers in a new
+group. Options: <em>Name</em>.</p>
+<p><strong>Artboard…</strong> adds an artboard, a separate canvas inside
+the document, handy for designing several screens or sizes side by side.
+Options: <em>Preset</em> (a phone, web or A4 size), <em>Name</em>,
+<em>Background</em> (White, Black, Transparent, Custom).
+<strong>Artboard from Group…</strong> turns a top-level group into an
+artboard. <strong>Artboard from Layers…</strong> puts the selected
+layers on a new artboard. Options: <em>Name</em>.</p>
+<p><strong>Frame from Layers</strong> groups the selected layers and
+clips them to a rectangle, like a picture frame.</p>
+<p><strong>From Photos…</strong> and <strong>From Files…</strong> add a
+picture from your photo library or the Files app as a new layer.</p>
+<h3 id="delete">Delete</h3>
+<p><strong>Delete Layer</strong> removes the selected layers.
+<strong>Hidden Layers</strong> removes every layer whose eye is off.</p>
+<h3 id="arrange">Arrange</h3>
+<p><strong>Bring Forward</strong> and <strong>Send Backward</strong>
+move the layer one step up or down. <strong>Bring to Front</strong> and
+<strong>Send to Back</strong> move it to the top or bottom (the
+Background stays at the bottom). <strong>Reverse</strong> flips the
+order of the selected layers.</p>
+<h3 id="layer-mask">Layer Mask</h3>
+<p><strong>Reveal All</strong> and <strong>Hide All</strong> add a white
+or black mask. <strong>Reveal Selection</strong> and <strong>Hide
+Selection</strong> add a mask that shows or hides the selected area.
+<strong>From Transparency</strong> makes a mask from the layer’s
+see-through areas.</p>
+<p><strong>Delete</strong> removes the mask, and <strong>Apply</strong>
+makes it permanent. <strong>Disable Layer Mask</strong> turns the mask
+off or back on. <strong>Unlink Layer Mask</strong> unlinks it from the
+layer or links it again.</p>
+<h3 id="new-fill-layer">New Fill Layer</h3>
+<p>A fill layer is a layer filled with a colour, gradient or pattern
+that you can change later. If you have a selection, it becomes the
+layer’s mask.</p>
+<p><strong>Solid Color…</strong> Options: <em>Color</em>.
+<strong>Gradient…</strong> Options: <em>From</em>, <em>To</em>,
+<em>Angle</em>, <em>Style</em>, <em>Reverse</em>.
+<strong>Pattern…</strong> Options: <em>Scale</em>, <em>Angle</em>,
+<em>Link</em> (moves the pattern with the layer).</p>
+<h3 id="new-adjustment-layer">New Adjustment Layer</h3>
+<p>An adjustment layer changes the colours and tones of everything under
+it, without changing any pixels, so you can tweak or remove it at any
+time. If you have a selection, it becomes the layer’s mask. Clip the
+adjustment layer to the layer below if you want it to affect only that
+one.</p>
+<p><strong>Brightness/Contrast…, Levels…, Curves…, Exposure…, Vibrance…,
+Hue/Saturation…, Color Balance…, Black &amp; White…, Photo Filter…,
+Channel Mixer…, Invert, Posterize…, Threshold…, Gradient Map…, Selective
+Color…, Color Lookup…</strong> each add that adjustment. From this menu
+they first ask for a few starting settings (for example <em>Levels</em>
+for Posterize, <em>Level</em> for Threshold, <em>Brightness</em> and
+<em>Contrast</em> for Brightness/Contrast). For the full settings, open
+the new layer’s Properties. The New Fill or Adjustment Layer button in
+the Layers panel skips the first step and opens Properties straight
+away.</p>
+<h3 id="layer-style-1">Layer Style</h3>
+<p><strong>Drop Shadow…, Inner Shadow…, Outer Glow…, Inner Glow…,
+Stroke…, Color Overlay…, Gradient Overlay…, Pattern Overlay…, Bevel
+&amp; Emboss…, Satin…</strong> open Layer Style on that effect, adding
+it if the layer doesn’t have it yet. <strong>Blending Options…</strong>
+opens Layer Style at Blending Options.</p>
+<p><strong>Clear Layer Style</strong> removes all effects and blending
+options from the selected layers.</p>
+<p><strong>Copy Layer Style</strong> and <strong>Paste Layer
+Style</strong> copy a layer’s effects and paste them onto the selected
+layers.</p>
+<p><strong>Hide All Effects</strong> hides the effects of every layer,
+or shows them again.</p>
+<p><strong>Global Light…</strong> sets the light direction shared by
+effects that use it. Options: <em>Angle</em>, <em>Altitude</em>.</p>
+<p><strong>Create Layer</strong> turns each effect into its own pixel
+layer, so you can paint on or move a shadow by itself.</p>
+<p><strong>Scale Effects…</strong> makes all of the layer’s effects
+bigger or smaller, for example after resizing the layer. Options:
+<em>Scale</em> (percent).</p>
+<h3 id="rasterize">Rasterize</h3>
+<p>Rasterizing turns a special layer into plain pixels, so you can paint
+on it. You can’t edit it the old way after that.</p>
+<p><strong>Rasterize Type</strong> and <strong>Type</strong> turn type
+into pixels. <strong>Rasterize Shape</strong> turns a shape into pixels.
+<strong>Layer</strong> rasterizes the selected layer, whatever kind it
+is. <strong>All Layers</strong> does every layer in the document.
+<strong>Fill Content</strong> rasterizes a fill layer. <strong>Embedded
+Layer</strong> turns an embedded layer into pixels, live filters
+included. <strong>Video</strong> rasterizes a video layer. <strong>Layer
+Style</strong> bakes the effects into the layer’s pixels.</p>
+<h3 id="vector-mask">Vector Mask</h3>
+<p><strong>Add Vector Mask</strong> adds a vector mask that shows
+everything. <strong>Vector Mask from Current Path</strong> makes one
+from the work path. <strong>Delete Vector Mask</strong> removes it.</p>
+<h3 id="embedded-layers">Embedded Layers</h3>
+<p><strong>Convert to Embedded Layer</strong> wraps the selected layers
+into one embedded layer. <strong>New Embedded Layer via Copy</strong>
+makes a copy whose contents are separate, so editing one doesn’t change
+the other.</p>
+<p><strong>Rasterize</strong> turns the embedded layer into plain
+pixels. <strong>Edit Contents</strong> opens what’s inside as its own
+document; save or close it to update the layer. <strong>Convert to
+Layers</strong> unpacks it back into normal layers (its live filters are
+dropped).</p>
+<p><strong>Update Modified Content</strong>, <strong>Update All Modified
+Content</strong> and <strong>Convert to Embedded</strong> are for
+embedded layers that point to a file outside the document.
+<strong>Reveal in Finder</strong> isn’t available on iPhone and
+iPad.</p>
+<p><strong>Warp</strong>, <strong>Pin Warp</strong> and
+<strong>Perspective Warp</strong> bend an embedded layer while keeping
+it editable. From this menu they have no handles to drag; to place pins
+by hand, use ☰ › Edit › Pin Warp.</p>
+<p><strong>Stack Mode</strong> combines the layers inside an embedded
+layer pixel by pixel. It’s useful for a set of photos taken from the
+same spot: <strong>Median</strong> or <strong>Mean</strong> removes
+people or cars that moved between shots and reduces noise. The other
+choices are <strong>Entropy, Kurtosis, Maximum, Minimum, Range,
+Skewness, Standard Deviation, Summation</strong> and
+<strong>Variance</strong>. <strong>None</strong> turns it off.</p>
+<h3 id="live-filter">Live Filter</h3>
+<p><strong>Disable Live Filters</strong> hides all of the embedded
+layer’s live filters, or shows them again. <strong>Clear Live
+Filters</strong> removes them all.</p>
+<p><strong>Delete Filter Mask</strong> and <strong>Disable Filter
+Mask</strong> remove, or turn off and on, the mask that limits where the
+live filters apply.</p>
+<p><strong>Blending Options…</strong> sets how the top live filter mixes
+with the layer, by mode name and an opacity from 0 to 1. Touching and
+holding the filter in the Layers panel gives a friendlier version of the
+same thing.</p>
+<h3 id="align">Align</h3>
+<p><strong>Top Edges, Vertical Centers, Bottom Edges, Left Edges,
+Horizontal Centers, Right Edges</strong> line up the selected layers by
+that edge or centre. If there’s a selection, they line up with the
+selection. One layer on its own lines up with the canvas.</p>
+<h3 id="distribute">Distribute</h3>
+<p><strong>Top Edges, Vertical Centers, Bottom Edges, Left Edges,
+Horizontal Centers, Right Edges</strong> space three or more selected
+layers so that edge or centre is evenly spread.
+<strong>Horizontally</strong> and <strong>Vertically</strong> make the
+gaps between them equal.</p>
+<h3 id="matting">Matting</h3>
+<p>These clean up the edges of a cut-out layer.</p>
+<p><strong>Defringe…</strong> replaces the colour of edge pixels with
+colours from right inside, which removes a halo of the old background.
+Options: <em>Width</em> (in pixels).</p>
+<p><strong>Remove Black Matte</strong> and <strong>Remove White
+Matte</strong> fix soft edges that were cut out from a black or white
+background.</p>
+<p><strong>Color Decontaminate…</strong> pulls edge colours towards the
+nearby solid colours. Options: <em>Amount</em>, <em>Radius</em>.</p>
+<h3 id="video-layers">Video Layers</h3>
+<p>A video layer holds a series of frames, which you can play in ☰ ›
+Window › Timeline.</p>
+<p><strong>New Blank Video Layer</strong> adds one. <strong>Insert Blank
+Frame</strong>, <strong>Duplicate Frame</strong> and <strong>Delete
+Frame</strong> work on the current frame. <strong>Restore Frame</strong>
+and <strong>Restore All Frames</strong> undo your painting on one or all
+frames. <strong>Show Altered Video</strong> shows or hides your changes.
+<strong>Rasterize</strong> turns the current frame into a normal layer.
+<strong>Interpret Footage…</strong> and <strong>Reload Frame</strong>
+are for video loaded from a file. <strong>New Video Layer from
+File…</strong> and <strong>Replace Footage…</strong> need a file and
+don’t work from this menu yet.</p>
+<h3 id="the-rest-of-the-layer-menu">The rest of the Layer menu</h3>
+<p><strong>Group Layers</strong> puts the selected layers in a group,
+and <strong>Ungroup Layers</strong> takes them out again.</p>
+<p><strong>Duplicate Layer…</strong> copies the selected layers.
+Options: <em>In place</em> (for artboards, keeps the copy on the same
+artboard), <em>Name</em>, <em>Document name</em>.</p>
+<p><strong>Create Clipping Mask</strong> clips the layer to the one
+below, and <strong>Release Clipping Mask</strong> undoes it.</p>
+<p><strong>Merge Down</strong> merges the layer into the one below.
+<strong>Merge Layers</strong> merges the selected layers into one.
+<strong>Merge Group</strong> merges a group into a single layer.
+<strong>Merge Visible</strong> merges every visible layer.
+<strong>Flatten Image</strong> merges everything into a single
+Background.</p>
+<p><strong>Hide Layers</strong> hides the selected layers, or shows them
+if they’re all hidden.</p>
+<p><strong>Link Layers</strong> links the selected layers so they move
+together; choose it again to unlink. <strong>Select Linked
+Layers</strong> selects every layer linked to this one.</p>
+<p><strong>Lock Layers…</strong> locks parts of the selected layers so
+you can’t change them by mistake. Options: <em>Transparency</em> (paint
+only where there are pixels already), <em>Pixels</em> (no painting),
+<em>Position</em> (no moving), <em>Artboard</em>, <em>All</em>. A lock
+shows on the layer’s row; tap it to unlock.</p>
+<p><strong>Rename Layer</strong> doesn’t ask for a name from here. To
+rename a layer, double-tap its name in the Layers panel.</p>
+<p><strong>Mask All Objects</strong> finds the main objects in the layer
+and masks the layer to them, hiding everything else.</p>
+<p><strong>Layer Content Options…</strong> has nothing to show here. To
+change a fill, adjustment or shape layer, open its Properties.</p>
+<p><strong>New Layer Based Slice</strong> adds a slice that follows the
+layer’s outline, effects included.</p>
+<h2 id="tips">Tips</h2>
+<ul>
+<li><strong>Name your layers.</strong> Double-tap a name to rename it.
+It makes a busy stack much easier to follow.</li>
+<li><strong>Use adjustment layers instead of ☰ › Image ›
+Adjustments</strong> when you might want to change your mind. You can
+always change them later, hide them, or paint on their mask to limit
+where they apply.</li>
+<li><strong>Mask instead of erasing.</strong> A mask hides pixels
+without deleting them, so you can bring them back.</li>
+<li><strong>Touch and hold</strong> any Layers panel button to see its
+name, and any layer, mask, effect or filter for more choices.</li>
+</ul>
+<h1 id="filters-and-develop">Filters and Develop</h1>
+<p>Filters change the pixels of a layer: blur it, sharpen it, add noise,
+bend it or paint it in a new style. You’ll find them all under ☰ ›
+Filter. Develop is a full photo-finishing screen for light, colour and
+detail, and it’s also where camera raw files open.</p>
+<h2 id="how-filter-settings-work">How filter settings work</h2>
+<p><strong>Running a filter.</strong> Pick the layer you want to change
+in the Layers panel, then choose a filter from ☰ › Filter. If there’s a
+selection, only the selected part changes. Items without “…” at the end
+run straight away with no questions.</p>
+<p><strong>The settings sheet.</strong> Items ending in “…” open their
+settings first. On an iPhone they open in a sheet with a small preview
+of the image at the top. On an iPad they open in a column beside the
+canvas, so you see the change on the full image. Each number has a
+slider and a box you can type in; choices are lists and switches are
+toggles.</p>
+<figure>
+<img src="images/filter-dialog.jpg"
+alt="A filter’s settings with Preview" />
+<figcaption aria-hidden="true">A filter’s settings with
+Preview</figcaption>
+</figure>
+<p><strong>Trying settings.</strong> The filter is tried each time you
+let go of a slider, enter a number or pick a choice. A spinner shows
+while it works. Tap <strong>OK</strong> to keep the result, or
+<strong>Cancel</strong> to put the image back as it was. Swiping the
+sheet away is turned off, so you never keep a try by accident.</p>
+<p><strong>Preview.</strong> The eye button at the top left of the sheet
+turns the preview off and on. Off shows the image without the filter, so
+you can compare before and after without losing your settings.</p>
+<p><strong>Handles on the preview.</strong> Tilt-Shift, Iris Blur, Spin
+Blur, Path Blur and Lighting Effects show handles on the image. Drag
+them to place the centre, the edges, the ends or the light. The other
+settings sit in the form below.</p>
+<p><strong>Last Filter.</strong> ☰ › Filter › Last Filter runs the most
+recent filter again, with the same settings, on the layer you have
+selected now. With a keyboard, press ⌘⌥F.</p>
+<p><strong>Filter Gallery…</strong> Stacks several artistic effects and
+applies them together. The list starts with one effect. Tap an effect
+for its settings, tap its eye to hide it, hold it for <strong>Move
+Up</strong> and <strong>Move Down</strong>, and swipe it to remove it.
+<strong>Add Effect</strong> adds another one. Effects are applied from
+top to bottom.</p>
+<p>The gallery’s effects, by group: Artistic (Colored Pencil, Cut Paper,
+Dry Brush, Film Grain, Fresco, Neon Glow, Paint Daubs, Palette Knife,
+Plastic Wrap, Poster Edges, Rough Pastels, Smudge Stick, Sponge,
+Underpainting, Watercolor), Brush Strokes (Accented Edges, Angled
+Strokes, Crosshatch, Dark Strokes, Ink Outlines, Spatter, Sprayed
+Strokes, Sumi-e), Distort (Diffuse Glow, Glass, Ocean Ripple), Sketch
+(Bas Relief, Chalk &amp; Charcoal, Charcoal, Chrome, Conté Crayon,
+Graphic Pen, Halftone Pattern, Note Paper, Photocopy, Plaster,
+Reticulation, Stamp, Torn Edges, Water Paper), Stylize (Glowing Edges)
+and Texture (Craquelure, Grain, Mosaic Tiles, Patchwork, Stained Glass,
+Texturizer). Some of them use your foreground and background
+colours.</p>
+<h2 id="live-filters">Live filters</h2>
+<p><strong>Live filters.</strong> A filter applied to an embedded layer
+doesn’t change its pixels for good. It’s kept as a live filter that you
+can change, hide or remove later. Live filters are listed under the
+layer’s row in the Layers panel, under “Live Filters”. Tap the arrow on
+the layer’s row to show them.</p>
+<p><strong>Convert for Live Filters.</strong> ☰ › Filter › Convert for
+Live Filters turns the selected layer (or several selected layers
+together) into one embedded layer, ready for live filters.</p>
+<p><strong>Changing a live filter.</strong> In the Layers panel, tap a
+live filter’s eye to hide or show it, and double-tap it to change its
+settings. Fluid Warp opens on the canvas again and Develop opens its own
+screen. Swipe a live filter to delete it.</p>
+<p><strong>More for a live filter.</strong> Hold a live filter for
+<strong>Edit Live Filter…</strong>, <strong>Blending Options…</strong>,
+<strong>Copy to Layer</strong> (puts a copy on another embedded layer)
+and <strong>Delete Live Filter</strong>.</p>
+<p><strong>Blending Options.</strong> Sets how a live filter’s result
+mixes with the layer under it. Options: <em>Mode</em> (the blend mode),
+<em>Opacity</em> (how strongly the filter shows, 0 to 100%).</p>
+<h2 id="filter-menu-the-top">Filter menu: the top</h2>
+<p><strong>Last Filter, Filter Gallery…, Convert for Live
+Filters.</strong> See the sections above.</p>
+<p><strong>Lens Correction…</strong> Fixes what a camera lens does to a
+photo: bent lines, dark corners and coloured fringes, plus tilt and
+rotation. With a keyboard, press ⌘⇧R. Options: <em>Profile</em> (None,
+Auto or Generic), <em>Focal length</em> (in mm), <em>Correct
+distortion</em>, <em>Correct vignette</em>, <em>Correct c a</em> (colour
+fringes), <em>Auto scale</em>, <em>Distortion</em>, <em>Red cyan</em>
+and <em>Blue yellow</em> (fringe fixes), <em>Vignette amount</em>,
+<em>Vignette midpoint</em>, <em>Vertical</em> and <em>Horizontal</em>
+(perspective), <em>Angle</em>, <em>Scale</em>, <em>Edge</em> (what fills
+the gaps: Transparency, Edge extension, Black or White).</p>
+<p><strong>Develop…</strong> Opens Develop on the selected layer. See
+“Develop” below. With a keyboard, press ⌘⇧A.</p>
+<p><strong>Perspective Planes…</strong> Meant for pasting and cloning
+along a surface in perspective. Its sheet only has <em>Focal length</em>
+and <em>New layer</em> so far, with no way to draw a plane, so it can’t
+do anything useful yet.</p>
+<p><strong>Fluid Warp…</strong> Push, pull, twist and swell parts of a
+layer by painting on the canvas. Pick the tool in the options bar, then
+drag on the image; two fingers still zoom and pan. Tap ✓ (Commit) to
+keep the warp or ✕ (Cancel) to drop it. With a keyboard, press ⌘⇧X.</p>
+<p>Fluid Warp’s options bar: <em>Tool</em> (Forward Warp pushes pixels
+along your stroke, Reconstruct paints them back, Smooth evens out the
+warp, Twirl turns them clockwise, Pucker pulls them in, Bloat pushes
+them out), <em>Size</em> (10 to 1000 pixels), <em>Pressure</em> (how
+strong each stroke is). Under <strong>More</strong>: <em>Amount</em>
+(how much of the warp shows, from 100% down to 0%) and <strong>Restore
+All</strong> (start again).</p>
+<h2 id="blur">Blur</h2>
+<p><strong>Gaussian Blur…</strong> A smooth, even blur. Good for
+softening a background or a mask. Options: <em>Radius</em> (how far the
+blur spreads, in pixels).</p>
+<p><strong>Blur, Blur More.</strong> A light blur with no settings. Blur
+More is a few times stronger.</p>
+<p><strong>Box Blur…</strong> Blurs with square averaging, which looks a
+little blocky in highlights. Options: <em>Radius</em>.</p>
+<p><strong>Motion Blur…</strong> Streaks the image in one direction, as
+if it moved. Options: <em>Angle</em> (the direction), <em>Distance</em>
+(how long the streaks are).</p>
+<p><strong>Radial Blur…</strong> Blurs in circles round a point, or out
+from it like a zoom. Options: <em>Amount</em>, <em>Method</em> (Spin or
+Zoom), <em>Quality</em> (Draft, Good or Best), <em>Center x</em> and
+<em>Center y</em> (where the centre is, 0 to 1 across and down the
+image).</p>
+<p><strong>Surface Blur…</strong> Smooths flat areas but keeps edges
+sharp. Handy for skin and noise. Options: <em>Radius</em>,
+<em>Threshold</em> (how different pixels must be to count as an
+edge).</p>
+<p><strong>Smart Blur…</strong> Blurs inside areas of similar colour and
+can show the edges it finds. Options: <em>Radius</em>,
+<em>Threshold</em>, <em>Quality</em> (High, Medium or Low),
+<em>Mode</em> (Normal, Edge only, Overlay edge).</p>
+<p><strong>Lens Blur…</strong> Imitates a camera’s out-of-focus blur,
+with shaped highlights. Options: <em>Radius</em>, <em>Shape</em>
+(Hexagon, Triangle, Square, Pentagon, Heptagon or Octagon), <em>Blade
+curvature</em>, <em>Rotation</em>, <em>Depth map</em> (None,
+Transparency or Layer mask), <em>Focal distance</em>, <em>Invert</em>,
+<em>Brightness</em> and <em>Threshold</em> (for bright spots),
+<em>Noise</em>, <em>Distribution</em> (Uniform or Gaussian),
+<em>Monochromatic</em>.</p>
+<p><strong>Shape Blur…</strong> Blurs using a shape, which shows in
+bright spots. Options: <em>Radius</em>, <em>Shape</em> (Circle, Ring,
+Square, Diamond, Triangle, Hexagon, Star, Heart or Cross).</p>
+<p><strong>Average.</strong> Fills the layer, or the selection, with its
+average colour. No settings. Useful for finding the overall colour of an
+area.</p>
+<h2 id="sharpen">Sharpen</h2>
+<p><strong>Sharpen, Sharpen More.</strong> Quick sharpening with no
+settings. Sharpen More is stronger.</p>
+<p><strong>Sharpen Edges.</strong> Sharpens only the edges and leaves
+smooth areas alone. No settings.</p>
+<p><strong>Unsharp Mask…</strong> Classic, controllable sharpening.
+Options: <em>Amount</em> (how strong, in percent), <em>Radius</em> (how
+wide the sharpened edges are), <em>Threshold</em> (leave areas this
+smooth alone, so noise isn’t sharpened).</p>
+<p><strong>Smart Sharpen…</strong> Sharpening that also holds back
+noise. Options: <em>Amount</em>, <em>Radius</em>, <em>Reduce
+noise</em>.</p>
+<h2 id="noise">Noise</h2>
+<p><strong>Despeckle.</strong> Removes fine specks and grain while
+keeping edges. No settings.</p>
+<p><strong>Add Noise…</strong> Adds grain, for a film look or to hide
+banding. Options: <em>Amount</em>, <em>Distribution</em> (Uniform or
+Gaussian), <em>Monochromatic</em> (grey grain instead of coloured).</p>
+<p><strong>Median…</strong> Replaces each pixel with the middle value of
+its neighbours, which wipes out specks. Options: <em>Radius</em>.</p>
+<p><strong>Dust &amp; Scratches…</strong> Removes small marks that stand
+out from their surroundings. Options: <em>Radius</em> (how big a mark
+can be), <em>Threshold</em> (how different it must be).</p>
+<p><strong>Reduce Noise…</strong> Cleans up grainy photos. Options:
+<em>Strength</em>, <em>Preserve details</em>, <em>Reduce color
+noise</em>, <em>Sharpen details</em>, <em>Remove jpeg artifact</em>
+(smooths the blocks of heavily squeezed JPEGs).</p>
+<h2 id="pixelate">Pixelate</h2>
+<p><strong>Mosaic…</strong> Turns the image into square blocks. Options:
+<em>Cell size</em>.</p>
+<p><strong>Color Halftone…</strong> Turns the image into printed-looking
+dots, one screen per colour. Options: <em>Max radius</em> (the biggest
+dot), <em>Channel1</em> to <em>Channel4</em> (the angle of each colour’s
+dots).</p>
+<p><strong>Crystallize…</strong> Breaks the image into flat,
+crystal-shaped cells. Options: <em>Cell size</em>.</p>
+<p><strong>Facet.</strong> Groups similar pixels into flat patches, a
+little like a painting. No settings.</p>
+<p><strong>Fragment.</strong> Overlays four offset copies for a shaky,
+doubled look. No settings.</p>
+<p><strong>Mezzotint…</strong> Turns the image into a pattern of dots,
+lines or strokes. Options: <em>Type</em> (Fine dots, Medium dots, Grainy
+dots, Coarse dots, Short lines, Medium lines, Long lines, Short strokes,
+Medium strokes or Long strokes).</p>
+<p><strong>Pointillize…</strong> Paints the image in dots of colour over
+the background colour. Options: <em>Cell size</em>.</p>
+<h2 id="stylize">Stylize</h2>
+<p><strong>Emboss…</strong> Makes the image look raised or stamped into
+grey metal. Options: <em>Angle</em> (where the light comes from),
+<em>Height</em>, <em>Amount</em>.</p>
+<p><strong>Find Edges.</strong> Outlines the edges in the image on
+white. No settings.</p>
+<p><strong>Solarize.</strong> Blends a negative with the positive, like
+a photo exposed to light while developing. No settings.</p>
+<p><strong>Diffuse…</strong> Scatters pixels for a soft, frosted look.
+Options: <em>Mode</em> (Normal, Darken only, Lighten only or
+Anisotropic).</p>
+<p><strong>Extrude…</strong> Pushes the image out into 3D blocks or
+pyramids. Options: <em>Type</em> (Blocks or Pyramids), <em>Size</em>,
+<em>Depth</em>, <em>Depth mode</em> (Random or Level based), <em>Solid
+front faces</em>, <em>Mask incomplete blocks</em>.</p>
+<p><strong>Oil Paint…</strong> Makes a photo look painted with thick
+brush strokes. Options: <em>Stylization</em>, <em>Cleanliness</em>,
+<em>Scale</em>, <em>Bristle detail</em>, <em>Lighting</em> (shows the
+paint’s ridges), <em>Angle</em> (of the light), <em>Shine</em>.</p>
+<p><strong>Tiles…</strong> Cuts the image into tiles and nudges them
+apart. Options: <em>Count</em> (tiles across), <em>Max offset</em>,
+<em>Fill</em> (what shows in the gaps: Background, Foreground, Inverse
+or Unaltered).</p>
+<p><strong>Trace Contour…</strong> Draws thin lines where brightness
+crosses a level, like a contour map. Options: <em>Level</em>,
+<em>Edge</em> (Lower or Upper).</p>
+<p><strong>Wind…</strong> Adds streaks as if wind blew across the image.
+Options: <em>Method</em> (Wind, Blast or Stagger), <em>Direction</em>
+(From right or From left).</p>
+<h2 id="distort">Distort</h2>
+<p><strong>Twirl…</strong> Spins the image round its centre, more in the
+middle than at the edges. Options: <em>Angle</em>.</p>
+<p><strong>Pinch…</strong> Squeezes the middle in, or pushes it out with
+a negative amount. Options: <em>Amount</em>.</p>
+<p><strong>Spherize…</strong> Wraps the image round a ball, for a
+bulging look. Options: <em>Amount</em>, <em>Mode</em> (Normal,
+Horizontal only or Vertical only).</p>
+<p><strong>Wave…</strong> Ripples the image with mixed waves. Options:
+<em>Generators</em> (how many waves), <em>Wavelength min</em> and
+<em>Wavelength max</em>, <em>Amplitude min</em> and <em>Amplitude
+max</em>, <em>Type</em> (Sine, Triangle or Square), <em>Undefined
+areas</em> (Wrap or Repeat).</p>
+<p><strong>Ripple…</strong> Small ripples like the surface of water.
+Options: <em>Amount</em>, <em>Size</em> (Small, Medium or Large).</p>
+<p><strong>Polar Coordinates…</strong> Bends a strip into a circle, or
+opens a circle out into a strip. Options: <em>Mode</em> (Rectangular to
+polar or Polar to rectangular).</p>
+<p><strong>Displace…</strong> Moves pixels by the brightness of another
+image (the map), for example to make a picture follow the folds of
+cloth. Open the map as a document first. Options: <em>Displacement
+Map</em> (which open document), <em>Horizontal</em> and
+<em>Vertical</em> (how far), <em>Fit</em> (Stretch or Tile),
+<em>Undefined areas</em> (Repeat or Wrap).</p>
+<p><strong>Shear…</strong> Bends the image sideways along a curve. Drag
+the line in the graph sideways and tap it to add a point;
+<strong>Reset</strong> makes it straight again. Options: <em>Undefined
+Areas</em> (Wrap Around or Repeat Edge Pixels).</p>
+<p><strong>ZigZag…</strong> Ripples out from the centre, like a stone
+dropped in a pond. Options: <em>Amount</em>, <em>Ridges</em>,
+<em>Style</em> (Pond ripples, Out from center or Around center).</p>
+<h2 id="other">Other</h2>
+<p><strong>High Pass…</strong> Keeps only edges and fine detail, greying
+the rest. Often set to Overlay for sharpening. Options:
+<em>Radius</em>.</p>
+<p><strong>Minimum…, Maximum…</strong> Minimum grows the dark areas and
+Maximum grows the light ones. They’re useful for shrinking or spreading
+a mask. Options: <em>Radius</em>, <em>Preserve</em> (Squareness or
+Roundness).</p>
+<p><strong>Offset…</strong> Slides the image across, by a number of
+pixels. Options: <em>Horizontal</em>, <em>Vertical</em>, <em>Undefined
+areas</em> (what fills the gap: Wrap, Repeat or Transparent).</p>
+<p><strong>Custom…</strong> Applies your own sharpening or blurring
+pattern. Its sheet only shows <em>Scale</em> and <em>Offset</em>, with
+no grid to enter the pattern, so it isn’t much use yet.</p>
+<p><strong>HSB/HSL.</strong> Swaps how the colour is stored in the
+pixels, from RGB to hue, saturation and brightness. It runs straight
+away with no settings, and the result looks strange on its own.</p>
+<p><strong>Color to Alpha…</strong> Turns a colour into transparency,
+for example to lift a drawing off white paper. Soft edges stay soft.
+Options: <em>Color</em> (the colour to remove), <em>Transparency
+threshold</em>, <em>Opacity threshold</em>.</p>
+<h2 id="render">Render</h2>
+<p><strong>Fibers…</strong> Draws a woven fibre texture in your
+foreground and background colours. Options: <em>Variance</em> (how much
+the colour changes), <em>Strength</em> (how long the fibres are).</p>
+<p><strong>Lens Flare…</strong> Adds the bright glare a camera lens
+catches from a light. Options: <em>Brightness</em>, <em>Center x</em>
+and <em>Center y</em> (where the flare is), <em>Lens</em> (Zoom,
+Prime35, Prime105 or Movie prime).</p>
+<p><strong>Lighting Effects…</strong> Shines a light on the image. Drag
+the yellow handle for the light and the white one for where it points.
+Options: <em>Light type</em> (Spot, Point or Infinite),
+<em>Intensity</em>, <em>Light z</em> (height), <em>Cone</em>,
+<em>Hotspot</em>, <em>Angle</em>, <em>Elevation</em>, <em>Gloss</em>,
+<em>Metallic</em>, <em>Exposure</em>, <em>Ambience</em>,
+<em>Texture</em> (None, Red, Green, Blue, Alpha or Luminance, for
+bumps), <em>Height</em>, <em>White is high</em>.</p>
+<p><strong>Relight…</strong> Changes where the light seems to fall on a
+photo, keeping its detail. Options: <em>Angle</em> and
+<em>Elevation</em> (where the new light comes from), <em>Intensity</em>,
+<em>Ambient</em> (light from everywhere), <em>Warmth</em>,
+<em>Softness</em>.</p>
+<p><strong>Clouds, Difference Clouds.</strong> Clouds fills the layer
+with soft clouds in your foreground and background colours. Difference
+Clouds blends clouds into what’s there, flipping colours. No
+settings.</p>
+<p><strong>Picture Frame…</strong> Draws a decorative frame round the
+image. Options: <em>Frame</em> (Vine with flowers, Vine with leaves,
+Ivy, Roses, Daisies, Berries, Bamboo, Waves, Zigzag, Dots, Rope,
+Scallops, Double line, Snowflakes, Stars or Hearts), <em>Margin</em>,
+<em>Size</em>, <em>Arrangement</em>, <em>Lines</em>, <em>Thickness</em>,
+<em>Fade</em>, <em>Vine color</em>, <em>Flower color</em>, <em>Leaf
+color</em>, <em>New layer</em>.</p>
+<p><strong>Tree…</strong> Draws a tree. Options: <em>Base tree type</em>
+(1 to 34), <em>Light direction</em> (1 to 5), <em>Leaves amount</em>,
+<em>Leaves size</em>, <em>Branches height</em>, <em>Branches
+thickness</em>, <em>Default leaves</em>, <em>Leaves color</em>,
+<em>Custom branch color</em>, <em>Branches color</em>, <em>Flat
+shading</em>, <em>X</em> and <em>Y</em> (where it stands),
+<em>Size</em>, <em>New layer</em>.</p>
+<h2 id="blur-effects">Blur Effects</h2>
+<p><strong>Tilt-Shift…</strong> Keeps a band sharp and blurs above and
+below it, so a scene looks like a model. Drag the handle to move the
+band. Options: <em>Blur</em>, <em>Angle</em>, <em>Focus</em> (how wide
+the sharp band is), <em>Transition</em> (how gently it fades).</p>
+<p><strong>Iris Blur…</strong> Keeps an oval sharp and blurs round it.
+Drag the centre handle to move it and the two edge handles to size it.
+Options: <em>Blur</em>, <em>Angle</em>, <em>Roundness</em>,
+<em>Feather</em>.</p>
+<p><strong>Variable Blur…</strong> Blurs more where the selection is
+stronger, so you can paint where the blur goes. Options:
+<em>Radius</em>, <em>Mask</em> (the name of a saved selection to use
+instead).</p>
+<p><strong>Spin Blur…</strong> Spins an oval area, like a turning wheel.
+Drag the handles to place and size it. Options: <em>Blur angle</em> (how
+far it spins), <em>Angle</em>.</p>
+<p><strong>Path Blur…</strong> Blurs along a line, as if the subject
+moved. Drag the start and end handles. Options: <em>Speed</em>.</p>
+<h2 id="video">Video</h2>
+<p><strong>De-Interlace…</strong> Removes the comb-like lines from a
+frame grabbed from video. Options: <em>Eliminate</em> (Odd fields or
+Even fields), <em>Create by</em> (Interpolation or Duplication).</p>
+<p><strong>NTSC Colors.</strong> Tones colours down to what old TV
+broadcasts can show. No settings.</p>
+<h2 id="plug-ins">Plug-ins</h2>
+<p><strong>Install Plug-in…</strong> Asks for a <em>Path</em> to a
+plug-in file and has a <em>Replace</em> switch. On iPhone and iPad
+there’s no way to pick the file yet.</p>
+<h2 id="develop">Develop</h2>
+<p>Develop is a full screen for finishing photos: light, colour, curves,
+detail, presets and snapshots, with the image at the top. Open it from ☰
+› Filter › Develop… to work on the selected layer.</p>
+<figure>
+<img src="images/develop.jpg" alt="Develop" />
+<figcaption aria-hidden="true">Develop</figcaption>
+</figure>
+<p><strong>Opening files in Develop.</strong> Camera raw files (such as
+DNG, CR2, CR3, NEF, ARW, RAF, ORF, RW2 and PEF) always open in Develop
+first. To open JPEG and HEIC photos there too, turn on <em>Open JPEG and
+HEIC in Develop</em> in ☰ › Edit › Preferences › General…, under File
+Handling.</p>
+<p><strong>Open, Open as Object, Done.</strong> When a file opens in
+Develop, tap <strong>Open</strong> to open it with your settings
+applied. Hold <strong>Open</strong> for <strong>Open as Object</strong>,
+which opens it as an embedded layer with Develop as a live filter you
+can change later. <strong>Done</strong>, in the ⋯ menu, keeps your
+settings for the next time you open that file, and closes it without
+opening. <strong>Cancel</strong> closes it.</p>
+<p><strong>Workflow.</strong> Shown only while opening a file, and
+applied when you tap Open. Options: <em>Color Space</em> (As Opened,
+sRGB, Display P3, Adobe RGB (1998) compatible or ProPhoto RGB
+compatible), <em>Depth</em> (As Opened, 8 Bits/Channel or 16
+Bits/Channel).</p>
+<p><strong>OK and Cancel.</strong> When Develop is opened from the
+Filter menu or from a live filter, <strong>OK</strong> keeps the result
+and <strong>Cancel</strong> puts things back.</p>
+<p><strong>Trying settings.</strong> The image updates each time you let
+go of a control. The eye button at the top left shows the image before
+and after your settings.</p>
+<p><strong>Undo, Redo, Reset to Default.</strong> Under the ⋯ button at
+the top right. Undo and Redo step through your changes in Develop. Reset
+to Default sets everything back but keeps your snapshots.</p>
+<p><strong>Profile.</strong> <em>Color</em> or <em>Monochrome</em>
+(black and white).</p>
+<p><strong>Auto.</strong> Sets the Light sliders for you from the
+image’s brightness. Change them after if you like.</p>
+<p><strong>Show Clipping.</strong> Outlines the parts of the image that
+are pure black (in cyan) or pure white (in red).</p>
+<p><strong>Sliders.</strong> Double-tap a slider’s name to reset it.
+Hold the name for <strong>Reset</strong> and, where there is one,
+<strong>Auto</strong> for that slider alone.</p>
+<p><strong>Panels.</strong> The settings are grouped in panels. Tap a
+panel’s name to open or close it, and tap its eye to turn its settings
+off and on, to compare.</p>
+<p><strong>Light.</strong> Brightness and contrast. Options:
+<em>Exposure</em> (overall brightness, in stops), <em>Contrast</em>,
+<em>Highlights</em> (bright areas), <em>Shadows</em> (dark areas),
+<em>Whites</em> (the very brightest), <em>Blacks</em> (the very
+darkest).</p>
+<p><strong>Color.</strong> White balance and colour strength. Options:
+<em>White Balance</em> (As Shot, Auto or Custom), <strong>White Balance
+Tool</strong> (hold on the image, then let go on something that should
+be grey), <em>Temperature</em> (cooler or warmer), <em>Tint</em> (green
+or magenta), <em>Vibrance</em> (boosts dull colours more than strong
+ones), <em>Saturation</em>.</p>
+<p><strong>Effects.</strong> Finishing touches. Options:
+<em>Texture</em> (fine detail), <em>Clarity</em> (mid-size contrast),
+<em>Dehaze</em> (cuts or adds haze), <em>Vignette</em> (darkens or
+lightens the corners) with <em>Midpoint</em>, <em>Roundness</em> and
+<em>Feather</em>, <em>Grain</em> with <em>Size</em> and
+<em>Roughness</em>.</p>
+<p><strong>Curve.</strong> A tone curve over the image’s histogram. Pick
+<em>RGB</em>, <em>Red</em>, <em>Green</em> or <em>Blue</em>, then tap
+the curve to add a point and drag points to move them. Drag a point off
+the graph to remove it.</p>
+<p><strong>Color Mixer.</strong> Changes one range of colours at a time.
+Pick <em>Hue</em>, <em>Saturation</em> or <em>Luminance</em>, then move
+the slider for <em>Red</em>, <em>Orange</em>, <em>Yellow</em>,
+<em>Green</em>, <em>Aqua</em>, <em>Blue</em>, <em>Purple</em> or
+<em>Magenta</em>.</p>
+<p><strong>Detail.</strong> Sharpening and noise. Options:
+<em>Sharpening</em> with <em>Radius</em>, <em>Detail</em> and
+<em>Masking</em> (sharpen only the edges), <em>Noise Reduction</em> with
+<em>Detail</em>, <em>Color Noise Reduction</em> with
+<em>Detail</em>.</p>
+<p><strong>Presets.</strong> One tap applies a look: Bright, Warm Matte,
+Punchy or Black &amp; White, plus any you’ve saved. After you pick one,
+<em>Amount</em> (0 to 200%) makes it weaker or stronger. <strong>Save
+Preset…</strong> saves your current settings under a name.</p>
+<p><strong>Snapshots.</strong> <strong>Save Snapshot…</strong> saves the
+current settings under a name, so you can try other ideas and come back.
+Tap a snapshot to go back to it. Snapshots are kept with the image’s
+Develop settings.</p>
+</body>
+</html>

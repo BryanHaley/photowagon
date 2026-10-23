@@ -1011,7 +1011,7 @@ pub const SECTIONS: [(&str, &str); 18] = [
     ("plugIns", "Plug-ins"),
     ("type", "Type"),
     ("enhancedControls", "Enhanced Controls"),
-    ("rawDefaults", "Camera Raw Defaults"),
+    ("rawDefaults", "Raw Develop Defaults"),
     ("integrations", "Integrations"),
 ];
 
@@ -2480,7 +2480,7 @@ pub fn specs() -> Vec<CommandSpec> {
         section!("edit.preferences.plugIns", "Plug-ins…"),
         section!("edit.preferences.type", "Type…"),
         section!("edit.preferences.enhancedControls", "Enhanced Controls…"),
-        section!("edit.preferences.rawDefaults", "Camera Raw…"),
+        section!("edit.preferences.rawDefaults", "Raw Develop…"),
         section!("edit.preferences.integrations", "Integrations…"),
         spec!(
             "edit.keyboardShortcuts",

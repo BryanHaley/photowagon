@@ -43,35 +43,4 @@ pub(crate) fn map<T: Send>(n: usize, par: bool, f: impl Fn(usize) -> T + Sync + 
     (0..n).map(f).collect()
 }
 
-/// How many of `0..n` satisfy `f`.
-pub(crate) fn count(n: usize, f: impl Fn(usize) -> bool + Sync + Send) -> usize {
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        use rayon::prelude::*;
-        (0..n).into_par_iter().filter(|&i| f(i)).count()
-    }
-    #[cfg(target_arch = "wasm32")]
-    (0..n).filter(|&i| f(i)).count()
-}
 
-/// `f(item)` for each of `items`, in parallel when `par`.
-pub(crate) fn each<T: Send>(items: Vec<T>, par: bool, f: impl Fn(T) + Sync + Send) {
-    #[cfg(not(target_arch = "wasm32"))]
-    if par {
-        use rayon::prelude::*;
-        items.into_par_iter().for_each(f);
-        return;
-    }
-    let _ = par;
-    items.into_iter().for_each(f);
-}
-
-/// Threads the parallel helpers can use (1 on wasm).
-pub(crate) fn threads() -> usize {
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        rayon::current_num_threads()
-    }
-    #[cfg(target_arch = "wasm32")]
-    1
-}

@@ -162,6 +162,12 @@ pub struct GifFrame {
 /// Encode an animated GIF (GIF89a). Each frame carries its own local colour table; `loop_forever`
 /// adds the NETSCAPE2.0 looping extension.
 pub fn encode_gif_animated(width: u32, height: u32, frames: &[GifFrame], loop_forever: bool) -> Result<Vec<u8>, CodecError> {
+    encode_gif_animated_plays(width, height, frames, if loop_forever { 0 } else { 1 })
+}
+
+/// [`encode_gif_animated`] played `plays` times: 0 forever, 1 once (no looping extension). The
+/// extension counts repeats after the first play, as viewers read it.
+pub fn encode_gif_animated_plays(width: u32, height: u32, frames: &[GifFrame], plays: u32) -> Result<Vec<u8>, CodecError> {
     let (w, h) = (width as usize, height as usize);
     if width == 0 || height == 0 || width > 65535 || height > 65535 {
         return Err(gif_err("GIF size must be 1..=65535"));
@@ -175,10 +181,13 @@ pub fn encode_gif_animated(width: u32, height: u32, frames: &[GifFrame], loop_fo
     out.push(0x70); // no global colour table, 8-bit colour resolution
     out.push(0); // background colour index
     out.push(0); // pixel aspect ratio
-    if loop_forever {
+    if plays != 1 {
+        let repeats = u16::try_from(plays.saturating_sub(1)).unwrap_or(u16::MAX);
         out.extend([0x21, 0xFF, 0x0B]);
         out.extend_from_slice(b"NETSCAPE2.0");
-        out.extend([0x03, 0x01, 0x00, 0x00, 0x00]); // loop count 0 = forever
+        out.extend([0x03, 0x01]);
+        out.extend(repeats.to_le_bytes()); // 0 = forever
+        out.push(0);
     }
     for f in frames {
         if f.palette.is_empty() || f.palette.len() > 256 || f.indices.len() != w * h || f.indices.iter().any(|&i| usize::from(i) >= f.palette.len()) {
@@ -502,6 +511,15 @@ mod anim_tests {
         assert_eq!(packed(&clear), 0x09, "disposal 2 with the transparency flag");
         let px = crate::decode(&clear).unwrap().to_rgba8();
         assert_eq!((px[3], &px[4..8]), (0, &[255, 0, 0, 255][..]), "index 0 transparent, index 1 red");
+    }
+
+    #[test]
+    fn plays_set_the_loop_count() {
+        let frames = [GifFrame { indices: vec![0; 4], palette: vec![[0, 0, 0]], transparent: None, delay_cs: 4 }];
+        let ext = |g: &[u8]| g.windows(11).position(|w| w == b"NETSCAPE2.0").map(|i| u16::from_le_bytes([g[i + 13], g[i + 14]]));
+        assert_eq!(ext(&encode_gif_animated_plays(2, 2, &frames, 0).unwrap()), Some(0), "forever");
+        assert_eq!(ext(&encode_gif_animated_plays(2, 2, &frames, 3).unwrap()), Some(2), "three plays: two repeats");
+        assert_eq!(ext(&encode_gif_animated_plays(2, 2, &frames, 1).unwrap()), None, "once");
     }
 
     #[test]

@@ -909,7 +909,7 @@ const FILL_CONTENTS: &[(&str, &str)] = &[
     ("Gry ", "gray"),
     ("Clr ", "color"),
     ("HstS", "history"),
-    ("contentAware", "contentAware"),
+    ("contentAware", "surroundings"),
 ];
 const STROKE_LOCATION: &[(&str, &str)] = &[("Insd", "inside"), ("Cntr", "center"), ("OtsF", "outside")];
 const INTENT: &[(&str, &str)] = &[("Img ", "perceptual"), ("Clrm", "relative"), ("Grp ", "saturation"), ("AbsC", "absolute")];
@@ -2862,9 +2862,9 @@ const EVENTS: &[Event] = &[
         to: transform_to,
     },
     Event { code: "AppI", name: "applyImageEvent", label: "Apply Image", ids: &["image.applyImage"], from: apply_image_from, to: apply_image_to },
-    ev!("", "newPlacedLayer", "Convert to Smart Object", "layer.smartObjects.convertToSmartObject", &[]),
+    ev!("", "newPlacedLayer", "Convert to Embedded Layer", "layer.smartObjects.convertToSmartObject", &[]),
     ev!("", "placedLayerEditContents", "Edit Contents", "layer.smartObjects.editContents", &[]),
-    ev!("", "updatePlacedLayer", "Update Smart Objects", "layer.smartObjects.updateModifiedContent", &[]),
+    ev!("", "updatePlacedLayer", "Update Embedded Layers", "layer.smartObjects.updateModifiedContent", &[]),
     Event { code: "Hd  ", name: "hide", label: "Hide", ids: &["layer.hideLayers"], from: |d| visibility_from(d, "layer.hideLayers"), to: visibility_to },
     Event { code: "Shw ", name: "show", label: "Show", ids: &["layer.showLayers"], from: |d| visibility_from(d, "layer.showLayers"), to: visibility_to },
     Event {
@@ -2915,7 +2915,7 @@ const EVENTS: &[Event] = &[
     ev!("Brdr", "border", "Border", "select.modify.border", &[F("Wdth", "radius", Kind::Px)]),
     ev!("Grow", "grow", "Grow", "select.grow", &[F("Tlrn", "tolerance", Kind::Long)]),
     ev!("Smlr", "similar", "Similar", "select.similar", &[F("Tlrn", "tolerance", Kind::Long)]),
-    ev!("", "refineSelectionEdge", "Select and Mask", "select.refineEdge", REFINE_EDGE),
+    ev!("", "refineSelectionEdge", "Refine Selection", "select.refineEdge", REFINE_EDGE),
     // Edit.
     Event { code: "Fl  ", name: "fill", label: "Fill", ids: &["edit.fill", "paint.bucket"], from: fill_from, to: fill_to },
     ev!("Strk", "stroke", "Stroke", "edit.stroke", STROKE),
@@ -3325,7 +3325,7 @@ pub fn specs() -> Vec<CommandSpec> {
         },
         CommandSpec {
             id: PHOTOSHOP_STEP,
-            label: "Photoshop Step",
+            label: "Recorded Step",
             menu: &[],
             shortcut: None,
             params: r##"{"event":id,"name":str,"descriptor":base64?} (a step from a .atn file PhotoCraft has no command for: fails at playback, written back by actions.save)"##,

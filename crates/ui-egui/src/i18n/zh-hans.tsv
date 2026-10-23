@@ -2852,3 +2852,60 @@ curves	Smooth	平滑
 	Increase Brush Size	增大画笔大小
 	Decrease Brush Hardness	减小画笔硬度
 	Increase Brush Hardness	增大画笔硬度
+# Renamed engine strings (same translations as the names they replaced).
+	Create Batch App…	创建快捷批处理…
+	Contact Sheet…	联系表 II…
+	Merge to HDR…	合并到 HDR Pro…
+	Panorama…	照片合并…
+	Create Embedded Layer after Loading Layers	载入图层后创建智能对象
+	Fill from Surroundings…	内容识别填充…
+	Content-Preserving Scale	内容识别缩放
+	Pin Warp	操控变形
+	Raw Develop…	Camera Raw…
+	New Embedded Layer via Copy	通过复制新建智能对象
+	Live Filter	智能滤镜
+	Convert for Live Filters	转换为智能滤镜
+	Clear Live Filters	清除智能滤镜
+	Disable Live Filters	禁用智能滤镜
+	Embedded Layers	智能对象
+	Embedded Layer	智能对象
+	Convert to Embedded Layer	转换为智能对象
+	Refine Selection…	选择与蒙版…
+	Refine Selection (Legacy)	调整边缘
+	Develop…	Camera Raw 滤镜…
+	Fluid Warp…	液化…
+	Perspective Planes…	消失点…
+	Blur Effects	模糊库
+	Save these settings as a Raw Develop .xmp file	将这些设置存储为 Camera Raw .xmp 文件
+	Load settings from a Raw Develop .xmp file	从 Camera Raw .xmp 文件载入设置
+	Loaded Raw Develop settings from {file}	已从 {file} 载入 Camera Raw 设置
+	Loaded Raw Develop settings from {file} ({n} not supported)	已从 {file} 载入 Camera Raw 设置（{n} 项不支持）
+	Raw Develop isn't open	尚未打开 Camera Raw
+	Commit Pin Warp (↩)	应用操控变形（↩）
+	Contact Sheet	联系表 II
+	Create Batch App	创建快捷批处理
+	Filter for embedded layers	筛选智能对象
+	Fluid Warp is not open	尚未打开液化
+	Pin Warp is not active	操控变形尚未启用
+	Fill from Surroundings needs a selection on a pixel layer	内容识别填充需要像素图层上的选区
+	Could not use Pin Warp: no opaque pixels	无法使用操控变形：没有不透明像素
+	Could not use Pin Warp: the layer is empty	无法使用操控变形：图层为空
+	Repair Brush Tool	修复画笔工具
+	Live Filters	智能滤镜
+	Spot Repair Brush Tool	污点修复画笔工具
+	Always create embedded layers when placing	置入时始终创建智能对象
+	Raw Develop Defaults	Camera Raw 默认设置
+	Open as embedded layer	作为智能对象打开
+	Develop ({layer})	Camera Raw 滤镜（{layer}）
+	Raw Develop ({name})	Camera Raw（{name}）
+	Commit Pin Warp ({key})	应用操控变形（{key}）
+	Embedded Layer Layer	智能对象图层
+	Rasterize Embedded Layer	栅格化智能对象
+	Move and Fill Tool	内容感知移动工具
+	Repair Brush	修复画笔
+	Spot Repair Brush	污点修复画笔
+	Perspective Planes: click four corners to create a plane	消失点：单击四个角以创建平面
+	Perspective Planes is not active	消失点未处于活动状态
+	Apply Perspective Planes ({key})	应用消失点（{key}）
+	Refine Selection (Legacy) Brush (R)	调整边缘画笔 (R)
+	Fill from Surroundings	内容识别填充

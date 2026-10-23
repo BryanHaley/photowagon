@@ -283,8 +283,17 @@ pub fn to_params(adj: &Adjustment) -> Value {
             }
             v
         }
-        Adjustment::ColorLookup { tetrahedral, dither, .. } => {
-            json!({"interpolation": if *tetrahedral { "tetrahedral" } else { "trilinear" }, "dither": dither})
+        Adjustment::ColorLookup { name, lut, tetrahedral, dither, .. } => {
+            // The built-in look by its id, as `lut` takes it; a loaded file by its name only.
+            let id = match lut {
+                None => Some("none"),
+                Some(_) => photocraft_cms::lutfile::BUILTIN.iter().map(|b| b.0).find(|id| photocraft_cms::lutfile::builtin(id).is_some_and(|f| f.title == *name)),
+            };
+            let mut v = json!({"interpolation": if *tetrahedral { "tetrahedral" } else { "trilinear" }, "dither": dither, "name": name});
+            if let Some(id) = id {
+                v["lut"] = json!(id);
+            }
+            v
         }
     }
 }
@@ -898,7 +907,7 @@ pub fn layer_eyedropper(s: &crate::Session, layer: photocraft_doc::LayerId, p: &
 const EYEDROPPER: &str = "eyedropper";
 
 /// The picker and sample of an `eyedropper` param; `at` samples `doc` with layer `hide` hidden.
-fn eyedropper_sample(doc: &photocraft_doc::Document, hide: Option<photocraft_doc::LayerId>, e: &Value) -> Result<(CurvesEyedropper, [f32; 3])> {
+pub(crate) fn eyedropper_sample(doc: &photocraft_doc::Document, hide: Option<photocraft_doc::LayerId>, e: &Value) -> Result<(CurvesEyedropper, [f32; 3])> {
     const CMD: &str = EYEDROPPER;
     let picker = match e.get("point").and_then(Value::as_str) {
         Some("black") => CurvesEyedropper::Black,

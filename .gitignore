@@ -11,3 +11,9 @@ target/
 /craft-fonts
 *.log
 __pycache__/
+._*
+.DS_Store
+# Walkthrough notes, local reference only
+/docs/ios-walkthroughs/
+# App Store page, its photos and its website, kept locally
+/docs/store-page/

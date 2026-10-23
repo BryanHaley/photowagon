@@ -449,7 +449,7 @@ pub fn options_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui, tool: Tool) -> bo
     match tool {
         Tool::SpotHealing => {
             opt(ui, tl!("Type:"));
-            for (k, l) in [("contentAware", tl!("Content-Aware")), ("createTexture", tl!("Create Texture")), ("proximityMatch", tl!("Proximity Match"))] {
+            for (k, l) in [("contentAware", tl!("Content-Aware")), ("createTexture", tl!("Create Texture")), ("matchNearby", tl!("Match Nearby"))] {
                 let mut on = o.spot_type == k;
                 if crate::widgets::checkbox(ui, &mut on, l).clicked() {
                     o.spot_type = k.into();

@@ -291,7 +291,7 @@ fn duplicate_to_a_new_document_cuts_smart_objects_loose_as_a_batch() {
     let original = s.active().unwrap().active_layer.unwrap();
     let sibling = LayerId(s.execute("layer.duplicate", json!({})).unwrap()["layer"].as_u64().unwrap());
     let contents = |s: &Session, i: usize, id: LayerId| {
-        let LayerContent::Smart(sm) = &doc(s, i).layer(id).unwrap().content else { panic!("smart object") };
+        let LayerContent::Smart(sm) = &doc(s, i).layer(id).unwrap().content else { panic!("embedded layer") };
         sm.contents_id
     };
     assert_eq!(contents(&s, 0, original), contents(&s, 0, sibling), "instances share contents");

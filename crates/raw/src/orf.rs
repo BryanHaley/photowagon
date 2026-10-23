@@ -149,6 +149,8 @@ pub(crate) fn decode(t: &Tiff, limits: &Limits) -> Result<Sensor> {
         orientation: crate::tiff::orientation(t.tag_uint(&raw, tag::ORIENTATION)),
         baseline_exposure: 0.0,
         gain_maps: Vec::new(),
+        polynomials: Vec::new(),
+        gain_table: None,
         tone_curve: Vec::new(),
         black_point: 0.0,
         warnings,

@@ -3410,3 +3410,66 @@ curves	Smooth	매끄럽게
 	Increase Brush Size	브러시 크기 늘리기
 	Decrease Brush Hardness	브러시 경도 줄이기
 	Increase Brush Hardness	브러시 경도 늘리기
+# Renamed engine strings (same translations as the names they replaced).
+	Create Batch App…	드롭릿 만들기…
+	Contact Sheet…	밀착 인화 II…
+	Merge to HDR…	HDR Pro로 병합…
+	Panorama…	Photomerge…
+	Create Embedded Layer after Loading Layers	레이어를 불러온 후 스마트 오브젝트 만들기
+	Fill from Surroundings…	내용 인식 채우기…
+	Content-Preserving Scale	내용 인식 비율
+	Pin Warp	퍼펫 뒤틀기
+	Raw Develop…	Camera Raw…
+	New Embedded Layer via Copy	복사하여 새 스마트 오브젝트 만들기
+	Live Filter	스마트 필터
+	Convert for Live Filters	스마트 필터용으로 변환
+	Clear Live Filters	스마트 필터 지우기
+	Disable Live Filters	스마트 필터 비활성화
+	Embedded Layers	스마트 오브젝트
+	Embedded Layer	스마트 오브젝트
+	Convert to Embedded Layer	스마트 오브젝트로 변환
+	Refine Selection…	선택 및 마스크…
+	Refine Selection (Legacy)	가장자리 다듬기
+	Develop…	Camera Raw 필터…
+	Fluid Warp…	픽셀 유동화…
+	Perspective Planes…	소실점…
+	Blur Effects	흐림 효과 갤러리
+	Save these settings as a Raw Develop .xmp file	이 설정을 Camera Raw .xmp 파일로 저장
+	Load settings from a Raw Develop .xmp file	Camera Raw .xmp 파일에서 설정 불러오기
+	Loaded Raw Develop settings from {file}	{file}에서 Camera Raw 설정을 불러왔습니다
+	Loaded Raw Develop settings from {file} ({n} not supported)	{file}에서 Camera Raw 설정을 불러왔습니다 (미지원 {n}개)
+	Raw Develop isn't open	Camera Raw가 열려 있지 않습니다
+	Commit Pin Warp ({key})	퍼펫 뒤틀기 적용 ({key})
+	Contact Sheet	밀착 인화 II
+	Create Batch App	드롭릿 만들기
+	Filter for embedded layers	스마트 오브젝트 필터링
+	Fluid Warp is not open	픽셀 유동화가 열려 있지 않습니다
+	Pin Warp is not active	퍼펫 뒤틀기가 활성화되어 있지 않습니다
+	Fill from Surroundings needs a selection on a pixel layer	내용 인식 채우기를 사용하려면 픽셀 레이어에 선택 영역이 필요합니다
+	Could not use Pin Warp: no opaque pixels	퍼펫 뒤틀기를 사용할 수 없습니다: 불투명 픽셀이 없습니다
+	Could not use Pin Warp: the layer is empty	퍼펫 뒤틀기를 사용할 수 없습니다: 레이어가 비어 있습니다
+	Repair Brush Tool	복구 브러시 도구
+	Live Filters	스마트 필터
+	Spot Repair Brush Tool	스팟 복구 브러시 도구
+	Always create embedded layers when placing	가져올 때 항상 스마트 오브젝트 만들기
+	Raw Develop Defaults	Camera Raw 기본값
+	Open as embedded layer	스마트 오브젝트로 열기
+	Embedded Layer Layer	스마트 오브젝트 레이어
+	Rasterize Embedded Layer	스마트 오브젝트 래스터화
+	Develop ({layer})	Camera Raw 필터 ({layer})
+	Raw Develop ({name})	Camera Raw ({name})
+	Merge to HDR	HDR Pro로 병합
+	Panorama	Photomerge
+	Fill from Surroundings	내용 인식 채우기
+	Raw Develop	Camera Raw
+	Refine Selection	선택 및 마스크
+	Develop	Camera Raw 필터
+	Fluid Warp	픽셀 유동화
+	Perspective Planes	소실점
+	Move and Fill Tool	내용 인식 이동 도구
+	Repair Brush	복구 브러시
+	Spot Repair Brush	스팟 복구 브러시
+	Perspective Planes: click four corners to create a plane	소실점: 네 모서리를 클릭하여 평면을 만드십시오
+	Perspective Planes is not active	소실점이 활성화되어 있지 않습니다
+	Apply Perspective Planes ({key})	소실점 적용 ({key})
+	Refine Selection (Legacy) Brush (R)	가장자리 다듬기 브러시 (R)

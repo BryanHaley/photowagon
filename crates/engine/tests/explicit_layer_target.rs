@@ -50,8 +50,8 @@ fn smart_object_commands_act_on_a_named_layer_while_another_is_active() {
     std::fs::write(&png, photocraft_io::export(&red, "png", &Default::default()).unwrap().bytes).unwrap();
     s.execute("layer.smartObjects.replaceContents", json!({"layer": so, "path": png.to_str().unwrap()})).unwrap();
     std::fs::remove_dir_all(&dir).ok();
-    let LayerContent::Smart(sm) = &s.active().unwrap().doc.layer(LayerId(so)).unwrap().content else { panic!("smart object") };
-    assert_eq!(sm.cache.as_ref().unwrap().rgba(2, 2), [1.0, 0.0, 0.0, 1.0], "the named smart object was replaced");
+    let LayerContent::Smart(sm) = &s.active().unwrap().doc.layer(LayerId(so)).unwrap().content else { panic!("embedded layer") };
+    assert_eq!(sm.cache.as_ref().unwrap().rgba(2, 2), [1.0, 0.0, 0.0, 1.0], "the named embedded layer was replaced");
     assert_eq!(active(&s), pixels, "the active layer stays");
     // Rasterize it, still without selecting it.
     s.execute("layer.rasterize.smartObject", json!({"layer": so})).unwrap();

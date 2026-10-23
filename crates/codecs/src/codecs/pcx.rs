@@ -72,6 +72,8 @@ pub(crate) fn decode(b: &[u8], limits: &Limits) -> Result<Image, CodecError> {
         return Err(bad("8-bit indexed PCX has no 256-colour palette"));
     }
     let image_end = if vga { b.len() - 769 } else { b.len() };
+    // Monochrome files often leave the header palette zeroed (Pillow does): 0 is black, 1 white.
+    let mono_without_palette = bits == 1 && planes == 1 && b[16..22].iter().all(|&v| v == 0);
     let mut row = vec![0u8; row_len];
     let mut pixels = vec![0u8; total];
     let mut p = HEADER;
@@ -101,6 +103,9 @@ pub(crate) fn decode(b: &[u8], limits: &Limits) -> Result<Image, CodecError> {
                 } else if bits == 8 {
                     let g = index as u8;
                     [g, g, g] // palette-info 2: gray scale
+                } else if mono_without_palette {
+                    let g = if index == 0 { 0 } else { 255 };
+                    [g, g, g]
                 } else {
                     let o = 16 + index * 3;
                     [b[o], b[o + 1], b[o + 2]]

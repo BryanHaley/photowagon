@@ -3938,3 +3938,72 @@ curves	Smooth	Згладити
 	This shape layer must be rasterized before proceeding. It will no longer be editable as a shape. Rasterize the shape?	Щоб продовжити, потрібно растеризувати цей шар фігури. Після цього його більше не можна буде редагувати як фігуру. Растеризувати фігуру?
 	This Smart Object must be rasterized before proceeding. Its contents will no longer be editable. Rasterize the Smart Object?	Щоб продовжити, потрібно растеризувати цей смартоб’єкт. Після цього його вміст більше не можна буде редагувати. Растеризувати смартоб’єкт?
 	This fill layer must be rasterized before proceeding. Its fill content will no longer be editable. Rasterize the layer?	Щоб продовжити, потрібно растеризувати цей шар заливки. Після цього його заливку більше не можна буде редагувати. Растеризувати шар?
+# Renamed engine strings (same translations as the names they replaced).
+	Fill from Surroundings…	Заливка з урахуванням вмісту…
+	Convert to Embedded Layer	Перетворити на смартоб'єкт
+	Convert for Live Filters	Перетворити для смартфільтрів
+	New Embedded Layer via Copy	Новий смартоб'єкт через копіювання
+	Live Filters	Смартфільтри
+	Delete Live Filters	Видалити смартфільтри
+	Enable Live Filters	Увімкнути смартфільтри
+	Disable Live Filters	Вимкнути смартфільтри
+	Clear Live Filters	Очистити смартфільтри
+	Refine Selection…	Виділити та маскувати…
+	Refine Selection (Legacy)	Уточнити край
+	Fluid Warp…	Пластика…
+	Develop…	Фільтр Camera Raw…
+	Perspective Planes…	Точка сходження…
+	Blur Effects	Галерея розмиття
+	Panorama…	Об'єднати фотографії…
+	Content-Preserving Scale	Масштабування з урахуванням вмісту
+	Move and Fill	Переміщення з урахуванням вмісту
+	Live Filter	Смартфільтр
+	Raw Develop…	Camera Raw…
+	Raw Develop isn't open	Camera Raw не відкрито
+	Create Batch App…	Створити дроплет…
+	Create Batch App	Створити дроплет
+	Contact Sheet	Контактний аркуш II
+	Contact Sheet…	Контактний аркуш II…
+	Merge to HDR…	Об'єднати в HDR Pro…
+	Commit Pin Warp ({key})	Підтвердити маріонеткову деформацію ({key})
+	Embedded Layer Layer	Шар смартоб'єкта
+	Spot Repair Brush Tool	Інструмент «Точковий відновлювальний пензель»
+	Repair Brush Tool	Інструмент «Відновлювальний пензель»
+	Embedded Layer	Смартоб'єкт
+	Save these settings as a Raw Develop .xmp file	Зберегти ці налаштування у файл Camera Raw .xmp
+	Load settings from a Raw Develop .xmp file	Завантажити налаштування з файлу Camera Raw .xmp
+	Loaded Raw Develop settings from {file}	Налаштування Camera Raw завантажено з {file}
+	Loaded Raw Develop settings from {file} ({n} not supported)	Налаштування Camera Raw завантажено з {file} (не підтримується: {n})
+	Pin Warp	Маріонеткова деформація
+	Pin Warp is not active	Маріонеткова деформація неактивна
+	Fluid Warp is not open	Пластику не відкрито
+	Create Embedded Layer after Loading Layers	Створити смартоб'єкт після завантаження шарів
+	Embedded Layers	Смартоб'єкти
+	Always create embedded layers when placing	Завжди створювати смартоб'єкти під час розміщення
+	Raw Develop Defaults	Типові параметри Camera Raw
+	Open as embedded layer	Відкривати як смартоб'єкт
+	Develop ({layer})	Фільтр Camera Raw ({layer})
+	Raw Develop ({name})	Camera Raw ({name})
+	Move and Fill Tool	Інструмент «Переміщення з урахуванням вмісту»
+	Filter for embedded layers	Фільтрувати смартоб'єкти
+	Fill from Surroundings needs a selection on a pixel layer	Заливка з урахуванням вмісту потребує виділення на піксельному шарі
+	Could not use Pin Warp: no opaque pixels	Не вдалося застосувати маріонеткову деформацію: немає непрозорих пікселів
+	Could not use Pin Warp: the layer is empty	Не вдалося застосувати маріонеткову деформацію: шар порожній
+	Rasterize Embedded Layer	Растеризувати смартоб'єкт
+	Merge to HDR	Об'єднати в HDR Pro
+	Panorama	Об'єднати фотографії
+	Fill from Surroundings	Заливка з урахуванням вмісту
+	Raw Develop	Camera Raw
+	Refine Selection	Виділити та маскувати
+	Develop	Фільтр Camera Raw
+	Fluid Warp	Пластика
+	Perspective Planes	Точка сходження
+	Commit Pin Warp (↩)	Підтвердити маріонеткову деформацію (↩)
+	Repair Brush	Відновлювальний пензель
+	Spot Repair Brush	Точковий відновлювальний пензель
+	Perspective Planes: click four corners to create a plane	Точка сходження: клацніть чотири кути, щоб створити площину
+	Perspective Planes is not active	Точка сходження не активна
+	Apply Perspective Planes ({key})	Застосувати точку сходження ({key})
+	Refine Selection (Legacy) Brush (R)	Пензель уточнення краю (R)
+@plural	Updated {n} linked embedded layer changed on disk|Updated {n} linked embedded layers changed on disk	Оновлено {n} пов'язаний смартоб'єкт, змінений на диску|Оновлено {n} пов'язані смартоб'єкти, змінені на диску|Оновлено {n} пов'язаних смартоб'єктів, змінених на диску
+	This Embedded Layer must be rasterized before proceeding. Its contents will no longer be editable. Rasterize the Embedded Layer?	Щоб продовжити, потрібно растеризувати цей смартоб’єкт. Після цього його вміст більше не можна буде редагувати. Растеризувати смартоб’єкт?

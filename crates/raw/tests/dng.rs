@@ -686,6 +686,21 @@ fn jpeg_xl_linear_raw_develops() {
 }
 
 #[test]
+fn jpeg_xl_10_bit_samples_in_a_16_bit_codestream_keep_their_values() {
+    // Apple ProRAW: BitsPerSample 10 and a linearization table, the codestream 16-bit.
+    let (w, h) = (16, 8);
+    let data = noise(w * h * 3, 10);
+    let mut spec = DngSpec::cfa(w, h, data.clone());
+    spec.samples = 3;
+    spec.bits = 10;
+    spec.white = 65535;
+    spec.linearization = Some((0..1024u32).map(|v| (v * 65535 / 1023) as u16).collect());
+    spec.storage = DngStorage::JxlStrips { rows: h };
+    spec.jxl_segments = vec![jxl(&data, w, h, 3, 16)];
+    assert_eq!(sensor(&spec.build()).data, data);
+}
+
+#[test]
 fn jpeg_xl_mismatches_are_errors() {
     let (w, h) = (16, 8);
     let data = noise(w * h * 3, 16);
@@ -703,13 +718,43 @@ fn jpeg_xl_mismatches_are_errors() {
     assert!(matches!(decode(&spec.build(), &Limits::default()), Err(RawError::Malformed(_))));
 }
 
+/// A ProfileGainTableMap (little-endian, as the test files are) of one grid point whose gain is
+/// `gain` at every input.
+fn gain_table(gain: f32) -> Vec<u8> {
+    let mut b = Vec::new();
+    b.extend(1u32.to_le_bytes());
+    b.extend(1u32.to_le_bytes());
+    for x in [1.0, 1.0, 0.0, 0.0f64] {
+        b.extend(x.to_le_bytes());
+    }
+    b.extend(2u32.to_le_bytes());
+    for w in [0.0, 0.0, 0.0, 0.0, 1.0f32] {
+        b.extend(w.to_le_bytes());
+    }
+    for _ in 0..2 {
+        b.extend(gain.to_le_bytes());
+    }
+    b
+}
+
 #[test]
-fn profile_gain_table_map_is_reported() {
-    let gain_table = |s: &Sensor| s.warnings.iter().any(|w| w.contains("ProfileGainTableMap"));
-    let mut spec = DngSpec::cfa(8, 8, vec![500; 64]);
-    assert!(!gain_table(&sensor(&spec.build())));
+fn profile_tone_curve_and_gain_table_map_are_read_and_applied() {
+    let mut spec = DngSpec::cfa(8, 8, vec![8000; 8 * 8 * 3]);
+    spec.samples = 3;
+    spec.white = 65535;
+    spec.ifd0_extra.push((50940, Val::Double(vec![0.0, 0.0, 0.5, 0.8, 1.0, 1.0])));
+    assert_eq!(sensor(&spec.build()).tone_curve, vec![[0.0, 0.0], [0.5, 0.8], [1.0, 1.0]]);
+    spec.ifd0_extra = vec![(50940, Val::Double(vec![0.0, 0.0, 0.5, 0.8, 0.4, 1.0]))];
+    assert!(sensor(&spec.build()).tone_curve.is_empty(), "inputs must rise");
+
+    spec.ifd0_extra.clear();
+    let plain = develop(&spec.build(), &DevelopOptions::default()).unwrap().rgb[0];
+    spec.profile_gain_table_map = Some(gain_table(2.0));
+    let d = develop(&spec.build(), &DevelopOptions::default()).unwrap();
+    assert!(d.warnings.iter().all(|w| !w.contains("ProfileGainTableMap")), "{:?}", d.warnings);
+    assert!(d.rgb[0] > plain, "a gain of 2 brightens: {} vs {plain}", d.rgb[0]);
     spec.profile_gain_table_map = Some(vec![0; 64]);
-    assert!(gain_table(&sensor(&spec.build())));
+    assert!(sensor(&spec.build()).warnings.iter().any(|w| w.contains("ProfileGainTableMap is malformed")));
 }
 
 // ---------------------------------------------------------------- lossy DNG (compression 34892)

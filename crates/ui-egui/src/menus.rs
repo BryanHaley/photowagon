@@ -170,9 +170,6 @@ pub(crate) fn invoke_unguarded(app: &mut PhotocraftApp, ctx: &egui::Context, id:
     if let Some(r) = crate::camera_raw_ui::menu(app, ctx, id, &params) {
         return r;
     }
-    if let Some(r) = crate::wide_angle_ui::menu(app, ctx, id, &params) {
-        return r;
-    }
     if let Some(profile) = proof_preset(id) {
         // View › Proof Setup presets: set the proof profile and turn Proof Colors on.
         app.run("view.proofSetup", json!({"profile": profile}))?;

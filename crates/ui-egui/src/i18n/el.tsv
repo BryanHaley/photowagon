@@ -3930,3 +3930,71 @@ curves	Smooth	Εξομάλυνση
 	Increase Brush Size	Αύξηση μεγέθους πινέλου
 	Decrease Brush Hardness	Μείωση σκληρότητας πινέλου
 	Increase Brush Hardness	Αύξηση σκληρότητας πινέλου
+# Renamed engine strings (same translations as the names they replaced).
+	Create Batch App…	Δημιουργία μικροεφαρμογής…
+	Contact Sheet…	Φύλλο επαφών II…
+	Merge to HDR…	Συγχώνευση σε HDR Pro…
+	Panorama…	Σύνθεση φωτογραφιών…
+	Create Embedded Layer after Loading Layers	Δημιουργία έξυπνου αντικειμένου μετά τη φόρτωση επιπέδων
+	Fill from Surroundings…	Γέμισμα βάσει περιεχομένου…
+	Content-Preserving Scale	Κλιμάκωση βάσει περιεχομένου
+	Pin Warp	Παραμόρφωση με σημεία ελέγχου
+	Refine Selection…	Επιλογή και μάσκα…
+	Refine Selection (Legacy)	Βελτίωση άκρης
+	Blur Effects	Συλλογή θολώσεων
+	Embedded Layer	Έξυπνο αντικείμενο
+	Embedded Layers	Έξυπνα αντικείμενα
+	Live Filters	Έξυπνα φίλτρα
+	Convert to Embedded Layer	Μετατροπή σε έξυπνο αντικείμενο
+	Commit Pin Warp (↩)	Εφαρμογή παραμόρφωσης μαριονέτας (↩)
+	Raw Develop ({name})	Επεξεργασία RAW ({name})
+	Embedded Layer Layer	Επίπεδο έξυπνου αντικειμένου
+	Rasterize Embedded Layer	Ραστεροποίηση έξυπνου αντικειμένου
+	Delete Live Filters	Διαγραφή έξυπνων φίλτρων
+	Enable Live Filters	Ενεργοποίηση έξυπνων φίλτρων
+	Always create embedded layers when placing	Να δημιουργούνται πάντα έξυπνα αντικείμενα κατά την τοποθέτηση
+	Raw Develop Defaults	Προεπιλογές Camera Raw
+	New Embedded Layer via Copy	Νέο έξυπνο αντικείμενο μέσω αντιγραφής
+	Live Filter	Έξυπνο φίλτρο
+	Convert for Live Filters	Μετατροπή για έξυπνα φίλτρα
+	Clear Live Filters	Απαλοιφή έξυπνων φίλτρων
+	Disable Live Filters	Απενεργοποίηση έξυπνων φίλτρων
+	Save these settings as a Raw Develop .xmp file	Αποθήκευση αυτών των ρυθμίσεων ως αρχείο Camera Raw .xmp
+	Load settings from a Raw Develop .xmp file	Φόρτωση ρυθμίσεων από αρχείο Camera Raw .xmp
+	Loaded Raw Develop settings from {file}	Φορτώθηκαν ρυθμίσεις Camera Raw από το {file}
+	Loaded Raw Develop settings from {file} ({n} not supported)	Φορτώθηκαν ρυθμίσεις Camera Raw από το {file} ({n} δεν υποστηρίζονται)
+	Develop ({layer})	Φίλτρο Camera Raw ({layer})
+	Raw Develop isn't open	Το Camera Raw δεν είναι ανοιχτό
+	Raw Develop	Επεξεργασία ακατέργαστης εικόνας
+	Develop	Φίλτρο επεξεργασίας ακατέργαστης εικόνας
+	Develop…	Φίλτρο επεξεργασίας ακατέργαστης εικόνας…
+	Raw Develop…	Επεξεργασία ακατέργαστης εικόνας…
+	Commit Pin Warp ({key})	Εφαρμογή παραμόρφωσης μαριονέτας ({key})
+	Contact Sheet	Φύλλο επαφής II
+	Fill from Surroundings	Γέμισμα με επίγνωση περιεχομένου
+	Fill from Surroundings needs a selection on a pixel layer	Το γέμισμα βάσει περιεχομένου απαιτεί επιλογή σε επίπεδο εικονοστοιχείων
+	Could not use Pin Warp: no opaque pixels	Αδυναμία χρήσης Puppet Warp: δεν υπάρχουν αδιαφανή εικονοστοιχεία
+	Could not use Pin Warp: the layer is empty	Αδυναμία χρήσης Puppet Warp: το επίπεδο είναι κενό
+	Create Batch App	Δημιουργία εκτελέσιμης μικροεφαρμογής
+	Filter for embedded layers	Φίλτρο για έξυπνα αντικείμενα
+	Fluid Warp	Ρευστοποίηση
+	Fluid Warp is not open	Το Liquify δεν είναι ανοιχτό
+	Fluid Warp…	Ρευστοποίηση…
+	Merge to HDR	Συγχώνευση σε HDR Pro
+	Open as embedded layer	Άνοιγμα ως έξυπνο αντικείμενο
+	Panorama	Συγχώνευση φωτογραφιών
+	Pin Warp is not active	Το Puppet Warp δεν είναι ενεργό
+	Refine Selection	Επιλογή και μάσκα
+	Perspective Planes	Σημείο φυγής
+	Perspective Planes…	Σημείο φυγής…
+	Repair Brush Tool	Πινέλο επιδιόρθωσης (Healing Brush Tool)
+	Spot Repair Brush Tool	Πινέλο τοπικής επιδιόρθωσης (Spot Healing Brush Tool)
+	Move and Fill	Μετακίνηση βάσει περιεχομένου (Content-Aware Move)
+	Move and Fill Tool	Μετακίνηση βάσει περιεχομένου (Content-Aware Move Tool)
+	Repair Brush	Πινέλο επιδιόρθωσης
+	Spot Repair Brush	Πινέλο τοπικής επιδιόρθωσης
+	Perspective Planes: click four corners to create a plane	Σημείο φυγής: κάντε κλικ σε τέσσερις γωνίες για να δημιουργήσετε ένα επίπεδο
+	Perspective Planes is not active	Το Σημείο φυγής δεν είναι ενεργό
+	Apply Perspective Planes ({key})	Εφαρμογή σημείου φυγής ({key})
+	Refine Selection (Legacy) Brush (R)	Πινέλο βελτίωσης ακμής (R)
+@plural	Updated {n} linked embedded layer changed on disk|Updated {n} linked embedded layers changed on disk	Ενημερώθηκε {n} συνδεδεμένο έξυπνο αντικείμενο που άλλαξε στον δίσκο|Ενημερώθηκαν {n} συνδεδεμένα έξυπνα αντικείμενα που άλλαξαν στον δίσκο

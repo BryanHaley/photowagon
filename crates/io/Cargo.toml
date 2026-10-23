@@ -42,10 +42,10 @@ flate2 = { workspace = true }
 roxmltree = "0.20"
 # SVG import (svg.rs): usvg parses, resvg rasterises what the shape model can't hold. Both are
 # already in the tree through the UI's icon loader; text shaping needs the fonts feature set.
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+[target.'cfg(not(any(target_arch = "wasm32", target_os = "ios")))'.dependencies]
 resvg = { version = "0.45", default-features = false, features = ["text", "system-fonts", "raster-images"] }
 
-[target.'cfg(target_arch = "wasm32")'.dependencies]
+[target.'cfg(any(target_arch = "wasm32", target_os = "ios"))'.dependencies]
 resvg = { version = "0.45", default-features = false, features = ["text", "raster-images"] }
 
 [dev-dependencies]

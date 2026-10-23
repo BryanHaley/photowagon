@@ -145,7 +145,31 @@ pub fn sampled_target(doc: &Document, layer: Option<LayerId>, all_layers: bool) 
 /// sampling `layer` (or the composite). Pure, so the UI can run it on a worker thread while the
 /// pointer hovers; `select.object` with `"point"` commits the same result.
 pub fn find_object(doc: &Document, layer: Option<LayerId>, all_layers: bool, x: f32, y: f32) -> Option<Region> {
-    with_doc_sampler(doc, layer, all_layers, |smp, doc| grabcut::object_at(smp, doc.bounds(), x, y, grabcut::OBJECT_AT_WORK_PX))
+    with_doc_sampler(doc, layer, all_layers, |smp, doc| {
+        let (px, py) = (x.floor() as i32, y.floor() as i32);
+        let b = doc.bounds();
+        // The subject of a window around the point, the window growing until the object fits
+        // inside it: a small figure stands out against the sand and sea around it, a big one
+        // against the whole frame. Of that subject, the connected part under the point (a head
+        // and the body below it are one object, whatever their colours), split from touching
+        // neighbours.
+        let side = b.width().max(b.height()) as i32;
+        for frac in [16, 8, 4, 2, 1] {
+            let half = side / frac / 2;
+            let window = if frac == 1 { b } else { Rect::new(px - half, py - half, px + half, py + half).intersect(&b) };
+            let Some(part) = subject::select_subject(smp, window).and_then(|sub| sub.component_at(px, py)).map(|c| c.split_at(px, py)) else { continue };
+            let r = part.bbox;
+            // Cut off by the window (not by the frame): the object is bigger; look wider.
+            let cut = (r.x0 <= window.x0 + 2 && window.x0 > b.x0) || (r.x1 >= window.x1 - 2 && window.x1 < b.x1)
+                || (r.y0 <= window.y0 + 2 && window.y0 > b.y0) || (r.y1 >= window.y1 - 2 && window.y1 < b.y1);
+            // Spanning the frame (sea, sky, a wall): the backdrop, not an object.
+            let spans = (r.x0 <= b.x0 + 2 && r.x1 >= b.x1 - 2) || (r.y0 <= b.y0 + 2 && r.y1 >= b.y1 - 2);
+            if !cut && !spans {
+                return Some(part);
+            }
+        }
+        grabcut::object_at(smp, b, x, y, grabcut::OBJECT_AT_WORK_PX)
+    })
 }
 
 /// Most objects remembered by [`ObjectFinderCache`].
@@ -229,23 +253,52 @@ fn check_sampled_pixels(doc: &Document, layer: Option<LayerId>, all_layers: bool
     Ok(())
 }
 
-/// `select.object` with `"point"`: the Object Finder's object under the point (cached).
-fn object_at_point(s: &mut Session, p: &Value, (x, y): (f32, f32)) -> Result<Value> {
+/// The Object Finder's object under the point (cached).
+fn object_region(s: &mut Session, p: &Value, (x, y): (f32, f32)) -> Result<Option<std::sync::Arc<Region>>> {
     let all_layers = b(p, "sampleAllLayers", false);
     let d = s.active().ok_or(EngineError::NoDocument)?;
     check_sampled_pixels(&d.doc, d.active_layer, all_layers, Rect::from_xywh(x.floor() as i32, y.floor() as i32, 1, 1))?;
     let target = sampled_target(&d.doc, d.active_layer, all_layers);
-    let region = match s.object_finder.lookup(&d.doc, target, x, y) {
-        Some(r) => Some(r),
-        None => {
-            let doc = std::sync::Arc::clone(&d.doc);
-            let found = find_object(&doc, d.active_layer, all_layers, x, y).map(std::sync::Arc::new);
-            if let Some(r) = &found {
-                s.object_finder.insert(&doc, target, std::sync::Arc::clone(r));
-            }
-            found
+    if let Some(r) = s.object_finder.lookup(&d.doc, target, x, y) {
+        return Ok(Some(r));
+    }
+    let doc = std::sync::Arc::clone(&d.doc);
+    let found = find_object(&doc, d.active_layer, all_layers, x, y).map(std::sync::Arc::new);
+    if let Some(r) = &found {
+        s.object_finder.insert(&doc, target, std::sync::Arc::clone(r));
+    }
+    Ok(found)
+}
+
+/// Longest side of a `select.objectPreview` mask.
+const PREVIEW_SIDE: usize = 768;
+
+/// The object `select.object` would take at the point, as a small mask, leaving the selection alone.
+fn object_preview(s: &mut Session, p: &Value) -> Result<Value> {
+    let pt = point_param(p).ok_or_else(|| bad("select.objectPreview", "needs \"point\": [x, y]"))?;
+    let Some(r) = object_region(s, p, pt)? else { return Ok(json!({"found": false})) };
+    let (w, h) = (r.bbox.width().max(1) as usize, r.bbox.height().max(1) as usize);
+    let step = w.max(h).div_ceil(PREVIEW_SIDE).max(1);
+    let (tw, th) = (w.div_ceil(step), h.div_ceil(step));
+    let mut data = Vec::with_capacity(tw * th);
+    for ty in 0..th {
+        for tx in 0..tw {
+            let c = r.at(r.bbox.x0 + (tx * step) as i32, r.bbox.y0 + (ty * step) as i32);
+            data.push((c * 255.0).round() as u8);
         }
-    };
+    }
+    Ok(json!({
+        "found": true,
+        "rect": [r.bbox.x0, r.bbox.y0, r.bbox.x1, r.bbox.y1],
+        "width": tw,
+        "height": th,
+        "data": photocraft_paint::tile::b64_encode(&data),
+    }))
+}
+
+/// `select.object` with `"point"`: the Object Finder's object under the point (cached).
+fn object_at_point(s: &mut Session, p: &Value, pt: (f32, f32)) -> Result<Value> {
+    let region = object_region(s, p, pt)?;
     let out = apply(s, "Object Selection", region.as_deref(), mode(p, "replace"))?;
     if let Some(d) = s.active() {
         let doc = std::sync::Arc::clone(&d.doc);
@@ -337,59 +390,6 @@ fn refine_params(p: &Value) -> RefineParams {
     }
 }
 
-/// Most Refine Edge Brush strokes, and points across them, one Select and Mask takes.
-pub const MAX_STROKES: usize = 4096;
-pub const MAX_STROKE_POINTS: usize = 100_000;
-
-/// The Refine Edge Brush strokes of `refineStrokes`:
-/// `[{"points":[[x,y],…],"size":px,"mode":"add|subtract"}]`, in painting order.
-fn refine_strokes(p: &Value) -> Result<Vec<matting::EdgeStroke>> {
-    const CMD: &str = "select.refineEdge";
-    let Some(v) = p.get("refineStrokes").filter(|v| !v.is_null()) else { return Ok(Vec::new()) };
-    let list = v.as_array().ok_or_else(|| bad(CMD, "refineStrokes must be an array of strokes"))?;
-    if list.len() > MAX_STROKES {
-        return Err(bad(CMD, &format!("refineStrokes holds more than {MAX_STROKES} strokes")));
-    }
-    let mut total = 0usize;
-    let mut strokes = Vec::with_capacity(list.len());
-    for stroke in list {
-        let o = stroke.as_object().ok_or_else(|| bad(CMD, "each refineStrokes entry must be {\"points\":[[x,y],…],\"size\":px,\"mode\":\"add|subtract\"}"))?;
-        let pts = o.get("points").and_then(Value::as_array).filter(|a| !a.is_empty()).ok_or_else(|| bad(CMD, "each stroke needs a non-empty points array"))?;
-        total = total.saturating_add(pts.len());
-        if total > MAX_STROKE_POINTS {
-            return Err(bad(CMD, &format!("refineStrokes holds more than {MAX_STROKE_POINTS} points")));
-        }
-        let points = pts
-            .iter()
-            .map(|pt| {
-                let xy = pt.as_array().filter(|a| a.len() == 2)?;
-                let (x, y) = (xy.first()?.as_f64()?, xy.get(1)?.as_f64()?);
-                let ok = |v: f64| v.is_finite() && v.abs() <= 1e7;
-                (ok(x) && ok(y)).then_some((x as f32, y as f32))
-            })
-            .collect::<Option<Vec<_>>>()
-            .ok_or_else(|| bad(CMD, "stroke points must be [x,y] pairs of finite numbers"))?;
-        let range = matting::BRUSH_SIZE_RANGE;
-        let size = match o.get("size") {
-            None => 30.0,
-            Some(v) => v
-                .as_f64()
-                .filter(|s| s.is_finite() && (f64::from(*range.start())..=f64::from(*range.end())).contains(s))
-                .ok_or_else(|| bad(CMD, &format!("stroke size must be {}..{} px", range.start(), range.end())))? as f32,
-        };
-        let add = match o.get("mode").map(|m| m.as_str()) {
-            None | Some(Some("add")) => true,
-            Some(Some("subtract")) => false,
-            Some(_) => return Err(bad(CMD, "stroke mode must be add|subtract")),
-        };
-        strokes.push(matting::EdgeStroke { points, size, add });
-    }
-    if matting::swept_area(&strokes) > matting::MAX_SWEPT_AREA {
-        return Err(bad(CMD, "refineStrokes paint too large an area"));
-    }
-    Ok(strokes)
-}
-
 /// Select and Mask: refines the selection edge, then outputs to the selection, a layer mask on
 /// the active layer, a new layer or a new document (each with or without a mask).
 /// Decontaminating colours needs new pixels, so it upgrades `selection` / `layerMask` output to
@@ -397,7 +397,9 @@ fn refine_strokes(p: &Value) -> Result<Vec<matting::EdgeStroke>> {
 /// outputs leave the source document untouched.
 fn refine_edge(s: &mut Session, p: &Value) -> Result<Value> {
     let params = refine_params(p);
-    let strokes = refine_strokes(p)?;
+    if p.get("refineStrokes").is_some_and(|v| !v.is_null()) {
+        return Err(bad("select.refineEdge", "refineStrokes is not supported: the Refine Edge Brush was removed"));
+    }
     let decontaminate = b(p, "decontaminate", false);
     let amount = f(p, "amount", 100.0).clamp(0.0, 100.0);
     let d = s.active().ok_or(EngineError::NoDocument)?;
@@ -415,14 +417,13 @@ fn refine_edge(s: &mut Session, p: &Value) -> Result<Value> {
         let mask_surf = active.and_then(|id| doc.layer(id)).and_then(|l| l.mask.as_ref()).map(|m| &m.surface);
         let target_mask = p.get("target").and_then(Value::as_str) == Some("mask");
         let sel = if target_mask { mask_surf.or(doc.selection.as_ref()) } else { doc.selection.as_ref().or(mask_surf) }?;
-        let brush = matting::EdgeBrush::new(&strokes, doc.bounds());
-        matting::refine_mask_brushed(smp, &matting::surface_reader(sel), sel.content_bounds(), doc.bounds(), &params, brush.as_ref())
+        matting::refine_mask(smp, &matting::surface_reader(sel), sel.content_bounds(), doc.bounds(), &params)
     })?;
     let d = s.active().ok_or(EngineError::NoDocument)?;
     let active = d.active_layer.filter(|id| d.doc.layer(*id).is_some());
     match output.as_str() {
         "selection" => {
-            let selected = s.edit("Select and Mask", |doc, _| {
+            let selected = s.edit("Refine Selection", |doc, _| {
                 doc.selection = region.as_ref().map(matting::region_surface);
                 Ok(doc.selection.is_some())
             })?;
@@ -430,7 +431,7 @@ fn refine_edge(s: &mut Session, p: &Value) -> Result<Value> {
         }
         "layerMask" => {
             let id = active.ok_or_else(|| EngineError::Other("no active layer".into()))?;
-            s.edit("Select and Mask", |doc, _| {
+            s.edit("Refine Selection", |doc, _| {
                 let surface =
                     region.as_ref().map(matting::region_surface).unwrap_or_else(|| photocraft_raster::Surface::new(photocraft_color::PixelFormat::GRAY8));
                 crate::extra_cmds::background_to_layer_for_mask(doc, id);
@@ -471,7 +472,7 @@ fn refine_edge(s: &mut Session, p: &Value) -> Result<Value> {
                 let i = s.add_document(doc, None);
                 return Ok(json!({ "output": output, "document": i, "layer": layer_id.0, "selected": false }));
             }
-            let new_id = s.edit("Select and Mask", |doc, act| {
+            let new_id = s.edit("Refine Selection", |doc, act| {
                 let mut layer = Layer::new(name, LayerContent::Raster(content));
                 layer.mask = mask;
                 let nid = doc.insert_above(Some(id), layer);
@@ -494,8 +495,116 @@ macro_rules! spec {
 }
 
 /// Smart selection command specs.
+/// Largest mask accepted by `select.fromMask`, in samples.
+const MAX_MASK_SAMPLES: u64 = 64 << 20;
+
+/// A mask computed elsewhere (the iOS app's Vision object masks) as a document region:
+/// `{"width","height","data":base64 bytes,"rect":[x0,y0,x1,y1]?}`, stretched over `rect`
+/// (default the document). `None` when nothing in it is covered.
+pub(crate) fn decode_mask(m: &Value, bounds: Rect, cmd: &str) -> Result<Option<Region>> {
+    let dim = |k: &str| m.get(k).and_then(Value::as_u64).filter(|v| *v > 0 && *v <= 65_536).ok_or_else(|| bad(cmd, &format!("`{k}` must be 1..65536")));
+    let (w, h) = (dim("width")?, dim("height")?);
+    if w * h > MAX_MASK_SAMPLES {
+        return Err(bad(cmd, "the mask is too large"));
+    }
+    let data = m.get("data").and_then(Value::as_str).ok_or_else(|| bad(cmd, "`data` must be base64 bytes"))?;
+    let bytes = photocraft_paint::tile::b64_decode(data).ok_or_else(|| bad(cmd, "`data` is not valid base64"))?;
+    if bytes.len() as u64 != w * h {
+        return Err(bad(cmd, &format!("`data` has {} bytes, not width × height = {}", bytes.len(), w * h)));
+    }
+    let rect = match m.get("rect") {
+        None => bounds,
+        Some(v) => {
+            let a: Vec<i64> = v.as_array().map(|a| a.iter().filter_map(Value::as_i64).collect()).unwrap_or_default();
+            if a.len() != 4 || a[2] <= a[0] || a[3] <= a[1] {
+                return Err(bad(cmd, "`rect` must be [x0, y0, x1, y1] with x1 > x0 and y1 > y0"));
+            }
+            let c = |x: i64| x.clamp(-(1 << 30), 1 << 30) as i32;
+            Rect::new(c(a[0]), c(a[1]), c(a[2]), c(a[3]))
+        }
+    };
+    let bbox = rect.intersect(&bounds);
+    let (fw, fh) = (f64::from(rect.width()) / w as f64, f64::from(rect.height()) / h as f64);
+    let sample = |x: i32, y: i32| {
+        let my = ((f64::from(y - rect.y0) + 0.5) / fh).floor().clamp(0.0, (h - 1) as f64) as u64;
+        let mx = ((f64::from(x - rect.x0) + 0.5) / fw).floor().clamp(0.0, (w - 1) as f64) as u64;
+        bytes.get((my * w + mx) as usize).copied().unwrap_or(0)
+    };
+    // The covered part only, so the region's box is the selection's.
+    let (mut x0, mut y0, mut x1, mut y1) = (i32::MAX, i32::MAX, i32::MIN, i32::MIN);
+    for y in bbox.y0..bbox.y1 {
+        for x in bbox.x0..bbox.x1 {
+            if sample(x, y) > 0 {
+                (x0, y0, x1, y1) = (x0.min(x), y0.min(y), x1.max(x + 1), y1.max(y + 1));
+            }
+        }
+    }
+    if x0 >= x1 {
+        return Ok(None);
+    }
+    let tight = Rect::new(x0, y0, x1, y1);
+    let mask = (y0..y1).flat_map(|y| (x0..x1).map(move |x| (x, y))).map(|(x, y)| sample(x, y)).collect();
+    Ok(Some(Region { bbox: tight, mask }))
+}
+
+/// Edge refinement for a mask computed at a lower resolution than the document.
+const MASK_REFINE: RefineParams = RefineParams { radius: 2.0, smart_radius: true, smooth: 10.0, feather: 0.5, contrast: 10.0, shift_edge: 0.0 };
+
+/// `select.fromMask`: a selection from a mask computed elsewhere.
+fn select_from_mask(s: &mut Session, p: &Value) -> Result<Value> {
+    let d = s.active().ok_or(EngineError::NoDocument)?;
+    let mut region = decode_mask(p, d.doc.bounds(), "select.fromMask")?;
+    if b(p, "refine", false)
+        && let Some(r) = &region
+    {
+        let refined = with_doc_sampler(&d.doc, d.active_layer, b(p, "sampleAllLayers", false), |smp, doc| {
+            matting::refine_mask(smp, &matting::region_reader(r), r.bbox, doc.bounds(), &MASK_REFINE)
+        });
+        region = refined.or(region);
+    }
+    if let Some(band) = p.get("band").filter(|v| !v.is_null()) {
+        let band = band.as_f64().filter(|v| (1.0..=2048.0).contains(v)).ok_or_else(|| bad("select.fromMask", "`band` must be 1..2048 px"))?;
+        let sel = d.doc.selection.as_ref().ok_or_else(|| EngineError::Other("Refine Hair needs a selection".into()))?;
+        region = Some(edge_band(sel, region.as_ref(), band, d.doc.bounds()));
+    }
+    let label = p.get("label").and_then(Value::as_str).unwrap_or("Select from Mask").to_string();
+    apply(s, &label, region.as_ref(), mode(p, "replace"))
+}
+
+/// The selection `sel` with `mask` taking over within `band` px of its edge (its 50% line).
+fn edge_band(sel: &photocraft_raster::Surface, mask: Option<&Region>, band: f64, bounds: Rect) -> Region {
+    let bbox = sel.content_bounds().inflate(band.ceil() as i32).intersect(&bounds);
+    let (w, h) = (bbox.width() as usize, bbox.height() as usize);
+    let at = |i: usize| (bbox.x0 + (i % w.max(1)) as i32, bbox.y0 + (i / w.max(1)) as i32);
+    let cur: Vec<f32> = (0..w * h).map(|i| { let (x, y) = at(i); sel.sample_channel(x, y, 0) }).collect();
+    let inside: Vec<bool> = cur.iter().map(|v| *v >= 0.5).collect();
+    let outside: Vec<bool> = inside.iter().map(|v| !v).collect();
+    // Distance to the other side of the edge.
+    let (to_out, to_in) = (photocraft_algo::selection::edt(&outside, w, h), photocraft_algo::selection::edt(&inside, w, h));
+    let near = |i: usize| {
+        let d = if inside[i] { to_out.get(i) } else { to_in.get(i) };
+        d.is_some_and(|d| f64::from(*d) <= band)
+    };
+    let out = (0..w * h)
+        .map(|i| {
+            let (x, y) = at(i);
+            let v = if near(i) { mask.map_or(0.0, |m| m.at(x, y)) } else { cur[i] };
+            (v.clamp(0.0, 1.0) * 255.0).round() as u8
+        })
+        .collect();
+    Region { bbox, mask: out }
+}
+
 pub fn specs() -> Vec<CommandSpec> {
     vec![
+        spec!(
+            "select.fromMask",
+            "Select from Mask",
+            [],
+            r##"{"width":1..65536,"height":1..65536,"data":base64 (width × height bytes, 0 = out, 255 = in),"rect":[x0,y0,x1,y1]?=document (where the mask goes; it is stretched to fit),"mode":"replace|add|subtract|intersect"="replace","refine":bool=false (refine the edge against the image, for a lower-resolution mask),"sampleAllLayers":bool=false (refine against all layers),"band":px? (keep the current selection and take the mask only within this distance of its edge: Refine Hair),"label":str?="Select from Mask" (history name)}"##,
+            has_doc,
+            select_from_mask
+        ),
         spec!(
             "select.quick",
             "Quick Selection",
@@ -512,6 +621,16 @@ pub fn specs() -> Vec<CommandSpec> {
             has_doc,
             object_selection
         ),
+        CommandSpec {
+            id: "select.objectPreview",
+            label: "Object Finder Preview",
+            menu: &[],
+            shortcut: None,
+            params: r##"{"point":[x,y],"sampleAllLayers":bool=false} → {found, rect:[x0,y0,x1,y1], width, height, data: base64 bytes (0–255 coverage, at most 768 on a side)}: the object `select.object` would take there; the selection is left alone"##,
+            enabled: has_doc,
+            run: object_preview,
+            journal: false,
+        },
         spec!(
             "select.subject",
             "Subject",
@@ -522,9 +641,9 @@ pub fn specs() -> Vec<CommandSpec> {
         ),
         spec!(
             "select.refineEdge",
-            "Refine Edge",
-            [],
-            r##"{"radius":px=0,"smartRadius":bool=false,"smooth":0..100=0,"feather":px=0,"contrast":0..100=0,"shiftEdge":-100..100=0,"decontaminate":bool=false,"amount":0..100=100,"output":"selection|layerMask|newLayer|newLayerWithMask|newDocument|newDocumentWithMask"="selection","sampleAllLayers":bool=false,"refineStrokes":[{"points":[[x,y],…],"size":px=30,"mode":"add|subtract"="add"},…]=[]} (refineStrokes: the Refine Edge Brush, in painting order: add refines the painted area from the image, subtract keeps the original edge there)"##,
+            "Refine Selection…",
+            ["Select"],
+            r##"{"radius":px=0,"smartRadius":bool=false,"smooth":0..100=0,"feather":px=0,"contrast":0..100=0,"shiftEdge":-100..100=0,"decontaminate":bool=false,"amount":0..100=100,"output":"selection|layerMask|newLayer|newLayerWithMask|newDocument|newDocumentWithMask"="selection","sampleAllLayers":bool=false}"##,
             has_selection_or_mask,
             refine_edge
         ),
@@ -694,6 +813,22 @@ mod tests {
         assert_eq!(r["changed"], false);
         assert!(s.active().unwrap().doc.selection.is_none());
         assert!(s.execute("select.object", json!({"point": ["a", 1]})).is_err());
+    }
+
+    #[test]
+    fn object_preview_shows_the_object_without_selecting_it() {
+        let (mut s, inside) = disc(8);
+        let r = s.execute("select.objectPreview", json!({"point": [100, 80]})).unwrap();
+        assert_eq!(r["found"], true);
+        assert!(s.active().unwrap().doc.selection.is_none());
+        let rect: Vec<i64> = r["rect"].as_array().unwrap().iter().map(|v| v.as_i64().unwrap()).collect();
+        let (w, h) = (r["width"].as_u64().unwrap() as usize, r["height"].as_u64().unwrap() as usize);
+        assert_eq!((w as i64, h as i64), (rect[2] - rect[0], rect[3] - rect[1]));
+        let data = photocraft_paint::tile::b64_decode(r["data"].as_str().unwrap()).unwrap();
+        let on = |x: i64, y: i64| data[((y - rect[1]) as usize) * w + (x - rect[0]) as usize] > 127;
+        assert!(on(100, 80) && inside(100, 80) && !on(rect[0], rect[1]));
+        assert_eq!(s.execute("select.objectPreview", json!({"point": [3, 3]})).unwrap()["found"], false);
+        assert!(s.execute("select.objectPreview", json!({})).is_err());
     }
 
     #[test]
@@ -968,39 +1103,11 @@ mod tests {
         assert!(cov(&s, 38, 20) == 1.0 && cov(&s, 42, 20) == 0.0);
     }
 
-    /// The Refine Edge Brush adds strands beyond the radius band, at every depth, and rejects
-    /// malformed strokes.
     #[test]
-    fn refine_edge_brush_strokes() {
-        for depth in [8, 16, 32] {
-            // Warm subject (x < 40) with warm strands every 4th column from x = 60, on blue.
-            let strand = |x: u32| x < 40 || ((60..84).contains(&x) && x.is_multiple_of(4));
-            let mut s = session_with(120, 40, depth, |x, _| if strand(x) { [0.9, 0.7, 0.2] } else { [0.1, 0.3, 0.8] });
-            s.execute("select.rect", json!({"x": 0, "y": 0, "width": 40, "height": 40})).unwrap();
-            let stroke = json!([{"points": [[70, 5], [70, 35]], "size": 30}]);
-            s.execute("select.refineEdge", json!({"radius": 4, "refineStrokes": stroke})).unwrap();
-            assert!(cov(&s, 64, 20) > 0.9 && cov(&s, 72, 20) > 0.9, "depth {depth}: strands {}", cov(&s, 64, 20));
-            assert!(cov(&s, 66, 20) < 0.1 && cov(&s, 100, 20) < 0.01, "depth {depth}: background");
-            s.execute("edit.undo", json!({})).unwrap();
-            // Subtract over the same place paints the refinement out again.
-            let both = json!([{"points": [[70, 5], [70, 35]], "size": 30}, {"points": [[70, 5], [70, 35]], "size": 40, "mode": "subtract"}]);
-            s.execute("select.refineEdge", json!({"radius": 4, "refineStrokes": both})).unwrap();
-            assert!(cov(&s, 64, 20) < 0.01, "depth {depth}");
-            s.execute("edit.undo", json!({})).unwrap();
-            for bad in [
-                json!(7),
-                json!([5]),
-                json!([{"points": []}]),
-                json!([{"points": [[1, "x"]]}]),
-                json!([{"points": [[1, 2, 3]]}]),
-                json!([{"points": [[1, 2]], "size": 0}]),
-                json!([{"points": [[1, 2]], "size": 1e9}]),
-                json!([{"points": [[1, 2]], "mode": "xor"}]),
-                json!([{"points": [[0, 0], [1e6, 1e6], [0, 0], [1e6, 1e6]], "size": 5000}]),
-            ] {
-                assert!(s.execute("select.refineEdge", json!({"refineStrokes": bad})).is_err(), "{bad}");
-            }
-        }
+    fn refine_edge_rejects_brush_strokes() {
+        let mut s = blurred_edge_selected();
+        let stroke = json!([{"points": [[70, 5], [70, 35]], "size": 30}]);
+        assert!(s.execute("select.refineEdge", json!({"radius": 4, "refineStrokes": stroke})).is_err());
     }
 
     #[test]
@@ -1040,5 +1147,63 @@ mod tests {
         });
         s.execute("select.focusArea", json!({})).unwrap();
         assert!(cov(&s, 30, 50) >= 0.5 && cov(&s, 130, 50) < 0.5);
+    }
+    #[test]
+    fn a_mask_from_elsewhere_becomes_the_selection() {
+        let mut s = Session::new();
+        s.execute("file.new", json!({"width": 40, "height": 20})).unwrap();
+        // 4 × 2 mask, left half in, stretched over the document.
+        let data = photocraft_paint::tile::b64_encode(&[255, 255, 0, 0, 255, 255, 0, 0]);
+        let r = s.execute("select.fromMask", json!({"width": 4, "height": 2, "data": data, "label": "Object Selection"})).unwrap();
+        assert_eq!(r["bounds"], json!([0, 0, 20, 20]));
+        let d = s.active().unwrap();
+        assert_eq!(d.history.entries().last().map(String::as_str), Some("Object Selection"));
+        let r = s
+            .execute(
+                "select.fromMask",
+                json!({"width": 1, "height": 1, "data": photocraft_paint::tile::b64_encode(&[255]), "rect": [30, 0, 40, 10], "mode": "add"}),
+            )
+            .unwrap();
+        assert_eq!(r["selected"], true);
+        assert_eq!(s.active().unwrap().doc.selection.as_ref().unwrap().content_bounds().width(), 40);
+        for bad in [
+            json!({}),
+            json!({"width": 2, "height": 2, "data": "AA=="}),
+            json!({"width": 0, "height": 1, "data": ""}),
+            json!({"width": 1, "height": 1, "data": "AA==", "rect": [5, 5, 1, 1]}),
+        ] {
+            assert!(s.execute("select.fromMask", bad.clone()).is_err(), "{bad}");
+        }
+    }
+
+    #[test]
+    fn refine_hair_takes_the_mask_only_near_the_edge() {
+        let mut s = Session::new();
+        s.execute("file.new", json!({"width": 60, "height": 20})).unwrap();
+        let all = photocraft_paint::tile::b64_encode(&[255]);
+        let p = json!({"width": 1, "height": 1, "data": all, "band": 4});
+        assert!(s.execute("select.fromMask", p.clone()).is_err(), "needs a selection");
+        s.execute("select.rect", json!({"x": 20, "y": 0, "width": 20, "height": 20})).unwrap();
+        s.execute("select.fromMask", p).unwrap();
+        let sel = s.active().unwrap().doc.selection.clone().unwrap();
+        // The mask (everything) is taken within 4 px of the edge; farther out stays unselected.
+        assert!(sel.sample_channel(17, 10, 0) > 0.99 && sel.sample_channel(30, 10, 0) > 0.99);
+        assert!(sel.sample_channel(10, 10, 0) < 0.01);
+        assert!(s.execute("select.fromMask", json!({"width": 1, "height": 1, "data": photocraft_paint::tile::b64_encode(&[255]), "band": 0})).is_err());
+    }
+
+    #[test]
+    fn object_selection_takes_the_whole_figure_not_one_colour() {
+        // A brown head on a blue body, on a beige backdrop: tapping the body takes the head too.
+        let mut s = Session::new();
+        s.execute("file.new", json!({"width": 300, "height": 200, "background": "#f4e6c8"})).unwrap();
+        s.execute("select.rect", json!({"x": 125, "y": 40, "width": 50, "height": 50})).unwrap();
+        s.execute("edit.fill", json!({"color": "#5c3a2c"})).unwrap();
+        s.execute("select.rect", json!({"x": 100, "y": 90, "width": 100, "height": 110})).unwrap();
+        s.execute("edit.fill", json!({"color": "#244678"})).unwrap();
+        s.execute("select.deselect", json!({})).unwrap();
+        let r = s.execute("select.object", json!({"point": [150, 150]})).unwrap();
+        let b = s.active().unwrap().doc.selection.as_ref().unwrap().content_bounds();
+        assert!(b.y0 <= 45 && b.y1 >= 195 && b.x0 >= 90 && b.x1 <= 210, "{b:?} {r}");
     }
 }

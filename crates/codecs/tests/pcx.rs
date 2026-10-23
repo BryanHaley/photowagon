@@ -76,6 +76,14 @@ fn decodes_4bit_and_monochrome_palettes() {
 }
 
 #[test]
+fn monochrome_with_a_zeroed_palette_is_black_and_white() {
+    // Pillow and others leave the header palette empty for 1-bit files: 1 is white.
+    let mut one = header(1, 1, 2, 1, 2);
+    rle_row(&mut one, &[0x80, 0]);
+    assert_eq!(decode(&one).unwrap().data(), &[255, 255, 255, 0, 0, 0]);
+}
+
+#[test]
 fn rejects_truncated_and_overshooting_rle_without_panicking() {
     let mut b = header(8, 3, 2, 1, 2);
     assert!(decode_as(Format::Pcx, &b).is_err(), "header alone is truncated");

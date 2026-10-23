@@ -263,4 +263,21 @@ pub const PIXLS_FILES: &[(&str, &str)] = &[
     ("Panasonic/DC-G9/P1000475.RW2", "P1000475.RW2"),
     ("Olympus/E-1/E_1__C106743_gredos.ORF", "E_1__C106743_gredos.ORF"),
     ("Olympus/E-5/_7061961_copy.ORF", "_7061961_copy.ORF"),
+    // X-Trans RAF uncompressed (ours) and lossless compressed (Apple / LibRaw on iOS).
+    ("Fujifilm/X100F/DSCF5761_x100f_uncompressed_raw_Temple.RAF", "DSCF5761_x100f_uncompressed_raw_Temple.RAF"),
+    ("Fujifilm/X100F/DSCF5760_x100f_lossless_compressed_raw_Temple.RAF", "DSCF5760_x100f_lossless_compressed_raw_Temple.RAF"),
+    ("Fujifilm/GFX%2050S/20170525_0037TEST.RAF", "20170525_0037TEST.RAF"),
+    // CR3, RAW and CRAW: Apple / LibRaw on iOS.
+    ("Canon/EOS%20RP/Canon_EOS_RP_RAW_ISO_100_crop_nodual.CR3", "Canon_EOS_RP_RAW_ISO_100_crop_nodual.CR3"),
+    ("Canon/EOS%20RP/Canon_EOS_RP_CRAW_ISO_100_crop_nodual.CR3", "Canon_EOS_RP_CRAW_ISO_100_crop_nodual.CR3"),
+    ("Pentax/K-70/IMGP6854.PEF", "IMGP6854.PEF"),
+    ("Pentax/K-70/IMGP6855.DNG", "IMGP6855.DNG"),
+    // Compressed ORF: Apple / LibRaw on iOS.
+    ("Olympus/E-M10%20Mark%20III/PA080192.ORF", "PA080192.ORF"),
+    ("Sony/ILCE-7M3/UNCOMPRESSED_14bit.ARW", "UNCOMPRESSED_14bit.ARW"),
+    ("Sony/ILCE-7M3/_DSC0009.ARW", "_DSC0009.ARW"),
+    ("Samsung/NX1/2016-07-23-142101_sam_9364.srw", "2016-07-23-142101_sam_9364.srw"),
+    ("Panasonic/DMC-GH4/P1010607.RW2", "P1010607.RW2"),
+    // High Efficiency (TicoRAW) NEF: no decoder reads it; it must fail cleanly.
+    ("Nikon/Z%209/Nikon_-_NIKON_Z_9_-_14bit_compressed_(Lossy_High_Efficiency).NEF", "Nikon_Z9_14bit_Lossy_High_Efficiency.NEF"),
 ];

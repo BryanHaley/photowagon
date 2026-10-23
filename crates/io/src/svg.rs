@@ -63,7 +63,7 @@ fn fonts() -> Arc<usvg::fontdb::Database> {
         for f in photocraft_text::CRAFT_FONTS {
             db.load_font_data(f.bytes.to_vec());
         }
-        #[cfg(not(target_arch = "wasm32"))]
+        #[cfg(not(any(target_arch = "wasm32", target_os = "ios")))]
         db.load_system_fonts();
         Arc::new(db)
     })

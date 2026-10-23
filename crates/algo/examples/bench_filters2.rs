@@ -36,7 +36,7 @@ fn main() {
         FilterParams::ShapeBlur { radius: 10.0, shape: BlurShape::Star },
         FilterParams::TiltShift { blur: 15.0, center_x: 0.5, center_y: 0.5, angle: 0.0, focus: 0.1, transition: 0.15 },
         FilterParams::IrisBlur { pins: vec![IrisPin::default()] },
-        FilterParams::FieldBlur { pins: vec![FieldPin { x: 0.2, y: 0.2, blur: 0.0 }, FieldPin { x: 0.8, y: 0.8, blur: 30.0 }] },
+        FilterParams::VariableBlur { radius: 30.0, mask: None },
         FilterParams::SpinBlur { pins: vec![SpinPin::default()] },
         FilterParams::PathBlur { paths: vec![BlurPath::default()] },
         FilterParams::Crystallize { cell_size: 10.0, seed: 0 },

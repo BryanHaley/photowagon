@@ -20,13 +20,13 @@ use crate::{EngineError, Result, Session};
 /// source pixel coordinates. A Background becomes a normal layer (it can't sit above others).
 fn contents(s: &Session, doc: &Document, sm: &SmartObject, intent: Intent, bpc: bool) -> Result<Vec<Layer>> {
     let (name, bytes) = authorized_source_bytes(s, "layer.smartObjects.convertToLayers", &doc.metadata, &sm.source)?
-        .ok_or_else(|| other("the smart object's contents are unavailable (missing linked file?)"))?;
+        .ok_or_else(|| other("the embedded layer's contents are unavailable (missing linked file?)"))?;
     let mut src = decode_source(&name, &bytes)?;
     let mode = doc.pixel_format().mode;
     if src.pixel_format().mode != mode || src.icc_profile != doc.icc_profile {
         crate::color_cmds::convert_document(&mut src, &crate::color_cmds::document_profile(doc), intent, bpc)?;
         if src.pixel_format().mode != mode {
-            return Err(other(format!("can't convert the smart object's contents to the document's {:?} mode", doc.mode)));
+            return Err(other(format!("can't convert the embedded layer's contents to the document's {:?} mode", doc.mode)));
         }
     }
     if src.depth != doc.depth {
@@ -67,7 +67,7 @@ fn embed_nested(meta: &Metadata, l: &mut Layer) {
 /// live; Distort and Perspective need them rasterized, as Free Transform does).
 fn place(s: &Session, doc: &Document, sm: &SmartObject, layers: &mut [Layer]) -> Result<()> {
     if sm.warp.as_ref().is_some_and(|w| !w.is_identity()) {
-        return Err(other("a warped smart object can't be converted to layers; rasterize it instead (Layer › Smart Objects › Rasterize)"));
+        return Err(other("a warped embedded layer can't be converted to layers; rasterize it instead (Layer › Embedded Layers › Rasterize)"));
     }
     let [a, b, c, d, e, f] = sm.transform.m;
     let whole = |v: f64| (v - v.round()).abs() < 1e-9;

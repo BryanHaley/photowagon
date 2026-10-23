@@ -348,6 +348,42 @@ fn isolated_group_differs_from_pass_through() {
     assert!((iso[0] - 0.5).abs() <= E, "{iso:?}");
 }
 
+/// An adjustment inside a Normal group changes only the group's layers; in a pass-through group
+/// it reaches the layers below too.
+#[test]
+fn a_normal_group_keeps_its_adjustment_inside() {
+    let make = |blend: BlendMode| {
+        let mut d = doc_white(4, 2);
+        let inside = solid_layer("inside", Rect::new(0, 0, 2, 2), [1.0, 1.0, 1.0, 1.0]);
+        let mut g = Layer::group("g", vec![inside, Layer::new("inv", LayerContent::Adjustment(Adjustment::Invert))]);
+        g.blend = blend;
+        d.layers.push(g);
+        (px(&d, 0, 0), px(&d, 3, 0))
+    };
+    let (inside, below) = make(BlendMode::Normal);
+    assert!(close4(inside, [0.0, 0.0, 0.0, 1.0]), "the group's layer is inverted: {inside:?}");
+    assert!(close4(below, [1.0; 4]), "the background isn't: {below:?}");
+    let (_, below) = make(BlendMode::PassThrough);
+    assert!(close4(below, [0.0, 0.0, 0.0, 1.0]), "pass-through reaches the background: {below:?}");
+}
+
+/// An adjustment layer that changes nothing, set to Multiply or Screen, blends the image with
+/// itself: darker or brighter.
+#[test]
+fn an_unchanged_adjustment_layer_blends_the_image_with_itself() {
+    let make = |blend: BlendMode| {
+        let mut d = doc_white(2, 2);
+        d.layers[0].surface_mut().unwrap().fill_rect(Rect::new(0, 0, 2, 2), &[0.5, 0.5, 0.5, 1.0]);
+        let mut a = Layer::new("same", LayerContent::Adjustment(Adjustment::BrightnessContrast { brightness: 0.0, contrast: 0.0, legacy: false }));
+        a.blend = blend;
+        d.layers.push(a);
+        px(&d, 0, 0)[0]
+    };
+    assert!((make(BlendMode::Normal) - 0.5).abs() <= E);
+    assert!((make(BlendMode::Multiply) - 0.25).abs() <= E, "multiply darkens");
+    assert!((make(BlendMode::Screen) - 0.75).abs() <= E, "screen brightens");
+}
+
 /// psd-tools passthrough_fill_adjustment.psd: below 100% fill a pass-through group is isolated,
 /// so an adjustment inside it no longer changes the layers beneath.
 #[test]

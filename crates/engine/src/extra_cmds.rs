@@ -29,7 +29,7 @@ fn has_layer(s: &Session) -> std::result::Result<(), String> {
 fn has_pixels(s: &Session) -> std::result::Result<(), String> {
     match active_layer(s)?.content {
         LayerContent::Raster(_) => Ok(()),
-        ref c => Err(format!("active layer is {} {} layer, not a pixel layer", c.article(), c.kind_name())),
+        ref c => Err(format!("not on {} layers", c.kind_name())),
     }
 }
 
@@ -717,7 +717,7 @@ fn rasterize_content(s: &mut Session, id: LayerId, only: Option<&str>, key: &str
         }
         "smart" => {
             s.coalesce_request = Some(key.to_string());
-            let r = s.edit("Rasterize Smart Object", |doc, _| {
+            let r = s.edit("Rasterize Embedded Layer", |doc, _| {
                 let snapshot = doc.clone();
                 let mut snap = doc.layer(id).cloned().ok_or(EngineError::NoLayer(id))?;
                 if matches!(snap.content, LayerContent::Smart(ref sm) if sm.cache.is_none()) {
@@ -729,7 +729,7 @@ fn rasterize_content(s: &mut Session, id: LayerId, only: Option<&str>, key: &str
                         Some(c) => c,
                         None => content_pixels(&snapshot, &snap),
                     },
-                    _ => return Err(EngineError::Other(format!("layer {} is not a smart object", id.0))),
+                    _ => return Err(EngineError::Other(format!("layer {} is not an embedded layer", id.0))),
                 };
                 let surface = if surface.format() == fmt { surface } else { surface.convert(fmt) };
                 let l = doc.layer_mut(id).ok_or(EngineError::NoLayer(id))?;
@@ -1000,7 +1000,7 @@ pub fn specs() -> Vec<CommandSpec> {
         ),
         spec!(
             "layer.rasterize.smartObject",
-            "Smart Object",
+            "Embedded Layer",
             &["Layer", "Rasterize"],
             None,
             r##"{"layer":id?} (no layer: every selected layer it applies to)"##,

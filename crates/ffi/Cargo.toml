@@ -1,0 +1,60 @@
+[package]
+name = "photocraft-ffi"
+description = "The PhotoCraft engine as a Swift API (UniFFI) for the iOS app"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[lib]
+crate-type = ["lib", "staticlib", "cdylib"]
+
+[[bin]]
+name = "uniffi-bindgen"
+path = "src/bin/uniffi-bindgen.rs"
+required-features = ["bindgen"]
+
+[features]
+# The Swift binding generator (`cargo xtask ios`).
+bindgen = ["uniffi/cli"]
+
+# UniFFI's generated glue exports C functions, the canvas surface is made from a raw
+# CAMetalLayer pointer (one `unsafe` call in canvas.rs), and LibRaw is called through C (libraw.rs).
+[lints.rust]
+unsafe_code = "deny"
+
+[lints.clippy]
+dbg_macro = "warn"
+todo = "warn"
+
+[dependencies]
+photocraft-geom = { workspace = true }
+photocraft-doc = { workspace = true }
+photocraft-paint = { workspace = true }
+photocraft-raster = { workspace = true }
+photocraft-color = { workspace = true }
+photocraft-compose = { workspace = true }
+# No HEIF feature: HEIC goes to Apple's system decoder (the OS carries the HEVC licence).
+photocraft-codecs = { workspace = true }
+photocraft-format = { workspace = true }
+photocraft-gpu = { workspace = true }
+photocraft-io = { workspace = true }
+photocraft-engine = { workspace = true }
+photocraft-text = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+log = { workspace = true }
+uniffi = "0.32"
+# Same major version as photocraft-gpu, with the Metal backend.
+wgpu = { version = "30", default-features = false, features = ["std", "wgsl", "metal"] }
+pollster = "1"
+
+[build-dependencies]
+# Compiles LibRaw (submodules/LibRaw) and its wrapper.
+cc = "1.5"
+
+[dev-dependencies]
+# Checks our raw decoder against LibRaw (src/libraw.rs tests).
+photocraft-raw = { workspace = true }
+# A CMYK profile for the JPEG XL CMYK round trip (src/jxl.rs tests).
+photocraft-cms = { workspace = true }

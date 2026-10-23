@@ -16,7 +16,7 @@ use crate::{EngineError, Result, Session};
 const CMD: &str = "edit.fill";
 
 /// Every `contents` value, in the dialog's order.
-pub const CONTENTS: [&str; 9] = ["foreground", "background", "color", "contentAware", "pattern", "history", "black", "gray", "white"];
+pub const CONTENTS: [&str; 9] = ["foreground", "background", "color", "surroundings", "pattern", "history", "black", "gray", "white"];
 
 fn bad(msg: impl Into<String>) -> EngineError {
     EngineError::BadParams { cmd: CMD.into(), msg: msg.into() }
@@ -55,6 +55,8 @@ impl Source {
 fn contents(p: &Value) -> Result<&str> {
     match p.get("contents") {
         None | Some(Value::Null) => Ok("color"),
+        // `contentAware`: the old name.
+        Some(Value::String(c)) if c.eq_ignore_ascii_case("contentAware") => Ok("surroundings"),
         Some(Value::String(c)) => {
             CONTENTS.iter().find(|k| k.eq_ignore_ascii_case(c)).copied().ok_or_else(|| bad(format!("unknown contents `{c}` ({})", CONTENTS.join("|"))))
         }
@@ -135,14 +137,14 @@ pub fn fill(s: &mut Session, p: &Value) -> Result<Value> {
                 .map_err(|_| EngineError::Other("the target did not exist (as pixels, a mask or a channel) in that history state".into()))?;
             Source::Pixels(area, read_rgba(src, area, "reading Fill's history source")?)
         }
-        "contentAware" => {
-            let sel = sel.as_ref().ok_or_else(|| EngineError::Other("Content-Aware fill needs a selection".into()))?;
+        "surroundings" => {
+            let sel = sel.as_ref().ok_or_else(|| EngineError::Other("Fill from Surroundings needs a selection".into()))?;
             if channel || crate::commands::is_mask_target(p) {
-                return Err(EngineError::Other("Content-Aware fill works on layer pixels only".into()));
+                return Err(EngineError::Other("Fill from Surroundings works on layer pixels only".into()));
             }
             let adapt = flag(p, "colorAdaptation", true)?;
             let lid = id.ok_or_else(|| EngineError::Other("no active layer".into()))?;
-            let surf = st.doc.layer(lid).and_then(|l| l.surface()).ok_or_else(|| EngineError::Other("Content-Aware fill needs a pixel layer".into()))?;
+            let surf = st.doc.layer(lid).and_then(|l| l.surface()).ok_or_else(|| EngineError::Other("Fill from Surroundings needs a pixel layer".into()))?;
             let seed = p.get("seed").and_then(Value::as_u64).unwrap_or(1);
             content_aware(surf, sel, doc_bounds, adapt, seed)?
         }
@@ -265,16 +267,16 @@ pub(crate) fn content_aware_native(
     let n = surf.format().channels();
     let (w, h) = window_size(window)?;
     let img = surf.read_region(window);
-    let len = w.checked_mul(h).ok_or_else(|| EngineError::Other("the area is too large for Content-Aware fill".into()))?;
-    let mut hole = crate::allocation::filled(len, false, "Content-Aware fill")?;
-    let mut source = crate::allocation::filled(len, false, "Content-Aware fill")?;
+    let len = w.checked_mul(h).ok_or_else(|| EngineError::Other("the area is too large for Fill from Surroundings".into()))?;
+    let mut hole = crate::allocation::filled(len, false, "Fill from Surroundings")?;
+    let mut source = crate::allocation::filled(len, false, "Fill from Surroundings")?;
     for (i, (hv, sv)) in hole.iter_mut().zip(source.iter_mut()).enumerate() {
         let (x, y) = (window.x0 + (i % w) as i32, window.y0 + (i / w) as i32);
         *hv = is_hole(x, y);
         *sv = !*hv && usable(x, y);
     }
     if !source.iter().any(|s| *s) {
-        return Err(EngineError::Other("Content-Aware fill needs pixels outside the area to fill to sample from".into()));
+        return Err(EngineError::Other("Fill from Surroundings needs pixels outside the area to fill to sample from".into()));
     }
     let opts = FillOptions {
         color_adaptation: color_level(if color_adaptation { "default" } else { "none" }),
@@ -303,7 +305,7 @@ pub(crate) fn sampling_window(hole: Rect, canvas: Rect) -> Rect {
 pub(crate) fn window_size(window: Rect) -> Result<(usize, usize)> {
     let (w, h) = (window.width(), window.height());
     if u64::from(w) * u64::from(h) > 400_000_000 {
-        return Err(EngineError::Other("the selection is too large for Content-Aware fill".into()));
+        return Err(EngineError::Other("the selection is too large for Fill from Surroundings".into()));
     }
     Ok((w as usize, h as usize))
 }
@@ -757,7 +759,7 @@ mod tests {
             let err = r.expect_err(name).to_string();
             assert!(!err.contains("internal error"), "{name}: {err}");
             if name != "canvas beyond i32" {
-                assert!(err.contains("too large for Content-Aware fill"), "{name}: {err}");
+                assert!(err.contains("too large for Fill from Surroundings"), "{name}: {err}");
             }
             let st = s.active().unwrap();
             assert!(std::sync::Arc::ptr_eq(&before, &st.doc), "{name}: the document changed");

@@ -3960,3 +3960,69 @@ cameraData	Lens	Lens
 	Increase Brush Size	Fırça boyutunu büyüt
 	Decrease Brush Hardness	Fırça sertliğini azalt
 	Increase Brush Hardness	Fırça sertliğini artır
+# Renamed engine strings (same translations as the names they replaced).
+	Create Batch App…	Damlacık oluştur…
+	Contact Sheet…	İletişim Sayfası II…
+	Merge to HDR…	HDR Pro'ya Birleştir…
+	Panorama…	Fotoğraf Birleştir…
+	Create Embedded Layer after Loading Layers	Katmanları Yükledikten Sonra Akıllı Nesne Oluştur
+	Fill from Surroundings…	İçeriğe Uygun Dolgu…
+	Content-Preserving Scale	İçeriğe Uygun Ölçek
+	Pin Warp	Kukla Çözgü
+	Raw Develop…	Kamera Raw…
+	New Embedded Layer via Copy	Kopyalama Yoluyla Yeni Akıllı Nesne
+	Live Filter	Akıllı Filtre
+	Convert for Live Filters	Akıllı Filtreler için Dönüştürme
+	Clear Live Filters	Akıllı Filtreleri Temizle
+	Disable Live Filters	Akıllı Filtreleri Devre Dışı Bırak
+	Embedded Layers	Akıllı Nesneler
+	Embedded Layer	Akıllı Nesne
+	Convert to Embedded Layer	Akıllı Nesneye Dönüştür
+	Refine Selection…	Seç ve Maskele…
+	Refine Selection (Legacy)	Kenarı İyileştir
+	Develop…	Camera Raw Filtresi…
+	Fluid Warp…	Sıvılaştır…
+	Perspective Planes…	Ufuk Noktası…
+	Blur Effects	Bulanıklaştırma Galerisi
+	Raw Develop isn't open	Camera Raw açık değil
+	Commit Pin Warp ({key})	Kukla Çarpıtma İşlemi ({key})
+	Contact Sheet	İletişim Sayfası II
+	Create Batch App	Damlacık Oluştur
+	Filter for embedded layers	Akıllı nesneler için filtre
+	Fluid Warp is not open	Sıvılaştırma açık değil
+	Pin Warp is not active	Kukla Çarpıtma etkin değil
+	Fill from Surroundings needs a selection on a pixel layer	İçeriğe Uygun Dolgu, piksel katmanında seçim yapılmasını gerektirir
+	Could not use Pin Warp: no opaque pixels	Puppet Warp kullanılamadı: opak piksel yok
+	Could not use Pin Warp: the layer is empty	Puppet Warp kullanılamadı: katman boş
+	Repair Brush Tool	Düzeltme Fırçası Aracı
+	Live Filters	Akıllı Filtreler
+	Spot Repair Brush Tool	Nokta Düzeltme Fırçası Aracı
+	Always create embedded layers when placing	Yerleştirirken daima akıllı nesneler yaratın
+	Raw Develop Defaults	Camera Raw Varsayılanları
+	Open as embedded layer	Akıllı nesne olarak aç
+	Embedded Layer Layer	Akıllı Nesne Katmanı
+	Rasterize Embedded Layer	Akıllı Nesneyi Rasterleştir
+	Develop ({layer})	Camera Raw Filtresi ({layer})
+	Raw Develop ({name})	Camera Raw ({name})
+	Move and Fill Tool	İçeriğe Uygun Taşıma Aracı
+	Commit Pin Warp (↩)	Kukla Çarpıtma İşlemi (↩)
+	Delete Live Filters	Akıllı Filtreleri Sil
+	Enable Live Filters	Akıllı Filtreleri Etkinleştir
+	Raw Develop	Camera Raw
+	Develop	Camera Raw Filtresi
+	Fill from Surroundings	İçeriğe Uygun Dolgu
+	Fluid Warp	Sıvılaştır
+	Merge to HDR	HDR Pro'ya Birleştir
+	Panorama	Fotoğraf Birleştir
+	Refine Selection	Seç ve Maskele
+	Perspective Planes	Ufuk Noktası
+	Move and Fill	İçeriğe Uygun Taşıma
+	Refine Selection (Legacy) Brush (R)	Kenar Fırçasını İncelt (R)
+	Apply Perspective Planes ({key})	Ufuk Noktasını Uygula ({key})
+	Perspective Planes is not active	Ufuk Noktası etkin değil
+	Perspective Planes: click four corners to create a plane	Ufuk Noktası: düzlem oluşturmak için dört köşeye tıklayın
+@plural	Updated {n} linked embedded layer changed on disk|Updated {n} linked embedded layers changed on disk	Diskte değişen {n} bağlantılı akıllı nesne güncellendi
+	Save these settings as a Raw Develop .xmp file	Bu ayarları Camera Raw .xmp dosyası olarak kaydet
+	Load settings from a Raw Develop .xmp file	Ayarları bir Camera Raw .xmp dosyasından yükle
+	Loaded Raw Develop settings from {file}	Camera Raw ayarları {file} dosyasından yüklendi
+	Loaded Raw Develop settings from {file} ({n} not supported)	Camera Raw ayarları {file} dosyasından yüklendi ({n} desteklenmiyor)

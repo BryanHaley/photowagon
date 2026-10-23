@@ -49,7 +49,7 @@ const IDS: [&str; 34] = [
     "filter.blur.shapeBlur",
     "filter.blurGallery.tiltShift",
     "filter.blurGallery.irisBlur",
-    "filter.blurGallery.fieldBlur",
+    "filter.blurGallery.variableBlur",
     "filter.blurGallery.spinBlur",
     "filter.blurGallery.pathBlur",
     "filter.other.custom",
@@ -71,7 +71,7 @@ fn test_params(id: &str) -> Value {
         "filter.blur.lensBlur" => json!({"radius": 4}),
         "filter.blurGallery.tiltShift" => json!({"blur": 6}),
         "filter.blurGallery.irisBlur" => json!({"blur": 6}),
-        "filter.blurGallery.fieldBlur" => json!({"blur": 4}),
+        "filter.blurGallery.variableBlur" => json!({"radius": 4}),
         "filter.blurGallery.pathBlur" => json!({"speed": 8}),
         "filter.other.custom" => json!({"kernel": [0,0,0,0,0, 0,0,-1,0,0, 0,-1,5,-1,0, 0,0,-1,0,0, 0,0,0,0,0]}),
         "filter.blur.smartBlur" => json!({"threshold": 60}),
@@ -221,6 +221,41 @@ fn lens_blur_uses_the_layer_mask_as_depth() {
 }
 
 #[test]
+fn variable_blur_takes_its_amount_from_the_selection_or_a_channel() {
+    let at = |v: &[f32], x: usize, y: usize| v[(y * 48 + x) * 4..(y * 48 + x) * 4 + 4].to_vec();
+    // Selection on the left half: only it blurs.
+    let mut s = session();
+    let before = pixels(&s);
+    s.execute("select.rect", json!({"x": 0, "y": 0, "width": 24, "height": 32})).unwrap();
+    s.execute(VARIABLE_BLUR, json!({"radius": 4})).unwrap();
+    let after = pixels(&s);
+    assert_ne!(at(&after, 5, 16), at(&before, 5, 16));
+    assert_eq!(at(&after, 40, 16), at(&before, 40, 16));
+    // An alpha channel, white on the right half.
+    let mut s = session();
+    s.edit("channel", |doc, _| {
+        let mut surf = photocraft_raster::Surface::new(photocraft_color::PixelFormat::GRAY8);
+        surf.fill_rect(Rect::new(24, 0, 48, 32), &[1.0]);
+        doc.channels.push(photocraft_doc::AlphaChannel::new("Amount", surf));
+        Ok(())
+    })
+    .unwrap();
+    s.execute(VARIABLE_BLUR, json!({"radius": 4, "mask": "Amount"})).unwrap();
+    let after = pixels(&s);
+    assert_eq!(at(&after, 5, 16), at(&before, 5, 16));
+    assert_ne!(at(&after, 40, 16), at(&before, 40, 16));
+    assert!(s.execute(VARIABLE_BLUR, json!({"mask": "Nope"})).is_err());
+}
+
+#[test]
+fn removed_blur_params_are_errors() {
+    let mut s = session();
+    assert!(s.execute(VARIABLE_BLUR, json!({"pins": [{"x": 0.5, "y": 0.5, "blur": 10}]})).is_err());
+    assert!(s.execute("filter.blurGallery.pathBlur", json!({"taper": 50})).is_err());
+    assert!(s.execute("filter.blurGallery.pathBlur", json!({"paths": [{"points": [[0, 0], [1, 1]], "speed": 10, "taper": 50}]})).is_err());
+}
+
+#[test]
 fn params_map_to_algorithm_units() {
     assert_eq!(params_for("filter.pixelate.crystallize", &json!({"cellSize": 1})), Some(FilterParams::Crystallize { cell_size: 3.0, seed: 0 }));
     assert_eq!(
@@ -334,7 +369,7 @@ fn relight_records_a_smart_filter_and_can_be_hidden() {
     let (is_relight, lit) = {
         let d = s.active().unwrap();
         let layer = d.doc.layer(d.active_layer.unwrap()).unwrap();
-        let photocraft_doc::LayerContent::Smart(sm) = &layer.content else { panic!("expected a smart object") };
+        let photocraft_doc::LayerContent::Smart(sm) = &layer.content else { panic!("expected an embedded layer") };
         let ok = sm.smart_filters.iter().any(|f| f.command == "filter.render.relight");
         (ok, layer.surface().unwrap().read_region(Rect::new(0, 0, 32, 32)))
     };

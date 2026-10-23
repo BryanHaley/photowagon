@@ -214,10 +214,20 @@ pub fn object_at(sampler: &dyn Sampler, canvas: Rect, x: f32, y: f32, work_px: u
     let low = super::clean_mask(&low, w, h, 0.1, 0.0);
     // As in the rectangle mode: enclosed holes fill only when they look like the object.
     let low = super::fill_holes_by_model(&low, &img, &fg, &bg, 0.0, 0.05);
-    if !low.iter().any(|v| *v) {
+    if !low.iter().any(|v| *v) || is_backdrop(&low, w, h) {
         return None;
     }
     super::finish_region(sampler, canvas, step, &low, w, h, Some((&fg, &bg)))
+}
+
+/// A mask touching all four sides and covering much of the frame is the scene, not an object.
+pub(super) fn is_backdrop(mask: &[bool], w: usize, h: usize) -> bool {
+    // Within 3% of a side counts as touching it.
+    let (mx, my) = (w / 33 + 1, h / 33 + 1);
+    let set = |x: usize, y: usize| mask.get(y * w + x).copied().unwrap_or(false);
+    let near = |xs: std::ops::Range<usize>, ys: std::ops::Range<usize>| ys.clone().any(|y| xs.clone().any(|x| set(x, y)));
+    let all_sides = near(0..w, 0..my) && near(0..w, h.saturating_sub(my)..h) && near(0..mx, 0..h) && near(w.saturating_sub(mx)..w, 0..h);
+    all_sides && mask.iter().filter(|v| **v).count() * 10 > w * h * 4
 }
 
 /// Region growing (4-connected) from `(sx, sy)` over pixels whose CIELAB colour is within a

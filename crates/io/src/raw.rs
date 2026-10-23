@@ -110,7 +110,7 @@ pub fn import_raw_tuned(name: &str, bytes: &[u8], tuning: &RawTuning) -> Result<
         .filter(|(_, v)| *v != 0.0)
         .map(|(k, v)| format!(", {k} {v:+.0}"))
         .collect::<String>();
-    let summary = format!("developed in Camera Raw (exposure {:+.2} EV{tone}, {wb})", tuning.exposure);
+    let summary = format!("developed (exposure {:+.2} EV{tone}, {wb})", tuning.exposure);
     Ok((developed_document(name, format, dev, &summary)?, wb_applied))
 }
 
@@ -165,16 +165,21 @@ fn wb_gains(temperature: f32, tint: f32) -> [f64; 3] {
 
 /// A developed raw as a 16-bit ProPhoto document, with a note saying how it was developed.
 fn developed_document(name: &str, format: &str, dev: photocraft_raw::Developed, summary: &str) -> Result<ImportResult, IoError> {
-    let img = Image::from_u16(dev.width, dev.height, ChannelLayout::Rgb, &dev.rgb)?;
+    let camera = camera_name(dev.info.make.as_deref(), dev.info.model.as_deref());
+    let note =
+        format!("{format}{} {summary} into 16-bit {}", if camera.is_empty() { String::new() } else { format!(" from {camera}") }, photocraft_raw::OUTPUT_SPACE);
+    let mut r = import_developed(name, dev.width, dev.height, &dev.rgb, &note)?;
+    r.warnings.extend(dev.warnings);
+    Ok(r)
+}
+
+/// A raw developed elsewhere (another decoder) to 16-bit ProPhoto RGB, gamma 1.8, as a document
+/// with `note` saying how.
+pub fn import_developed(name: &str, width: u32, height: u32, rgb: &[u16], note: &str) -> Result<ImportResult, IoError> {
+    let img = Image::from_u16(width, height, ChannelLayout::Rgb, rgb)?;
     let mut r = image_to_document(name, &img)?;
     r.document.icc_profile = Some(Arc::new(photocraft_cms::Builtin::ProPhotoCompat.profile().to_bytes().to_vec()));
-    let camera = camera_name(dev.info.make.as_deref(), dev.info.model.as_deref());
-    r.warnings.push(format!(
-        "{format}{} {summary} into 16-bit {}",
-        if camera.is_empty() { String::new() } else { format!(" from {camera}") },
-        photocraft_raw::OUTPUT_SPACE
-    ));
-    r.warnings.extend(dev.warnings);
+    r.warnings.push(note.into());
     Ok(r)
 }
 
@@ -259,6 +264,7 @@ pub fn import_raw_with(name: &str, bytes: &[u8], opts: &DevelopOptions) -> Resul
             Some(p) => {
                 let img = upright_preview(bytes, p.jpeg)?;
                 let mut r = image_to_document(name, &img)?;
+                r.preview_only = true;
                 r.warnings.insert(
                     0,
                     format!(

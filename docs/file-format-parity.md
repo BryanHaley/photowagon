@@ -17,6 +17,14 @@ HEIF/JXL 6%, PDF 3%, everything else 3%), presence is ~80% and ready-for-real-wo
 is broad but not yet reliable against Photoshop (gap G1), and Photoshop PDF, AVIF read and JPEG
 XL are missing (gap G10). Remaining: 300–500 h including PSD fidelity.
 
+**Format matrix (2026-10-22).** `scripts/format_samples.py` writes our test chart in every format
+and option we import (173 samples with libtiff's and libjpeg-turbo's test images), each with a
+reference decode by the format's own library. `crates/io/tests/format_matrix.rs` (feature
+`corpus`) checks the engine against them, 142 exact or within lossy tolerance and the rest listed
+with reasons, and `ios/PhotoWagonTests/FormatMatrixTests.swift` checks the app's full open path
+(engine, Apple's decoder, LibRaw). Our raw decoder matches LibRaw sensor value for value on every
+pixls raw both read (`crates/ffi/src/libraw.rs` tests).
+
 ## Photoshop's formats
 
 | Format | Photoshop | PhotoCraft read | PhotoCraft write | Fidelity and tests |
@@ -24,14 +32,14 @@ XL are missing (gap G10). Remaining: 300–500 h including PSD fidelity.
 | PSD | R/W | yes | yes | 1/8/16/32-bit; Bitmap, Gray, Indexed, RGB, CMYK, Multichannel, Lab, Duotone; layers, groups, masks, vector masks, adjustment and fill layers, effects, text, shapes, smart objects (SoLd/lnk2; CS2 PlLd/lnkD read with their warp, kept as is or re-saved as SoLd once edited), smart filters (14 mapped plus Filter Gallery with Chrome, rest verbatim), slices, comps, Advanced Blending. Oracle floors: Photoshop-authored 188/258, io 148/170, psd-tools 249/309; round trip ≥ 169/170, 308/309, 258/256. Known failures: #1281, #2469 (#2374, text layers, closed 2026-10-10; #2465, CS2 `PlLd`-only smart objects, fixed 2026-10-12) |
 | PSB | R/W | yes | yes | Auto-switches above 2 GB (REL-212-2); 4–5 GB fixtures generated (FILE-216-2); > 4 GB fails on Windows (#375) |
 | Cloud PSD (.psdc) | R/W | no | no | Out of scope (Adobe cloud) |
-| TIFF | R/W | yes | yes | 8/16/32f, Gray/RGB/CMYK, BigTIFF, every IFD, banded parallel decode; layered TIFF both byte orders (FILE-215-7: extra alpha channels not written) |
+| TIFF | R/W | yes | yes | 8/16/32f, Gray/RGB/CMYK, BigTIFF, every IFD, banded parallel decode; YCbCr JPEG and WebP compression (2026-10-22; not ZSTD, LZMA, CCITT Group 3 or subsampled old-style JPEG); layered TIFF both byte orders (FILE-215-7: extra alpha channels not written) |
 | JPEG | R/W | yes | yes | 8-bit Gray/RGB/CMYK, ICC/EXIF/XMP; Save keeps the opened file's quality (estimated from its quantisation tables, #2399); no JPEG Options dialog (quality 0–12, baseline/progressive) (FILE-215-19) |
 | PNG | R/W | yes | yes | 8/16-bit, ICC/text; APNG first frame only; alpha channels on open (#2225); palette PNGs open in Indexed Color mode with their transparent entry (#4804) |
 | GIF | R/W | yes | yes | File › Open keeps the first frame; New Video Layer from File and Video Frames to Layers take every frame, with the timeline rate from the delays (#572). Per-frame delays and keeping the frames in `.pcraft` are not done |
 | BMP | R/W | yes | yes | 8-bit; palette BMPs open in Indexed Color mode |
 | WebP | R/W | yes | yes | Lossless and our own lossy VP8 encoder; ICC/EXIF/XMP; Save keeps an opened file lossy (at its quality) or lossless (#2399) |
 | AVIF | R/W | no (#463) | optional feature, off by default | |
-| JPEG XL | R/W | inside DNG only | no | |
+| JPEG XL | R/W | yes in the iOS app (libjxl, 2026-10-23); inside DNG in the engine | yes in the iOS app (libjxl) | Gray/RGB/CMYK, 8/16-bit and float (integers past 16 bits as float), alpha (premultiplied made straight), ICC, EXIF/XMP; layers kept when their blending is plain alpha (else composited), animations as frames; extra channels as alpha channels. Saves lossless or by quality with an effort; alpha channels as named extra channels; non-finite floats made finite. All 27 conformance cases pass (`crates/ffi/src/jxl.rs` tests) |
 | HEIF/HEIC | R/W(HEIF) | yes (pure-Rust heic-rs, `heif` feature, on in releases) | no | 8/16-bit |
 | OpenEXR | R/W | yes | yes | f16/f32; deep EXR and Cryptomatte readers (`corpus/exr`) |
 | Radiance HDR | R/W | yes | yes | f32 |

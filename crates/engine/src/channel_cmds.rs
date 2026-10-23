@@ -678,6 +678,7 @@ fn edits_mask(id: &str) -> bool {
     id.strip_prefix("image.adjustments.").is_some_and(|kind| crate::adjust_params::default_for(kind, ColorMode::Rgb).is_ok())
         || crate::filters::params_for(id, &Value::Null).is_some()
         || id == "edit.fill"
+        || id == "edit.clear"
         // Copying a targeted mask (#2928).
         || id == "edit.copy"
         || crate::fill_key_cmds::IDS.contains(&id)
@@ -705,7 +706,7 @@ fn routed(id: &str) -> bool {
     id.starts_with("filter.")
         || id == "plugin.run"
         || id.starts_with("image.adjustments.")
-        || matches!(id, "paint.stroke" | "paint.pencil" | "paint.bucket" | "paint.gradient" | "paint.mixerBrush" | "edit.fill" | "image.applyImage")
+        || matches!(id, "paint.stroke" | "paint.pencil" | "paint.bucket" | "paint.gradient" | "paint.mixerBrush" | "edit.fill" | "edit.clear" | "image.applyImage")
         || crate::fill_key_cmds::IDS.contains(&id)
         // Pasting into a targeted mask or channel (#1035); Copy takes a targeted mask (#2928).
         || matches!(id, "edit.copy" | "edit.paste" | "edit.pasteSpecial.pasteInPlace" | "edit.pasteSpecial.pasteInto" | "edit.pasteSpecial.pasteOutside")
@@ -852,14 +853,14 @@ pub(crate) fn targeted_channel(s: &Session) -> Option<Value> {
 /// Clear (Delete) with an alpha channel or the Quick Mask targeted (`target` from
 /// [`targeted_channel`]): fill the selected area (or the canvas) of it with the background colour,
 /// as gray, as Photoshop does. Partly selected pixels blend.
-pub(crate) fn clear_channel(doc: &mut Document, target: &Value, background: [f32; 4]) -> Result<()> {
+pub(crate) fn clear_channel(doc: &mut Document, layer: Option<LayerId>, target: &Value, background: [f32; 4]) -> Result<()> {
     let canvas = doc.bounds();
     let sel = doc.selection.clone();
     let area = sel.as_ref().map_or(canvas, |m| m.content_bounds().intersect(&canvas));
     if area.is_empty() {
         return Ok(());
     }
-    let (surf, _) = target_surface(doc, None, target)?;
+    let (surf, _) = target_surface(doc, layer, target)?;
     crate::fill_cmds::fill_color(surf, area, [background[0], background[1], background[2], 1.0], sel.as_ref())
 }
 
@@ -1961,6 +1962,6 @@ fn has_apply_target(s: &Session) -> std::result::Result<(), String> {
     if matches!(l.content, LayerContent::Raster(_)) {
         Ok(())
     } else {
-        Err(format!("Apply Image needs a pixel layer (active layer is {} {} layer)", l.content.article(), l.content.kind_name()))
+        Err(format!("not on {} layers", l.content.kind_name()))
     }
 }

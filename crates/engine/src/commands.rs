@@ -42,7 +42,7 @@ fn has_pixel_layer(s: &Session) -> std::result::Result<(), String> {
     if matches!(l.content, LayerContent::Raster(_)) {
         Ok(())
     } else {
-        Err(format!("active layer is {} {} layer, not a pixel layer", l.content.article(), l.content.kind_name()))
+        Err(format!("not on {} layers", l.content.kind_name()))
     }
 }
 /// A pixel layer, or a targeted alpha channel / Quick Mask (adjustments and fills apply to it).
@@ -531,7 +531,7 @@ fn build() -> Vec<CommandSpec> {
             "New…",
             ["File"],
             Some("Cmd+N"),
-            r##"{"width":1..300000=1920,"height":1..300000=1080 (pixel counts are rounded),"mode":"rgb|gray|grayscale|cmyk|lab"="rgb","depth":8|16|32=8,"background":"white|black|backgroundColor|transparent|#rrggbb"="white","backgroundColor":[r,g,b]? (0..1; defaults to toolbox colour),"resolution":1..30000=72 (ppi),"name":str}"##,
+            r##"{"width":1..300000=1920,"height":1..300000=1080 (pixel counts are rounded),"mode":"rgb|gray|grayscale|cmyk|lab"="rgb","depth":8|16|32=8,"background":"white|black|backgroundColor|transparent|#rrggbb"="white","backgroundColor":[r,g,b]? (0..1; defaults to toolbox colour),"resolution":1..30000=72 (ppi),"profile":"working|srgb|display-p3|adobe-rgb-compat|…|none"? (as edit.assignProfile; default untagged, shown in the working space),"name":str}"##,
             always,
             |s, p| {
                 use crate::document_preset_cmds::{MAX_DIMENSION, MAX_RESOLUTION, background_color, color_mode, sample_type};
@@ -567,6 +567,9 @@ fn build() -> Vec<CommandSpec> {
                     }
                 };
                 doc.resolution_dpi = res;
+                if let Some(spec) = p.get("profile").and_then(Value::as_str) {
+                    doc.icc_profile = crate::color_cmds::profile_bytes(s, spec, None, mode)?;
+                }
                 let i = s.add_document(doc, None);
                 Ok(json!({ "document": i }))
             }
@@ -584,18 +587,23 @@ fn build() -> Vec<CommandSpec> {
             "Fill…",
             ["Edit"],
             Some("Shift+F5"),
-            r##"{"contents":"foreground|background|color|contentAware|pattern|history|black|gray|white"="color","color":"#rrggbb|[r,g,b,a]"=foreground (contents=color),"pattern":id|name (contents=pattern),"scale":%=100,"angle":deg,"state":index? (contents=history; default the oldest state),"colorAdaptation":bool=true (contents=contentAware),"mode":"normal|multiply|…"="normal","opacity":0..100=100,"preserveTransparency":bool=false,"target":"pixels"|"mask"|"quickMask"|{"channel":i}?}"##,
+            r##"{"contents":"foreground|background|color|surroundings|pattern|history|black|gray|white"="color","color":"#rrggbb|[r,g,b,a]"=foreground (contents=color),"pattern":id|name (contents=pattern),"scale":%=100,"angle":deg,"state":index? (contents=history; default the oldest state),"colorAdaptation":bool=true (contents=surroundings),"mode":"normal|multiply|…"="normal","opacity":0..100=100,"preserveTransparency":bool=false,"target":"pixels"|"mask"|"quickMask"|{"channel":i}?}"##,
             has_pixel_or_channel,
             crate::fill_cmds::fill
         ),
-        cmd!("edit.clear", "Clear", ["Edit"], Some("Delete"), "{} (a targeted channel or Quick Mask is cleared alone)", has_pixel_or_channel, |s, p| {
+        cmd!("edit.clear", "Clear", ["Edit"], Some("Delete"), "{\"target\":\"mask\"? (default the targeted mask or channel)} (a targeted mask, channel or Quick Mask is filled with the background colour)", has_pixel_or_channel, |s, p| {
             let bg = s.tools.background;
             // A targeted alpha channel or Quick Mask is filled instead (#2734).
             if let Some(t) = crate::channel_cmds::targeted_channel(s) {
-                s.edit("Clear", |doc, _| crate::channel_cmds::clear_channel(doc, &t, bg))?;
+                s.edit("Clear", |doc, _| crate::channel_cmds::clear_channel(doc, None, &t, bg))?;
                 return Ok(Value::Null);
             }
             let id = layer_param(s, p)?;
+            // A targeted layer mask is filled with the background colour.
+            if p.get("target").and_then(Value::as_str) == Some("mask") {
+                s.edit("Clear", |doc, _| crate::channel_cmds::clear_channel(doc, Some(id), p, bg))?;
+                return Ok(Value::Null);
+            }
             // A targeted colour channel clears that channel only (#2720).
             if let Some(k) = crate::channel_cmds::targeted_color(s) {
                 s.edit("Clear", |doc, _| crate::channel_cmds::clear_color_channel(doc, id, k, bg))?;
@@ -1457,11 +1465,15 @@ fn build() -> Vec<CommandSpec> {
     v.extend(crate::cutout_cmds::specs());
     v.extend(crate::symmetry_cmds::specs());
     v.extend(crate::edit_cmds::specs());
+    v.extend(crate::tone_cmds::specs());
+    v.extend(crate::anim_cmds::specs());
     v.extend(crate::color_cmds::specs());
     v.extend(crate::brush_cmds::specs());
     v.extend(crate::brush_preset_cmds::specs());
     v.extend(crate::eraser_cmds::specs());
     v.extend(crate::preset_import_cmds::specs());
+    v.extend(crate::stats_cmds::specs());
+    v.extend(crate::visibility_cmds::specs());
     v.extend(crate::atn_cmds::specs());
     v.extend(crate::actions_edit_cmds::specs());
     v.extend(crate::swatch_cmds::specs());

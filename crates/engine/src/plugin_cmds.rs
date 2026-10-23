@@ -100,7 +100,7 @@ fn run(s: &mut Session, p: &Value) -> Result<Value> {
                 };
                 crate::smart_cmds::add_smart_filter(doc, layer, sf, selection.as_ref())
             }
-            other => Err(EngineError::Other(format!("plug-in filters need a pixel layer (active layer is {} {} layer)", other.article(), other.kind_name()))),
+            other => Err(EngineError::Other(format!("not on {} layers", other.kind_name()))),
         }
     })?;
     Ok(json!({"layer": layer.0, "plugin": id}))

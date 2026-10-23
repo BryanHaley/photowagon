@@ -24,7 +24,6 @@
 //! what gets written. The settings are remembered for the next time (`prefs.dialogs`).
 
 use egui::{Align2, Color32, FontId, Pos2, Rect as ERect, Sense, Stroke, TextureHandle, pos2, vec2};
-use photocraft_algo::content_aware::{SamplingStroke, paint_strokes};
 use photocraft_doc::LayerId;
 use photocraft_engine::edit_menu_cmds::{MAX_CAF_EDITS, MAX_CAF_POINTS};
 use photocraft_geom::Rect;
@@ -201,6 +200,56 @@ enum Step {
 
 fn stroke_json(s: &SamplingStroke) -> Value {
     json!({"mode": if s.add { "add" } else { "subtract" }, "size": s.size, "points": s.points})
+}
+
+/// One Sampling Brush stroke: a hard round brush of diameter `size` along `points`.
+#[derive(Clone, Debug, PartialEq)]
+pub struct SamplingStroke {
+    pub add: bool,
+    pub size: f64,
+    pub points: Vec<[f64; 2]>,
+}
+
+fn seg_dist2(p: [f64; 2], a: [f64; 2], b: [f64; 2]) -> f64 {
+    let (dx, dy) = (b[0] - a[0], b[1] - a[1]);
+    let l2 = dx * dx + dy * dy;
+    let t = if l2 > 0.0 { (((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2).clamp(0.0, 1.0) } else { 0.0 };
+    let (qx, qy) = (a[0] + t * dx - p[0], a[1] + t * dy - p[1]);
+    qx * qx + qy * qy
+}
+
+/// Paints `strokes` in order into `mask` (row-major over `area`), for the overlay only.
+fn paint_strokes(mask: &mut [bool], area: Rect, strokes: &[SamplingStroke]) {
+    let w = area.width() as usize;
+    if mask.len() != w * area.height() as usize {
+        return;
+    }
+    for s in strokes {
+        let r = (s.size / 2.0).max(0.5);
+        let segs: Vec<([f64; 2], [f64; 2])> = match s.points.as_slice() {
+            [] => continue,
+            [p] => vec![(*p, *p)],
+            pts => pts.windows(2).map(|p| (p[0], p[1])).collect(),
+        };
+        for (a, b) in segs {
+            let bounds = Rect::new(
+                (a[0].min(b[0]) - r).floor() as i32,
+                (a[1].min(b[1]) - r).floor() as i32,
+                ((a[0].max(b[0]) + r).ceil() as i32).saturating_add(1),
+                ((a[1].max(b[1]) + r).ceil() as i32).saturating_add(1),
+            )
+            .intersect(&area);
+            for y in bounds.y0..bounds.y1 {
+                for x in bounds.x0..bounds.x1 {
+                    if seg_dist2([f64::from(x) + 0.5, f64::from(y) + 0.5], a, b) <= r * r
+                        && let Some(m) = mask.get_mut((y - area.y0) as usize * w + (x - area.x0) as usize)
+                    {
+                        *m = s.add;
+                    }
+                }
+            }
+        }
+    }
 }
 
 /// What the plan (without the brush strokes) says: the window, the fill area and the sampling
@@ -480,8 +529,8 @@ fn compute_base(app: &PhotocraftApp, w: &CafWorkspace) -> Result<Base, String> {
         p["sampling"] = json!("rectangular");
     }
     let plan = photocraft_engine::edit_menu_cmds::content_aware_plan(&st.doc, w.layer, &p, CMD).map_err(|e| e.to_string())?;
-    let base = if custom { vec![false; plan.base.len()] } else { plan.base };
-    Ok(Base { window: plan.window, rect: plan.rect, hole: plan.hole, base })
+    let base = if custom { vec![false; plan.source.len()] } else { plan.source };
+    Ok(Base { window: plan.rect, rect: plan.rect, hole: plan.hole, base })
 }
 
 /// Unit edges between the fill area and the rest, in document px.
@@ -588,7 +637,8 @@ pub fn open(app: &mut PhotocraftApp) -> Result<(), String> {
     };
     w.brush_add = w.opts.sampling == "custom";
     let base = compute_base(app, &w)?;
-    w.brush_size = photocraft_algo::content_aware::default_brush_size(bounds(&base));
+    let hb = bounds(&base);
+    w.brush_size = (0.4 * (f64::from(hb.width().max(50)) * f64::from(hb.height().max(50))).sqrt()).round();
     w.set_base(base);
     w.stale();
     app.distort.caf = Some(w);

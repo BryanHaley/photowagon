@@ -3829,3 +3829,70 @@ curves	Smooth	Wygładź
 	Increase Brush Size	Zwiększ rozmiar pędzla
 	Decrease Brush Hardness	Zmniejsz twardość pędzla
 	Increase Brush Hardness	Zwiększ twardość pędzla
+# Renamed engine strings (same translations as the names they replaced).
+	Create Batch App…	Utwórz droplet…
+	Contact Sheet…	Arkusz kontaktowy II…
+	Merge to HDR…	Scal do HDR Pro…
+	Panorama…	Photomerge…
+	Create Embedded Layer after Loading Layers	Utwórz obiekt inteligentny po wczytaniu warstw
+	Fill from Surroundings…	Wypełnienie z uwzględnieniem zawartości…
+	Content-Preserving Scale	Skalowanie z uwzględnieniem zawartości
+	Pin Warp	Wypaczenie marionetkowe
+	Raw Develop…	Camera Raw…
+	New Embedded Layer via Copy	Nowy obiekt inteligentny przez kopiowanie
+	Live Filter	Filtr inteligentny
+	Convert for Live Filters	Konwertuj dla filtrów inteligentnych
+	Clear Live Filters	Wyczyść filtry inteligentne
+	Disable Live Filters	Wyłącz filtry inteligentne
+	Embedded Layers	Obiekty inteligentne
+	Embedded Layer	Obiekt inteligentny
+	Convert to Embedded Layer	Konwertuj na obiekt inteligentny
+	Refine Selection…	Zaznacz i maskuj…
+	Refine Selection (Legacy)	Popraw krawędź
+	Develop…	Filtr Camera Raw…
+	Fluid Warp…	Skraplanie…
+	Perspective Planes…	Punkt zbieżności…
+	Blur Effects	Galeria rozmyć
+	Save these settings as a Raw Develop .xmp file	Zapisz te ustawienia jako plik .xmp Camera Raw
+	Load settings from a Raw Develop .xmp file	Wczytaj ustawienia z pliku .xmp Camera Raw
+	Loaded Raw Develop settings from {file}	Wczytano ustawienia Camera Raw z pliku {file}
+	Loaded Raw Develop settings from {file} ({n} not supported)	Wczytano ustawienia Camera Raw z pliku {file} (nieobsługiwane: {n})
+	Raw Develop isn't open	Camera Raw nie jest otwarty
+	Commit Pin Warp ({key})	Zatwierdź wypaczenie marionetkowe ({key})
+	Contact Sheet	Arkusz kontaktowy II
+	Create Batch App	Utwórz droplet
+	Filter for embedded layers	Filtruj obiekty inteligentne
+	Fluid Warp is not open	Skraplanie nie jest otwarte
+	Pin Warp is not active	Wypaczenie marionetkowe nie jest aktywne
+	Fill from Surroundings needs a selection on a pixel layer	Wypełnienie z uwzględnieniem zawartości wymaga zaznaczenia na warstwie pikselowej
+	Could not use Pin Warp: no opaque pixels	Nie można użyć wypaczenia marionetkowego: brak nieprzezroczystych pikseli
+	Could not use Pin Warp: the layer is empty	Nie można użyć wypaczenia marionetkowego: warstwa jest pusta
+	Repair Brush Tool	Narzędzie Pędzel korygujący
+	Live Filters	Filtry inteligentne
+	Spot Repair Brush Tool	Narzędzie Punktowy pędzel korygujący
+	Always create embedded layers when placing	Zawsze twórz obiekty inteligentne podczas umieszczania
+	Raw Develop Defaults	Domyślne ustawienia Camera Raw
+	Open as embedded layer	Otwieraj jako obiekt inteligentny
+	Embedded Layer Layer	Warstwa obiektu inteligentnego
+	Rasterize Embedded Layer	Rasteryzuj obiekt inteligentny
+	Delete Live Filters	Usuń filtry inteligentne
+	Enable Live Filters	Włącz filtry inteligentne
+	Move and Fill	Przesunięcie z uwzględnieniem zawartości
+	Commit Pin Warp (↩)	Zatwierdź wypaczenie marionetkowe (↩)
+	Develop ({layer})	Filtr Camera Raw ({layer})
+	Move and Fill Tool	Narzędzie Przesunięcie z uwzględnieniem zawartości
+	Merge to HDR	Scal do HDR Pro
+	Panorama	Photomerge
+	Fill from Surroundings	Wypełnienie z uwzględnieniem zawartości
+	Raw Develop	Camera Raw
+	Refine Selection	Zaznacz i maskuj
+	Develop	Filtr Camera Raw
+	Fluid Warp	Skraplanie
+	Perspective Planes	Punkt zbieżności
+	Raw Develop ({name})	Camera Raw ({name})
+	Repair Brush	Pędzel korygujący
+	Spot Repair Brush	Punktowy pędzel korygujący
+	Perspective Planes: click four corners to create a plane	Punkt zbieżności: kliknij cztery narożniki, aby utworzyć płaszczyznę
+	Perspective Planes is not active	Punkt zbieżności nie jest aktywny
+	Apply Perspective Planes ({key})	Zastosuj punkt zbieżności ({key})
+	Refine Selection (Legacy) Brush (R)	Pędzel dopracowania krawędzi (R)

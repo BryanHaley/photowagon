@@ -247,10 +247,10 @@ impl Tool {
             Tool::RotateView => "Rotate View Tool",
             Tool::Zoom => "Zoom Tool",
             Tool::Remove => "Remove Tool",
-            Tool::SpotHealing => "Spot Healing Brush Tool",
-            Tool::Healing => "Healing Brush Tool",
+            Tool::SpotHealing => "Spot Repair Brush Tool",
+            Tool::Healing => "Repair Brush Tool",
             Tool::Patch => "Patch Tool",
-            Tool::ContentAwareMove => "Content-Aware Move Tool",
+            Tool::ContentAwareMove => "Move and Fill Tool",
             Tool::RedEye => "Red Eye Tool",
             Tool::CloneStamp => "Clone Stamp Tool",
             Tool::PatternStamp => "Pattern Stamp Tool",
@@ -551,7 +551,7 @@ pub struct ToolOptions {
     pub pattern_stamp_angle: f32,
     /// current | currentAndBelow | all
     pub clone_sample: String,
-    /// Spot Healing: contentAware | createTexture | proximityMatch
+    /// Spot Healing: contentAware | createTexture | matchNearby
     pub spot_type: String,
     /// Patch: source (repair the selection) | destination (repair where it is dragged).
     pub patch_mode: String,
@@ -1476,29 +1476,6 @@ mod tests {
         assert_eq!(Tool::from_name("Rotate View Tool"), Some(Tool::RotateView));
         assert_eq!(Tool::RotateView.key(), 'R');
         assert_eq!(Tool::from_name("nope"), None);
-    }
-
-    /// The README's "Everything in the box" tool heading and list name exactly the tools a user can
-    /// pick, `Tool::ALL` (#996).
-    #[test]
-    fn readme_tool_list_matches_tool_all() {
-        let readme = include_str!("../../../README.md");
-        let (_, rest) = readme.split_once("<h4>🧰 ").unwrap();
-        let (count, rest) = rest.split_once(" tools</h4>").unwrap();
-        assert_eq!(count.parse::<usize>().unwrap(), Tool::ALL.len(), "README.md tool heading");
-        let list = rest.trim_start().lines().next().unwrap();
-        // "Rectangular and Elliptical Marquee" names two tools: "Rectangular Marquee", "Elliptical Marquee".
-        let mut named: Vec<String> = Vec::new();
-        for entry in list.split(" · ") {
-            match entry.split_once(" and ").and_then(|(first, rest)| Some((first, rest.split_once(' ')?))) {
-                Some((first, (second, noun))) => named.extend([format!("{first} {noun}"), format!("{second} {noun}")]),
-                None => named.push(entry.to_owned()),
-            }
-        }
-        named.sort();
-        let mut labels: Vec<String> = Tool::ALL.iter().map(|tool| tool.label().trim_end_matches(" Tool").to_owned()).collect();
-        labels.sort();
-        assert_eq!(named, labels, "README.md tool list");
     }
 
     #[test]

@@ -140,7 +140,7 @@ fn new_frame(s: &mut Session, p: &Value) -> Result<Value> {
                 let l = doc.layer(id).ok_or(EngineError::NoLayer(id))?;
                 let framable = matches!(l.content, LayerContent::Raster(_) | LayerContent::Text(_) | LayerContent::Shape(_) | LayerContent::Smart(_));
                 if !framable || doc.is_background(id) {
-                    return Err(bad("only a pixel, type, shape or smart object layer (not the Background) can go in a frame".into()));
+                    return Err(bad("only a pixel, type, shape or embedded layer layer (not the Background) can go in a frame".into()));
                 }
                 let gid = doc.insert_above(Some(id), Layer::group(name, vec![]));
                 let child = doc.remove(id).ok_or(EngineError::NoLayer(id))?;
@@ -165,7 +165,7 @@ pub fn specs() -> Vec<CommandSpec> {
             label: "New Frame",
             menu: &[],
             shortcut: None,
-            params: r#"{"x":i32,"y":i32,"width":u32,"height":u32,"shape":"rectangle|ellipse"="rectangle","layer":id?,"name":str?} → {layer, frame:[x,y,w,h], shape}: Frame tool; a group clipped to the shape, holding pixel, type, shape or smart object layer `layer` if given"#,
+            params: r#"{"x":i32,"y":i32,"width":u32,"height":u32,"shape":"rectangle|ellipse"="rectangle","layer":id?,"name":str?} → {layer, frame:[x,y,w,h], shape}: Frame tool; a group clipped to the shape, holding pixel, type, shape or embedded layer layer `layer` if given"#,
             enabled: |s| s.active().map(|_| ()).ok_or_else(|| "no document open".into()),
             journal: true,
             run: new_frame,

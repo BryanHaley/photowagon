@@ -62,68 +62,6 @@ impl Normal {
     }
 }
 
-/// A sparse least-squares problem `min Σ w²(row·x − rhs)²`, solved by conjugate gradients on the
-/// normal equations (CGLS). Used for mesh warps with thousands of unknowns.
-#[derive(Default)]
-pub(crate) struct SparseLs {
-    pub n: usize,
-    rows: Vec<(Vec<(usize, f64)>, f64)>,
-}
-
-impl SparseLs {
-    pub fn new(n: usize) -> Self {
-        SparseLs { n, rows: Vec::new() }
-    }
-    pub fn add(&mut self, row: Vec<(usize, f64)>, rhs: f64, w: f64) {
-        self.rows.push((row.into_iter().map(|(i, c)| (i, c * w)).collect(), rhs * w));
-    }
-    /// CGLS from `x0`; at most `iters` iterations.
-    pub fn solve(&self, x0: &[f64], iters: usize) -> Vec<f64> {
-        let n = self.n;
-        let mut x = x0.to_vec();
-        let ax = |x: &[f64]| -> Vec<f64> { self.rows.iter().map(|(r, _)| r.iter().map(|&(i, c)| c * x[i]).sum()).collect() };
-        let atv = |v: &[f64]| -> Vec<f64> {
-            let mut out = vec![0.0; n];
-            for ((r, _), vi) in self.rows.iter().zip(v) {
-                for &(i, c) in r {
-                    out[i] += c * vi;
-                }
-            }
-            out
-        };
-        let mut r: Vec<f64> = self.rows.iter().zip(ax(&x)).map(|((_, b), a)| b - a).collect();
-        let mut s = atv(&r);
-        let mut p = s.clone();
-        let mut gamma: f64 = s.iter().map(|v| v * v).sum();
-        let g0 = gamma.max(1e-30);
-        for _ in 0..iters {
-            if gamma <= g0 * 1e-20 {
-                break;
-            }
-            let q = ax(&p);
-            let qq: f64 = q.iter().map(|v| v * v).sum();
-            if qq <= 1e-300 {
-                break;
-            }
-            let alpha = gamma / qq;
-            for i in 0..n {
-                x[i] += alpha * p[i];
-            }
-            for (ri, qi) in r.iter_mut().zip(&q) {
-                *ri -= alpha * qi;
-            }
-            s = atv(&r);
-            let g1: f64 = s.iter().map(|v| v * v).sum();
-            let beta = g1 / gamma;
-            gamma = g1;
-            for i in 0..n {
-                p[i] = s[i] + beta * p[i];
-            }
-        }
-        x
-    }
-}
-
 /// Runs `f(y, row)` for every row of a `w × h × ch` buffer, in parallel on native targets.
 pub(crate) fn par_rows<T: Send + Sync>(buf: &mut [T], w: usize, ch: usize, f: impl Fn(usize, &mut [T]) + Sync + Send) {
     let stride = (w * ch).max(1);
@@ -218,19 +156,15 @@ mod tests {
     use super::*;
 
     #[test]
-    fn dense_and_sparse_solvers_agree() {
+    fn dense_solver_fits_a_line() {
         // Overdetermined line fit y = 2x + 1.
         let mut ne = Normal::new(2);
-        let mut sp = SparseLs::new(2);
         for x in 0..10 {
             let y = 2.0 * x as f64 + 1.0;
             ne.add(&[(0, x as f64), (1, 1.0)], y, 1.0);
-            sp.add(vec![(0, x as f64), (1, 1.0)], y, 1.0);
         }
         let a = ne.solve().unwrap();
-        let b = sp.solve(&[0.0, 0.0], 50);
         assert!((a[0] - 2.0).abs() < 1e-9 && (a[1] - 1.0).abs() < 1e-9);
-        assert!((b[0] - 2.0).abs() < 1e-6 && (b[1] - 1.0).abs() < 1e-6, "{b:?}");
         assert!(solve_dense(2, vec![1.0, 2.0, 2.0, 4.0], vec![1.0, 2.0]).is_none());
     }
 

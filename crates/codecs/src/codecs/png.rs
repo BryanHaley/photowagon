@@ -27,6 +27,85 @@ pub(crate) fn dpi_of_ppm(ppm: u32) -> f32 {
 }
 
 pub(crate) fn decode(bytes: &[u8], limits: &Limits) -> Result<Image, CodecError> {
+    // Apple's iPhone PNG (an app bundle's images): a standard PNG once rewrapped, then BGRA
+    // premultiplied to RGBA straight.
+    if let Some(standard) = cgbi_to_standard(bytes, limits)? {
+        let mut img = decode_standard(&standard, limits)?;
+        if img.layout() == ChannelLayout::Rgba && img.sample_type() == SampleType::U8 {
+            for px in img.data_mut().as_chunks_mut::<4>().0 {
+                px.swap(0, 2);
+                let a = u32::from(px[3]);
+                if a > 0 && a < 255 {
+                    for c in &mut px[..3] {
+                        *c = ((u32::from(*c) * 255 + a / 2) / a).min(255) as u8;
+                    }
+                }
+            }
+        } else if img.layout() == ChannelLayout::Rgb && img.sample_type() == SampleType::U8 {
+            for px in img.data_mut().as_chunks_mut::<3>().0 {
+                px.swap(0, 2);
+            }
+        }
+        return Ok(img);
+    }
+    decode_standard(bytes, limits)
+}
+
+/// A CgBI PNG (its first chunk `CgBI`) as a standard one: the chunk dropped and the image data,
+/// raw deflate there, wrapped as zlib again. `None` for any other file.
+fn cgbi_to_standard(bytes: &[u8], limits: &Limits) -> Result<Option<Vec<u8>>, CodecError> {
+    const SIG: &[u8] = b"\x89PNG\r\n\x1a\n";
+    if bytes.len() < 16 || &bytes[..8] != SIG || bytes.get(12..16) != Some(b"CgBI") {
+        return Ok(None);
+    }
+    let mut chunks: Vec<([u8; 4], &[u8])> = Vec::new();
+    let mut idat = Vec::new();
+    let mut at = 8usize;
+    while at + 12 <= bytes.len() {
+        let len = u32::from_be_bytes([bytes[at], bytes[at + 1], bytes[at + 2], bytes[at + 3]]) as usize;
+        let ty = [bytes[at + 4], bytes[at + 5], bytes[at + 6], bytes[at + 7]];
+        let data = bytes.get(at + 8..at.saturating_add(8).saturating_add(len)).ok_or_else(|| err("CgBI chunk runs past the file"))?;
+        at = at.saturating_add(12).saturating_add(len);
+        match &ty {
+            b"CgBI" => {}
+            b"IDAT" => {
+                if idat.is_empty() {
+                    chunks.push((ty, &[]));
+                }
+                idat.extend_from_slice(data);
+            }
+            _ => chunks.push((ty, data)),
+        }
+        if &ty == b"IEND" {
+            break;
+        }
+    }
+    // The image data inflated, no larger than the image can be.
+    let ihdr = chunks.iter().find(|c| &c.0 == b"IHDR").map(|c| c.1).filter(|d| d.len() >= 13).ok_or_else(|| err("CgBI PNG without IHDR"))?;
+    let (w, h) = (u32::from_be_bytes([ihdr[0], ihdr[1], ihdr[2], ihdr[3]]), u32::from_be_bytes([ihdr[4], ihdr[5], ihdr[6], ihdr[7]]));
+    limits.check_bytes(w, h, 8)?;
+    let most = u64::from(w).saturating_mul(u64::from(h)).saturating_mul(8).saturating_add(u64::from(h)).saturating_add(1);
+    let mut raw = Vec::new();
+    std::io::Read::read_to_end(&mut std::io::Read::take(flate2::read::DeflateDecoder::new(idat.as_slice()), most), &mut raw).map_err(err)?;
+    let mut z = flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::fast());
+    z.write_all(&raw).map_err(err)?;
+    let zdata = z.finish().map_err(err)?;
+    let mut out = SIG.to_vec();
+    for (ty, data) in chunks {
+        let data = if &ty == b"IDAT" { zdata.as_slice() } else { data };
+        let len = u32::try_from(data.len()).map_err(|_| err("CgBI chunk too large"))?;
+        out.extend(len.to_be_bytes());
+        let mut crc = flate2::Crc::new();
+        crc.update(&ty);
+        crc.update(data);
+        out.extend(ty);
+        out.extend_from_slice(data);
+        out.extend(crc.sum().to_be_bytes());
+    }
+    Ok(Some(out))
+}
+
+fn decode_standard(bytes: &[u8], limits: &Limits) -> Result<Image, CodecError> {
     let mut input = Cursor::new(bytes);
     let mut decoder = png::Decoder::new_with_limits(&mut input, png::Limits { bytes: limits.alloc_usize() });
     decoder.set_transformations(png::Transformations::EXPAND);

@@ -4347,3 +4347,72 @@ shape	Appearance	Aspetto
 	GPU Memory (MB, 0 = Automatic)	Memoria GPU (MB, 0 = Automatico)
 	{name} was changed by another app after it was opened or saved here.	{name} è stato modificato da un'altra app dopo essere stato aperto o salvato qui.
 	Replace it with this document, or cancel and use File › Save As to keep both.	Sostituiscilo con questo documento, oppure annulla e usa File › Salva con nome per tenerli entrambi.
+# Renamed engine strings (same translations as the names they replaced).
+	Create Batch App…	Crea droplet…
+	Contact Sheet…	Provino a contatto II…
+	Merge to HDR…	Unisci in HDR Pro…
+	Panorama…	Photomerge…
+	Create Embedded Layer after Loading Layers	Crea oggetto avanzato dopo il caricamento dei livelli
+	Fill from Surroundings…	Riempimento in base al contenuto…
+	Content-Preserving Scale	Scala in base al contenuto
+	Pin Warp	Altera marionetta
+	Raw Develop…	Camera Raw…
+	New Embedded Layer via Copy	Nuovo oggetto avanzato tramite copia
+	Live Filter	Filtro avanzato
+	Convert for Live Filters	Converti per filtri avanzati
+	Clear Live Filters	Cancella filtri avanzati
+	Disable Live Filters	Disattiva filtri avanzati
+	Embedded Layers	Oggetti avanzati
+	Embedded Layer	Oggetto avanzato
+	Convert to Embedded Layer	Converti in oggetto avanzato
+	Refine Selection…	Seleziona e maschera…
+	Refine Selection (Legacy)	Migliora bordo
+	Develop…	Filtro Camera Raw…
+	Fluid Warp…	Fluidifica…
+	Perspective Planes…	Punto di fuga…
+	Blur Effects	Galleria sfocatura
+	Save these settings as a Raw Develop .xmp file	Salva queste impostazioni come file .xmp di Camera Raw
+	Load settings from a Raw Develop .xmp file	Carica le impostazioni da un file .xmp di Camera Raw
+	Loaded Raw Develop settings from {file}	Impostazioni Camera Raw caricate da {file}
+	Loaded Raw Develop settings from {file} ({n} not supported)	Impostazioni Camera Raw caricate da {file} ({n} non supportate)
+	Raw Develop isn't open	Camera Raw non è aperto
+	Commit Pin Warp ({key})	Conferma altera marionetta ({key})
+	Contact Sheet	Provino a contatto II
+	Create Batch App	Crea droplet
+	Filter for embedded layers	Filtra per oggetti avanzati
+	Fluid Warp is not open	Fluidifica non è aperto
+	Pin Warp is not active	Altera marionetta non attiva
+	Fill from Surroundings needs a selection on a pixel layer	Il Riempimento in base al contenuto richiede una selezione su un livello pixel
+	Could not use Pin Warp: no opaque pixels	Impossibile usare Altera marionetta: nessun pixel opaco
+	Could not use Pin Warp: the layer is empty	Impossibile usare Altera marionetta: livello vuoto
+	Repair Brush Tool	Strumento Pennello correttivo
+	Live Filters	Filtri avanzati
+	Spot Repair Brush Tool	Strumento Pennello correttivo al volo
+	Always create embedded layers when placing	Crea sempre oggetti avanzati all'inserimento
+	Raw Develop Defaults	Predefiniti Camera Raw
+	Open as embedded layer	Apri come oggetto avanzato
+	Embedded Layer Layer	Livello oggetto avanzato
+	Rasterize Embedded Layer	Rasterizza oggetto avanzato
+	Develop ({layer})	Filtro Camera Raw ({layer})
+	Raw Develop ({name})	Camera Raw ({name})
+	Repair Brush	Pennello correttivo
+	Spot Repair Brush	Pennello correttivo al volo
+	Perspective Planes: click four corners to create a plane	Punto di fuga: fai clic su quattro angoli per creare un piano
+	Perspective Planes is not active	Punto di fuga non è attivo
+	Apply Perspective Planes ({key})	Applica punto di fuga ({key})
+	Refine Selection (Legacy) Brush (R)	Pennello per migliorare il bordo (R)
+@plural	Updated {n} linked embedded layer changed on disk|Updated {n} linked embedded layers changed on disk	{n} oggetto avanzato collegato modificato su disco aggiornato|{n} oggetti avanzati collegati modificati su disco aggiornati
+	Delete Live Filters	Elimina filtri avanzati
+	Enable Live Filters	Attiva filtri avanzati
+	Move and Fill	Spostamento in base al contenuto
+	Commit Pin Warp (↩)	Conferma altera marionetta (↩)
+	Move and Fill Tool	Strumento Sposta in base al contenuto
+	Raw Develop	Camera Raw
+	Develop	Filtro Camera Raw
+	Fill from Surroundings	Riempimento in base al contenuto
+	Fluid Warp	Fluidifica
+	Merge to HDR	Unisci in HDR Pro
+	Panorama	Photomerge
+	Refine Selection	Seleziona e maschera
+	Perspective Planes	Punto di fuga
+	This Embedded Layer must be rasterized before proceeding. Its contents will no longer be editable. Rasterize the Embedded Layer?	Per procedere l'oggetto avanzato deve essere rasterizzato. Il contenuto non sarà più modificabile. Rasterizzare l'oggetto avanzato?

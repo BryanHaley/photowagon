@@ -1,4 +1,4 @@
-//! Blur Gallery: Tilt-Shift, Iris, Field (spatially varying Gaussian blur),
+//! Blur Gallery: Tilt-Shift, Iris, Variable (spatially varying Gaussian blur),
 //! Spin (rotational blur inside ellipses) and Path (motion along paths).
 //!
 //! Spatially varying blur interpolates between a stack of Gaussian levels
@@ -12,7 +12,7 @@ mod spin_plan;
 
 use crate::fxutil::{MAXC, add_sample_premul, gauss_blur_n, gauss_box_radii, premul_window, smoothstep, unpremul_px, xy};
 use crate::image::{Image, premultiply};
-use crate::{BlurPath, Ctx, FieldPin, IrisPin, SpinPin};
+use crate::{BlurPath, Ctx, IrisPin, SpinPin};
 
 #[cfg(test)]
 #[path = "tests_iris.rs"]
@@ -248,23 +248,14 @@ impl PreparedIris {
     }
 }
 
-/// Field Blur: blur amounts at pins, interpolated by inverse squared distance.
-pub(crate) fn field(src: &Image, out: Rect, ctx: &Ctx, pins: &[FieldPin]) -> Vec<f32> {
-    let b = ctx.bounds;
-    if pins.is_empty() {
-        return src.crop(out);
-    }
-    let smax = pins.iter().map(|p| sigma_of(p.blur)).fold(0.0, f32::max);
-    let pts: Vec<(f32, f32, f32)> =
-        pins.iter().map(|p| (b.x0 as f32 + p.x * b.width() as f32, b.y0 as f32 + p.y * b.height() as f32, sigma_of(p.blur))).collect();
+/// Variable Blur: each pixel is blurred by its `mask` value (0–1) times `blur`.
+pub(crate) fn variable(src: &Image, out: Rect, ctx: &Ctx, blur: f32, mask: Option<&Image>) -> Vec<f32> {
+    let smax = sigma_of(blur).max(0.0);
+    let mask = mask.filter(|m| m.ch > 0 && (m.rect.width() as usize).checked_mul(m.rect.height() as usize).and_then(|p| p.checked_mul(m.ch)) == Some(m.data.len()));
     variable_blur(src, out, ctx, smax, false, |x, y| {
-        let (mut ws, mut s) = (0.0f32, 0.0f32);
-        for &(px, py, sg) in &pts {
-            let w = 1.0 / ((x - px).powi(2) + (y - py).powi(2) + 1.0);
-            ws += w;
-            s += w * sg;
-        }
-        s / ws
+        let Some(m) = mask else { return smax };
+        let v = m.get(x.floor() as i32, y.floor() as i32, 0);
+        if v.is_finite() { smax * v.clamp(0.0, 1.0) } else { 0.0 }
     })
 }
 
@@ -337,22 +328,17 @@ fn spin_impl<const N: usize>(src: &Image, out: Rect, ctx: &Ctx, pins: &[SpinPin]
 }
 
 /// Path Blur: motion blur whose direction follows the nearest paths
-/// (inverse-distance weighted tangents) and whose length is the path speed,
-/// optionally tapering toward each path's end.
+/// (inverse-distance weighted tangents) and whose length is the path speed.
 pub(crate) fn path(src: &Image, out: Rect, ctx: &Ctx, paths: &[BlurPath]) -> Vec<f32> {
     let n = src.ch;
     let b = ctx.bounds;
     let (bw, bh) = (b.width() as f32, b.height() as f32);
-    // Segments in document space: (ax, ay, bx, by, path index, t0, t1 along path).
+    // Segments in document space: (ax, ay, bx, by, speed).
     let mut segs = Vec::new();
-    for (pi, p) in paths.iter().enumerate() {
+    for p in paths {
         let pts: Vec<(f32, f32)> = p.points.iter().map(|q| (b.x0 as f32 + q[0] * bw, b.y0 as f32 + q[1] * bh)).collect();
-        let total: f32 = pts.windows(2).map(|w| (w[1].0 - w[0].0).hypot(w[1].1 - w[0].1)).sum::<f32>().max(1e-3);
-        let mut run = 0.0;
         for w in pts.windows(2) {
-            let l = (w[1].0 - w[0].0).hypot(w[1].1 - w[0].1);
-            segs.push((w[0].0, w[0].1, w[1].0, w[1].1, pi, run / total, (run + l) / total));
-            run += l;
+            segs.push((w[0].0, w[0].1, w[1].0, w[1].1, p.speed.abs()));
         }
     }
     let mut res = src.crop(out);
@@ -365,18 +351,16 @@ pub(crate) fn path(src: &Image, out: Rect, ctx: &Ctx, paths: &[BlurPath]) -> Vec
         let (x, y) = xy(out, i);
         let (fx, fy) = (x as f32 + 0.5, y as f32 + 0.5);
         let (mut dx, mut dy, mut len, mut ws) = (0.0f32, 0.0f32, 0.0f32, 0.0f32);
-        for &(ax, ay, bx, by, pi, t0, t1) in &segs {
+        for &(ax, ay, bx, by, speed) in &segs {
             let (sx, sy) = (bx - ax, by - ay);
             let l2 = (sx * sx + sy * sy).max(1e-6);
             let t = (((fx - ax) * sx + (fy - ay) * sy) / l2).clamp(0.0, 1.0);
             let d2 = (fx - ax - sx * t).powi(2) + (fy - ay - sy * t).powi(2);
             let w = 1.0 / (d2 + 1.0);
             let l = l2.sqrt();
-            let p = &paths[pi];
-            let along = t0 + (t1 - t0) * t;
             dx += w * sx / l;
             dy += w * sy / l;
-            len += w * p.speed.abs() * (1.0 - p.taper.clamp(0.0, 100.0) / 100.0 * along);
+            len += w * speed;
             ws += w;
         }
         let m = (dx * dx + dy * dy).sqrt();

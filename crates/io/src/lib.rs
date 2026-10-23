@@ -44,6 +44,7 @@ pub mod doc_path;
 pub mod effects_map;
 pub mod exr_parts;
 mod flat;
+pub mod gimp_brush;
 mod gradient_bake;
 pub use gradient_bake::{Method as GradientMethod, bake as bake_gradient};
 mod kra;
@@ -239,6 +240,23 @@ impl TgaBits {
 /// `true` if `bytes` start with the PSD/PSB signature.
 pub fn is_psd(bytes: &[u8]) -> bool {
     bytes.starts_with(b"8BPS")
+}
+
+/// A decoded image (from a decoder outside the engine, such as libjxl in the app) as a document,
+/// as a flat file opens.
+pub fn import_image(name: &str, img: &photocraft_codecs::Image) -> Result<ImportResult, IoError> {
+    flat::image_to_document(name, img)
+}
+
+/// The flattened document as an image for an encoder outside the engine (such as libjxl in the
+/// app): CMYK kept as CMYK, and alpha kept or composited over white. Returns the warnings too.
+pub fn image_for_export(doc: &Document, keep_alpha: bool) -> Result<(photocraft_codecs::Image, Vec<String>), IoError> {
+    let mut warnings = Vec::new();
+    let mut img = flat::document_to_image_for(doc, &mut warnings, true, false)?;
+    if !keep_alpha && img.layout().has_alpha() {
+        img = flat::matte_over_white(&img)?;
+    }
+    Ok((img, warnings))
 }
 
 /// Imports a file. PSD/PSB, Affinity containers and camera raws are detected by magic; everything

@@ -4303,3 +4303,72 @@ shape	Appearance	Izgled
 	Increase Brush Size	Povećaj veličinu četkice
 	Decrease Brush Hardness	Smanji tvrdoću četkice
 	Increase Brush Hardness	Povećaj tvrdoću četkice
+# Renamed engine strings (same translations as the names they replaced).
+	Create Batch App…	Napravi droplet…
+	Contact Sheet…	Kontakt-list II…
+	Merge to HDR…	Spoji u HDR Pro…
+	Panorama…	Spajanje fotografija…
+	Create Embedded Layer after Loading Layers	Napravi pametni objekat posle učitavanja slojeva
+	Fill from Surroundings…	Popuna prema sadržaju…
+	Content-Preserving Scale	Skaliranje prema sadržaju
+	Pin Warp	Lutkarsko krivljenje
+	Raw Develop…	Camera Raw…
+	New Embedded Layer via Copy	Novi pametni objekat kopiranjem
+	Live Filter	Pametni filter
+	Convert for Live Filters	Pretvori za pametne filtere
+	Clear Live Filters	Ukloni pametne filtere
+	Disable Live Filters	Onemogući pametne filtere
+	Embedded Layers	Pametni objekti
+	Embedded Layer	Pametni objekat
+	Convert to Embedded Layer	Pretvori u pametni objekat
+	Refine Selection…	Izaberi i maskiraj…
+	Refine Selection (Legacy)	Doteraj ivicu
+	Develop…	Camera Raw filter…
+	Fluid Warp…	Tečno izobličavanje…
+	Perspective Planes…	Tačka nestajanja…
+	Blur Effects	Galerija zamućenja
+	Raw Develop isn't open	Camera Raw nije otvoren
+	Commit Pin Warp ({key})	Potvrdi lutkarsko krivljenje ({key})
+	Contact Sheet	Kontakt-list II
+	Create Batch App	Napravi droplet
+	Filter for embedded layers	Filtriraj pametne objekte
+	Fluid Warp is not open	Tečno izobličavanje nije otvoreno
+	Pin Warp is not active	Lutkarsko krivljenje nije aktivno
+	Fill from Surroundings needs a selection on a pixel layer	Popuna prema sadržaju zahteva selekciju na piksel sloju
+	Could not use Pin Warp: no opaque pixels	Lutkarsko krivljenje nije moguće: nema neprozirnih piksela
+	Could not use Pin Warp: the layer is empty	Lutkarsko krivljenje nije moguće: sloj je prazan
+	Repair Brush Tool	Alatka četkica za popravku
+	Live Filters	Pametni filteri
+	Spot Repair Brush Tool	Alatka četkica za tačkastu popravku
+	Always create embedded layers when placing	Uvek pravi pametne objekte pri postavljanju
+	Raw Develop Defaults	Podrazumevana Camera Raw podešavanja
+	Open as embedded layer	Otvori kao pametni objekat
+	Embedded Layer Layer	Sloj pametnog objekta
+	Rasterize Embedded Layer	Rasterizuj pametni objekat
+	Delete Live Filters	Obriši pametne filtere
+	Enable Live Filters	Omogući pametne filtere
+	Move and Fill	Pomeranje prema sadržaju
+	Commit Pin Warp (↩)	Potvrdi lutkarsko krivljenje (↩)
+	Develop ({layer})	Camera Raw filter ({layer})
+	Raw Develop ({name})	Camera Raw ({name})
+	Move and Fill Tool	Alatka za pomeranje prema sadržaju
+	Repair Brush	Četkica za popravku
+	Spot Repair Brush	Četkica za tačkastu popravku
+	Perspective Planes: click four corners to create a plane	Tačka nestajanja: kliknite četiri ugla da napravite ravan
+	Perspective Planes is not active	Tačka nestajanja nije aktivna
+	Apply Perspective Planes ({key})	Primeni tačku nestajanja ({key})
+	Refine Selection (Legacy) Brush (R)	Četkica za doterivanje ivice (R)
+@plural	Updated {n} linked embedded layer changed on disk|Updated {n} linked embedded layers changed on disk	Ažuriran je {n} povezani pametni objekat izmenjen na disku|Ažurirana su {n} povezana pametna objekta izmenjena na disku|Ažurirano je {n} povezanih pametnih objekata izmenjenih na disku
+	Raw Develop	Camera Raw
+	Develop	Camera Raw filter
+	Fill from Surroundings	Popuna prema sadržaju
+	Fluid Warp	Tečno izobličavanje
+	Merge to HDR	Spoji u HDR Pro
+	Panorama	Spajanje fotografija
+	Refine Selection	Izaberi i maskiraj
+	Perspective Planes	Tačka nestajanja
+	This Embedded Layer must be rasterized before proceeding. Its contents will no longer be editable. Rasterize the Embedded Layer?	Ovaj pametni objekat mora da se rasterizuje pre nastavka. Njegov sadržaj više neće moći da se uređuje. Rasterizovati pametni objekat?
+	Save these settings as a Raw Develop .xmp file	Sačuvaj ova podešavanja kao Camera Raw .xmp datoteku
+	Load settings from a Raw Develop .xmp file	Učitaj podešavanja iz Camera Raw .xmp datoteke
+	Loaded Raw Develop settings from {file}	Camera Raw podešavanja su učitana iz {file}
+	Loaded Raw Develop settings from {file} ({n} not supported)	Camera Raw podešavanja su učitana iz {file} (nije podržano: {n})

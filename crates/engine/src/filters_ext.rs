@@ -10,7 +10,7 @@
 use std::sync::Arc;
 
 use photocraft_algo::{
-    self as algo, BlurPath, BlurQuality, BlurShape, DepthSource, DiffuseMode, Distribution, ExtrudeType, FieldPin, FilterParams, HsbModel, IrisPin, LensType,
+    self as algo, BlurPath, BlurQuality, BlurShape, DepthSource, DiffuseMode, Distribution, ExtrudeType, FilterParams, HsbModel, IrisPin, LensType,
     Light, LightKind, MezzotintType, SmartBlurMode, SpinPin, TextureChannel, TileFill, UndefinedAreas, WindMethod, ZigZagStyle,
 };
 use photocraft_doc::{Document, Layer};
@@ -326,9 +326,7 @@ pub fn params_for(id: &str, p: &Value) -> Option<FilterParams> {
                 }]
             }),
         },
-        "filter.blurGallery.fieldBlur" => FilterParams::FieldBlur {
-            pins: list::<FieldPin>(p, "pins").unwrap_or_else(|| vec![FieldPin { x: f(p, "centerX", 0.5), y: f(p, "centerY", 0.5), blur: blur(15.0) }]),
-        },
+        VARIABLE_BLUR => FilterParams::VariableBlur { radius: f(p, "radius", 15.0).clamp(0.0, 500.0), mask: None },
         "filter.blurGallery.spinBlur" => FilterParams::SpinBlur {
             pins: list::<SpinPin>(p, "pins")
                 .map(|mut v| {
@@ -365,7 +363,6 @@ pub fn params_for(id: &str, p: &Value) -> Option<FilterParams> {
                     vec![BlurPath {
                         points: vec![[f(p, "startX", 0.2), f(p, "startY", 0.5)], [f(p, "endX", 0.8), f(p, "endY", 0.5)]],
                         speed: f(p, "speed", 50.0).clamp(0.0, 500.0),
-                        taper: f(p, "taper", 0.0).clamp(0.0, 100.0),
                     }]
                 }),
         },
@@ -428,9 +425,50 @@ fn map_from_document(doc: &Document, layer: Option<u64>) -> Option<algo::Image> 
     Some(algo::Image { rect: buf.rect, ch: 4, data: buf.px.iter().flatten().copied().collect() })
 }
 
+const VARIABLE_BLUR: &str = "filter.blurGallery.variableBlur";
+
+/// Params of earlier versions that are gone, so a recorded call fails instead of silently changing.
+fn reject_removed(id: &str, p: &Value) -> Result<()> {
+    let removed: &[&str] = match id {
+        VARIABLE_BLUR => &["pins", "blur", "centerX", "centerY"],
+        "filter.blurGallery.pathBlur" => &["taper"],
+        _ => &[],
+    };
+    let in_paths = id == "filter.blurGallery.pathBlur"
+        && p.get("paths").and_then(Value::as_array).is_some_and(|a| a.iter().any(|e| e.get("taper").is_some()));
+    match removed.iter().find(|k| p.get(**k).is_some()) {
+        Some(k) => Err(EngineError::BadParams { cmd: id.into(), msg: format!("`{k}` is not supported") }),
+        None if in_paths => Err(EngineError::BadParams { cmd: id.into(), msg: "`taper` is not supported".into() }),
+        None => Ok(()),
+    }
+}
+
+/// Variable Blur's per-pixel amount: the alpha channel named `mask`, else the selection. No
+/// selection leaves `mask` empty, which blurs everything fully.
+fn resolve_variable_blur(s: &Session, mask: &mut Option<Arc<algo::Image>>, p: &Value) -> Result<()> {
+    let doc = &s.active().ok_or(EngineError::NoDocument)?.doc;
+    let surf = match p.get("mask") {
+        None | Some(Value::Null) => doc.selection.as_ref(),
+        Some(Value::String(name)) if name.is_empty() => doc.selection.as_ref(),
+        Some(Value::String(name)) => Some(
+            &doc.channels
+                .iter()
+                .find(|c| c.name == *name)
+                .ok_or_else(|| EngineError::BadParams { cmd: VARIABLE_BLUR.into(), msg: format!("no alpha channel named `{name}`") })?
+                .surface,
+        ),
+        Some(_) => return Err(EngineError::BadParams { cmd: VARIABLE_BLUR.into(), msg: "`mask` must be an alpha channel name".into() }),
+    };
+    *mask = surf.map(|m| Arc::new(algo::Image::read(m, m.content_bounds())));
+    Ok(())
+}
+
 /// Resolves inputs that live outside the target layer: Displace's map (`mapPath`, or
-/// `mapDocument` index with optional `mapLayer` id).
+/// `mapDocument` index with optional `mapLayer` id) and Variable Blur's mask.
 pub(crate) fn resolve(s: &Session, fp: &mut FilterParams, p: &Value) -> Result<()> {
+    if let FilterParams::VariableBlur { mask, .. } = fp {
+        return resolve_variable_blur(s, mask, p);
+    }
     let FilterParams::Displace { map, .. } = fp else { return Ok(()) };
     if map.is_some() {
         return Ok(());
@@ -553,7 +591,10 @@ macro_rules! cmd {
             shortcut: None,
             params: $params,
             enabled: crate::filters::has_filterable_layer,
-            run: |s, p| crate::filters::run_filter(s, $id, p),
+            run: |s, p| {
+                reject_removed($id, p)?;
+                crate::filters::run_filter(s, $id, p)
+            },
             journal: true,
         }
     };
@@ -674,32 +715,32 @@ pub fn specs() -> Vec<CommandSpec> {
         cmd!(
             "filter.blurGallery.tiltShift",
             "Tilt-Shift…",
-            ["Filter", "Blur Gallery"],
+            ["Filter", "Blur Effects"],
             r##"{"blur":0..500=15,"centerX":0..1=0.5,"centerY":0..1=0.5,"angle":-90..90=0,"focus":0..1=0.1,"transition":0.01..1=0.15}"##
         ),
         cmd!(
             "filter.blurGallery.irisBlur",
             "Iris Blur…",
-            ["Filter", "Blur Gallery"],
+            ["Filter", "Blur Effects"],
             r##"{"blur":0..500=15,"centerX":0..1=0.5,"centerY":0..1=0.5,"radiusX":0.01..1=0.35,"radiusY":0.01..1=0.25,"angle":-180..180=0,"roundness":0..100=0,"feather":0..0.99=0.5,"pins":json}"##
         ),
         cmd!(
-            "filter.blurGallery.fieldBlur",
-            "Field Blur…",
-            ["Filter", "Blur Gallery"],
-            r##"{"blur":0..500=15,"centerX":0..1=0.5,"centerY":0..1=0.5,"pins":json}"##
+            "filter.blurGallery.variableBlur",
+            "Variable Blur…",
+            ["Filter", "Blur Effects"],
+            r##"{"radius":0..500=15,"mask":str? (alpha channel name; default the selection, or all of the layer without one)} (each pixel is blurred by its mask value times radius)"##
         ),
         cmd!(
             "filter.blurGallery.spinBlur",
             "Spin Blur…",
-            ["Filter", "Blur Gallery"],
+            ["Filter", "Blur Effects"],
             r##"{"blurAngle":0..360=15,"centerX":0..1=0.5,"centerY":0..1=0.5,"radiusX":0.01..1=0.3,"radiusY":0.01..1=0.3,"angle":-180..180=0,"pins":json}"##
         ),
         cmd!(
             "filter.blurGallery.pathBlur",
             "Path Blur…",
-            ["Filter", "Blur Gallery"],
-            r##"{"speed":0..500=50,"taper":0..100=0,"startX":0..1=0.2,"startY":0..1=0.5,"endX":0..1=0.8,"endY":0..1=0.5,"paths":json}"##
+            ["Filter", "Blur Effects"],
+            r##"{"speed":0..500=50,"startX":0..1=0.2,"startY":0..1=0.5,"endX":0..1=0.8,"endY":0..1=0.5,"paths":json}"##
         ),
         // Other
         cmd!("filter.other.custom", "Custom…", ["Filter", "Other"], r##"{"kernel":int[25],"scale":1..9999=1,"offset":-9999..9999=0}"##),

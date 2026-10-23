@@ -329,7 +329,7 @@ pub fn document_to_image(doc: &Document, warnings: &mut Vec<String>) -> Result<I
 }
 
 /// `cmyk_target` / `lab_target`: the format stores CMYK / Lab pixels.
-fn document_to_image_for(doc: &Document, warnings: &mut Vec<String>, cmyk_target: bool, lab_target: bool) -> Result<Image, IoError> {
+pub(crate) fn document_to_image_for(doc: &Document, warnings: &mut Vec<String>, cmyk_target: bool, lab_target: bool) -> Result<Image, IoError> {
     let (w, h) = (doc.size.width, doc.size.height);
     let canvas = doc.bounds();
     let fmt = doc.pixel_format();
@@ -697,7 +697,7 @@ fn map_bands(img: &Image, layout: ChannelLayout, sample: CSample, f: impl Fn(Vec
 }
 
 /// Straight-alpha pixels composited over white (no ink for CMYK), without the alpha channel.
-fn matte_over_white(img: &Image) -> Result<Image, IoError> {
+pub(crate) fn matte_over_white(img: &Image) -> Result<Image, IoError> {
     let layout = img.layout();
     let white = if layout.is_cmyk() { 0.0 } else { 1.0 };
     map_bands(img, layout.without_alpha(), img.sample_type(), |vals| {

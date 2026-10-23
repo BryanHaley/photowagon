@@ -1198,7 +1198,7 @@ pub fn specs() -> Vec<CommandSpec> {
             "image.analysis.setMeasurementScale",
             "Set Measurement Scale…",
             ["Image", "Analysis"],
-            r##"{"preset":"default|custom"="custom","pixelLength":px,"logicalLength":number,"units":str (e.g. "mm")} (no params: read the scale)"##,
+            r##"{"preset":"default|custom"="custom","pixelLength":px=100,"logicalLength":0.0001..1000000=1,"units":str (e.g. "mm")} (no params: read the scale)"##,
             has_doc,
             set_scale,
             true

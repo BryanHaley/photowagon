@@ -29,6 +29,19 @@ use photocraft_raster::Rgba8Image;
 use crate::color_cmds::{ColorState, composite_profile, mode_space, profile_from_bytes, resolve_profile};
 use crate::{EngineError, Result};
 
+/// The document's composite at most `max_side` pixels on its longer side, converted to sRGB:
+/// for previews that the platform shows as sRGB.
+pub fn srgb_thumbnail(doc: &Document, max_side: u32) -> Result<Rgba8Image> {
+    let mut buf = photocraft_compose::thumbnail_buffer(doc, max_side);
+    let src = composite_profile(doc);
+    let dst = Builtin::Srgb.profile();
+    if !src.same_colors(dst) {
+        let t = Transform::new(&src, dst, DISPLAY_INTENT, DISPLAY_BPC).map_err(|e| EngineError::Other(e.to_string()))?;
+        t.apply(buf.px.as_flattened_mut(), 4);
+    }
+    Ok(buf.to_rgba8())
+}
+
 /// Display intent and black point compensation of the monitor transform.
 pub const DISPLAY_INTENT: Intent = Intent::RelativeColorimetric;
 pub const DISPLAY_BPC: bool = true;

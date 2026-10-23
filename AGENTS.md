@@ -1,6 +1,39 @@
 # AGENTS.md: guide for AI agents and contributors
 
-PhotoCraft is an open-source, native, Photoshop-comparable image editor written in **Rust only** (no JavaScript or TypeScript). **No Tauri, Electron or webview shells:** the desktop app is native egui/eframe on wgpu, and the web build is the same Rust compiled to WebAssembly (trunk + wasm-bindgen). Never add Tauri (or any webview/JS UI framework) as a dependency, build step or packaging target. The product name is always written **PhotoCraft** (`{Function}Craft` in PascalCase, like its siblings ArtCraft, ArtCraftX, DesignCraft, VectorCraft, EffectCraft, FilmCraft, LightCraft, PdfCraft) in user-facing text: UI, window titles, About, installers, release names, docs prose. Machine names stay lowercase: crates (`photocraft-*`), binaries, file names, ids (`ai.storyteller.photocraft`). Standards and learnings shared across the crafting apps live in `../craftrules` (read its `README.md`; the repository is not public — outside contributors should ask a maintainer for the standards relevant to their change). Contribute reusable learnings there; shared Rust components live in [storytold/craft-libs](https://github.com/storytold/craft-libs) and are pinned by immutable git revision. UI libraries stay at L6. The goal is 1:1 Photoshop parity (same menus, shortcuts, behaviour and file fidelity) with better performance, and every feature drivable by agents. Read this file first, then `docs/`.
+**PhotoWagon** is a native iOS photo editor (SwiftUI, iPhone and iPad) built on the PhotoCraft
+Rust engine. **The goal is an app a Photoshop user could switch to without help, not a copy of
+Photoshop.** Menus, tools and panels sit where a Photoshop user would look for them. Their names
+are similar and meaningful, so a Photoshop user recognises them, but they aren't Adobe's (Fill from
+Surroundings for Content-Aware Fill, Develop for Camera Raw, Embedded Layers for Smart Objects).
+Keep Photoshop's exact word only when there's no other way to say it (Layers, Brush, Crop), and
+never use one of Adobe's trademarks as our name: `docs/trademark-guardrails.md` lists them, our
+replacements, and how to name Photoshop when we mean its file format. Lay things out for touch.
+Never use a method covered by a patent still in force: the README's Patents section lists what was
+removed and why.
+Our plan and roadmap are local, not checked in: read `plan/ios-port.md` and `plan/ios-roadmap.md` first if you have them.
+
+**Testing: design for unit tests.** Put logic where a unit test can reach it: in `EditorModel`,
+a small type or a `static func`, not inside a SwiftUI view or a `UIView`'s gesture handler. Every
+change to app logic comes with unit tests in `ios/PhotoWagonTests` (hosted in the app, a real
+`EditorModel()` and engine, no UI; they run in seconds). Aim for more than 50% line coverage of
+the app's own Swift (not the generated `Core/photocraft_ffi.swift`). Test what matters, not
+everything: real branches, the cases a user hits, the edges that broke before; no tests of
+trivial getters or layout. The end-to-end UI tests (`ios/PhotoWagonUITests`) check what only the
+real UI can (taps, sheets, system pickers, the walkthroughs as a whole): run the unit tests on
+every change, the UI tests for the classes you touched, and the full UI run rarely, two
+simulators at a time.
+
+The engine (`crates/`) is a fork of PhotoCraft and keeps that name in code (`photocraft-*`
+crates, ids). PhotoCraft's own desktop, web and CLI apps are still in the tree. Most of the rest of
+this file is upstream PhotoCraft's guidance for the engine and those apps: follow it where it
+helps, but this goal wins where they disagree (for example, upstream aimed at 1:1 Photoshop
+parity; we don't).
+
+Upstream notes: PhotoCraft is written in **Rust only**, with no Tauri, Electron or webview
+shells (the desktop app is egui/eframe on wgpu, the web build is the same Rust compiled to
+WebAssembly). Standards shared across the crafting apps live in `../craftrules`, and shared Rust
+components live in [storytold/craft-libs](https://github.com/storytold/craft-libs), pinned by git
+revision. UI libraries stay at L6.
 
 ## 1. Orientation (5 minutes)
 
@@ -35,6 +68,8 @@ crates/
   engine                     L5 Session + command registry (every action is a command)
   ui-egui automation         L6 egui shell (thin: all actions go through the engine); MCP server
   testkit                    test helpers
+  ffi                        the Swift bridge (UniFFI) PhotoWagon calls
+ios/                         PhotoWagon: SwiftUI app (PhotoWagon/), UI tests (PhotoWagonUITests/), XcodeGen project.yml
 apps/
   photocraft                 desktop app (eframe/wgpu), TCP control server
   photocraft-cli             headless CLI (convert/info/run/batch/commands/mcp)
@@ -62,7 +97,7 @@ People trust PhotoCraft with their work, and a crash loses it. A malformed file,
 
 1. **Everything is a command.** New user-visible behaviour = a command in the engine (`crates/engine/src/*_cmds.rs`, registered in `commands.rs`) with id, label, menu path, shortcut, params doc, `enabled` and `run`, plus tests. The UI, CLI, control channel and MCP all dispatch commands by id. Use the **exact id from `crates/ui-egui/src/menu_catalog.rs`** and the menu item goes live automatically. Only pure view/window state (zoom, panels, screen mode) belongs to the shell (`menus.rs` `UI_COMMANDS`).
 2. **No format or colour assumptions.** Bit depth (8/16/32f) and colour model (RGB/Gray/CMYK/Lab…) are runtime data. Never introduce a `u8`-only pixel path in public APIs. Never assume sRGB: colour conversions go through `photocraft-cms` (`Transform`, `transform::cached`). Test at several depths.
-3. **Clean-room.** We studied Photoshop and other proprietary editors for *behaviour and look only*. Never copy their code, shaders, profiles or assets. Implement from public specs (Adobe PSD spec, ICC, ISO 32000 blend modes, papers) and observation. Third-party assets must be permissively licensed, keep their license file next to them, and get a row in `ATTRIBUTION.md` (path, title, author, source, license) in the same change; so do original assets. The ArtCraft logos in `docs/brand/` are not open source (`docs/brand/LICENSE-brand.txt`). **Never commit font files:** fonts live in [storytold/craft-fonts](https://github.com/storytold/craft-fonts) (rules: `../craftrules/standards/fonts.md`). PhotoCraft uses it through the optional build input `CRAFT_FONTS_DIR=<craft-fonts checkout>` (read by `crates/text/build.rs`, exposed as `photocraft_text::CRAFT_FONTS`; empty without it, and everything must still work). Build with it: `CRAFT_FONTS_DIR="$PWD/../craft-fonts" cargo build`; details in `docs/development.md` › Fonts.
+3. **Clean-room.** We studied Photoshop and other proprietary editors for *behaviour and look only*. Never copy their code, shaders, profiles or assets. Implement from public specs (Adobe PSD spec, ICC, ISO 32000 blend modes, papers) and observation. Before implementing a method from a paper, check it isn't patented and in force (Adobe's especially); if it is, find another method or leave the feature out, and record it in the README's Patents section. Read `docs/patent-guardrails.md` before adding or changing a feature in an area it lists. Read `docs/trademark-guardrails.md` before naming a feature, tool, menu item, message or icon. Code under a copyleft ("viral") licence such as the GPL, LGPL or AGPL may be read to learn a method but never copied. Third-party assets must be permissively licensed, keep their license file next to them, and get a row in `ATTRIBUTION.md` (path, title, author, source, license) in the same change; so do original assets. **Never commit font files:** fonts live in [storytold/craft-fonts](https://github.com/storytold/craft-fonts) (rules: `../craftrules/standards/fonts.md`). PhotoCraft uses it through the optional build input `CRAFT_FONTS_DIR=<craft-fonts checkout>` (read by `crates/text/build.rs`, exposed as `photocraft_text::CRAFT_FONTS`; empty without it, and everything must still work). Build with it: `CRAFT_FONTS_DIR="$PWD/../craft-fonts" cargo build`; details in `docs/development.md` › Fonts.
 4. **Tests are the gate.** Every change comes with tests. Format crates use round-trip, synthetic-generator, oracle and fuzz tests. Keep the PSD corpus results and the parity floor (`crates/ui-egui/src/parity.rs`) from regressing.
 5. **The UI is thin and data-driven.** UI state lives in `ui-egui/src/state.rs` (serde), so the control channel can read and drive it. Colours and radii come from `theme::Tokens`, never hard-coded.
 6. **Verify UI changes visually.** Render offscreen with `cargo run -p photocraft-ui-egui --example snapshot` (no window, no focus stealing), or launch with `--control` and take `ui.screenshot`. Look at the PNG. Demo images must be public-domain art, never personal photos. When fetching assets, never put a person's name, email or other personal details in requests (User-Agent, headers, URLs); use a generic `Photocraft-dev` User-Agent.
@@ -73,7 +108,7 @@ People trust PhotoCraft with their work, and a crash loses it. A malformed file,
 
 ## 4. Picking work
 
-Priorities: important infrastructure first, then low-hanging parity, then the long tail.
+Priorities for PhotoWagon: what `plan/ios-roadmap.md` lists, and the walkthrough steps the app can't do yet. The upstream list below measures the engine and desktop app against Photoshop; use it to find engine work, not as the app's goal.
 
 0. **Read `ROADMAP.md`, then `docs/gaps.md`.** `docs/target-app-parity.md` says, dimension by
    dimension, where PhotoCraft is lacking; `docs/gaps.md` ranks the work. `docs/parity-checklist.md`
@@ -87,7 +122,7 @@ Priorities: important infrastructure first, then low-hanging parity, then the lo
 3. `cargo xtask parity` → `docs/parity-checklist.md` lists every missing menu item, grouped by menu. Low-hanging fruit is usually a missing command whose algorithm already exists in `algo`, `paint`, `vector` or `text`.
 4. `log/devlog.md` → the "Still open" bullets of recent entries.
 
-When parity rises, raise `FLOOR` in `crates/ui-egui/src/parity.rs` (never lower it).
+When parity rises, raise `FLOOR` in `crates/ui-egui/src/parity.rs`. Lower it only when a command is deleted on purpose (for example, for a patent), and say why next to it.
 
 ## 5. Before you finish a task
 

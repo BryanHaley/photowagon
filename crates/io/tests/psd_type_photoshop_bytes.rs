@@ -69,6 +69,9 @@ fn tysh_trailing_bounds_match_photoshop() {
 fn version_info_matches_photoshop() {
     for file in ["text/antialias-smooth.psd", "text/warp-arc-50.psd"] {
         let theirs = corpus(file);
-        assert_eq!(photocraft_psd::resources::version_info_resource(true).data, theirs.resource(1057).unwrap().data, "{file}");
+        let ours = photocraft_psd::resources::VersionInfo::from_bytes(&photocraft_psd::resources::version_info_resource(true).data).unwrap();
+        let theirs = photocraft_psd::resources::VersionInfo::from_bytes(&theirs.resource(1057).unwrap().data).unwrap();
+        assert_eq!((ours.version, ours.has_real_merged_data, ours.file_version), (theirs.version, theirs.has_real_merged_data, theirs.file_version), "{file}");
+        assert_eq!(ours.writer.to_string_lossy(), "PhotoWagon", "{file}");
     }
 }

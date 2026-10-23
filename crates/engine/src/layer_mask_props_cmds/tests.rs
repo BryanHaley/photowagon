@@ -170,3 +170,50 @@ fn malformed_params_missing_masks_and_stale_documents_do_not_edit() {
     assert!(!empty.is_enabled(EDIT));
     assert!(empty.execute(EDIT, json!({"density": 50})).is_err());
 }
+
+#[test]
+fn copy_and_move_a_mask_to_another_layer() {
+    let (mut s, id, background) = session(SampleType::U8, false);
+    let other = s.execute("layer.new.layer", json!({})).unwrap();
+    let other = LayerId(other["layer"].as_u64().unwrap_or_else(|| s.active().unwrap().active_layer.unwrap().0));
+    s.execute(COPY_TO, json!({"layer": id.0, "to": other.0})).unwrap();
+    let doc = &s.active().unwrap().doc;
+    assert_eq!(doc.layer(other).unwrap().mask.as_ref().unwrap().surface.pixel(1, 2)[0], s.active().unwrap().doc.layer(id).unwrap().mask.as_ref().unwrap().surface.pixel(1, 2)[0]);
+    assert!(doc.layer(id).unwrap().mask.is_some(), "a copy keeps the original");
+    s.execute(COPY_TO, json!({"layer": other.0, "to": id.0, "move": true})).unwrap();
+    let doc = &s.active().unwrap().doc;
+    assert!(doc.layer(other).unwrap().mask.is_none(), "moved off");
+    assert!(s.undo());
+    assert!(s.active().unwrap().doc.layer(other).unwrap().mask.is_some());
+    for bad in [json!({"layer": id.0, "to": id.0}), json!({"layer": id.0}), json!({"layer": id.0, "to": 9999}), json!({"layer": background.0, "to": id.0}), json!({"layer": id.0, "to": other.0, "move": 1})] {
+        assert!(s.execute(COPY_TO, bad.clone()).is_err(), "{bad}");
+    }
+}
+
+#[test]
+fn clear_fills_a_targeted_mask_with_the_background_colour() {
+    let (mut s, id, _) = session(SampleType::U8, true);
+    s.select_layer(id).unwrap();
+    s.execute("select.deselect", json!({})).unwrap();
+    s.tools.background = [0.0, 0.0, 0.0, 1.0];
+    s.execute("edit.clear", json!({"target": "mask"})).unwrap();
+    assert_eq!(s.active().unwrap().doc.layer(id).unwrap().mask.as_ref().unwrap().surface.pixel(6, 6)[0], 0.0, "black hides all");
+}
+
+#[test]
+fn clear_fills_the_targeted_mask_of_a_pixel_layer() {
+    let mut s = Session::new();
+    s.execute("file.new", json!({"width": 40, "height": 40})).unwrap();
+    s.execute("layer.new.layer", json!({})).unwrap();
+    s.execute("edit.fill", json!({"contents": "gray"})).unwrap();
+    s.execute("layer.layerMask.hideAll", json!({})).unwrap();
+    s.execute("channel.target.layerMask", json!({})).unwrap();
+    s.execute("select.rect", json!({"x": 0, "y": 0, "width": 20, "height": 20})).unwrap();
+    s.execute("tools.swapColors", json!({})).unwrap();
+    s.execute("edit.clear", json!({})).unwrap();
+    let st = s.active().unwrap();
+    let l = st.doc.layer(st.active_layer.unwrap()).unwrap();
+    // A targeted mask has its own colours (white in front, black behind): swapped here.
+    assert_eq!(l.mask.as_ref().unwrap().surface.pixel(5, 5)[0], 1.0, "white, the background colour once swapped");
+    assert!(l.surface().unwrap().rgba(5, 5)[3] > 0.99, "the pixels stay");
+}

@@ -34,7 +34,6 @@ photocraft-plugins = { workspace = true }
 blake3 = { version = "1.8", default-features = false, features = ["pure"] }
 photocraft-codecs = { workspace = true }
 flate2 = { workspace = true }
-craft-print = { workspace = true }
 
 # Photoshop `.kys` shortcut sets (`edit.keyboardShortcuts` `importKys`); already in the tree
 # through photocraft-ui-egui and usvg.
@@ -44,8 +43,12 @@ roxmltree = "0.20"
 tempfile = "3"
 
 # Printing on Unix: an IPP client for CUPS (pure Rust); the web build cannot print.
-[target.'cfg(all(not(target_arch = "wasm32"), not(target_os = "windows")))'.dependencies]
+[target.'cfg(all(not(target_arch = "wasm32"), not(target_os = "windows"), not(target_os = "ios")))'.dependencies]
 photocraft-ipp = { workspace = true }
+
+# The CUPS / Windows print spooler. iOS has neither and prints through `Session::print_spooler`.
+[target.'cfg(not(target_os = "ios"))'.dependencies]
+craft-print = { workspace = true }
 
 [dev-dependencies]
 photocraft-affinity = { workspace = true, features = ["synth"] }

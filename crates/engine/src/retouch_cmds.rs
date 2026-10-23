@@ -103,7 +103,7 @@ fn has_pixel_layer(s: &Session) -> std::result::Result<(), String> {
     if matches!(l.content, LayerContent::Raster(_)) || l.mask.is_some() {
         Ok(())
     } else {
-        Err(format!("active layer is {} {} layer, not a pixel layer", l.content.article(), l.content.kind_name()))
+        Err(format!("not on {} layers", l.content.kind_name()))
     }
 }
 
@@ -460,7 +460,7 @@ impl LiveRetouch {
                 }
             }
             "paint.historyBrush" => LivePaint::History(history_source(s, id, p, cmd)?),
-            other => return Err(bad(other, "live retouching strokes are the Clone Stamp, Healing Brush and History Brush")),
+            other => return Err(bad(other, "live retouching strokes are the Clone Stamp, Repair Brush and History Brush")),
         };
         let st = s.active().ok_or(EngineError::NoDocument)?;
         let (pre, base) = (st.doc.clone(), (st.doc.id, st.revision));
@@ -657,7 +657,7 @@ fn healing_brush(s: &mut Session, p: &Value) -> Result<Value> {
     let aligned = flag(p, "aligned", true);
     let map = clone_mapping(s, p, &stroke, CMD)?;
     let off = map.offset();
-    let dmg = run_stroke(s, "Healing Brush", id, p, |pre, surf, sel, lock| {
+    let dmg = run_stroke(s, "Repair Brush", id, p, |pre, surf, sel, lock| {
         let (bounds, cov) = coverage(CMD, &stroke)?;
         let (g, cov) = pad_coverage(bounds, &cov, 2);
         let fmt = surf.format();
@@ -745,35 +745,11 @@ fn dilate(w: usize, h: usize, m: &[bool], r: usize) -> Vec<bool> {
     out
 }
 
-/// Copy a translated Proximity Match patch from the *pre-healing* pixels. Reading
-/// `out` here would make overlapping offsets repeatedly copy the pixels just written,
-/// leaving streaks instead of the selected source texture.
-fn proximity_source_patch(img: &[f32], w: usize, h: usize, ch: usize, mask: &[bool], dx: i32, dy: i32) -> Option<Vec<f32>> {
-    if w == 0 || h == 0 || ch == 0 || mask.len() != w.checked_mul(h)? || img.len() != mask.len().checked_mul(ch)? {
-        return None;
-    }
-    let mut out = img.to_vec();
-    for (p, masked) in mask.iter().enumerate() {
-        if !masked {
-            continue;
-        }
-        let x = i32::try_from(p % w).ok()?.checked_add(dx)?;
-        let y = i32::try_from(p / w).ok()?.checked_add(dy)?;
-        if x < 0 || y < 0 || x >= i32::try_from(w).ok()? || y >= i32::try_from(h).ok()? {
-            return None;
-        }
-        let src = (usize::try_from(y).ok()?.checked_mul(w)? + usize::try_from(x).ok()?).checked_mul(ch)?;
-        let dst = p.checked_mul(ch)?;
-        out.get_mut(dst..dst + ch)?.copy_from_slice(img.get(src..src + ch)?);
-    }
-    Some(out)
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum SpotType {
     ContentAware,
     CreateTexture,
-    ProximityMatch,
+    MatchNearby,
 }
 
 /// Fill the stroke area with no source, then gradient-domain blend it into its surroundings. With
@@ -789,8 +765,6 @@ fn spot_heal_surface(surf: &mut Surface, pre: &Document, stroke: &Stroke, kind: 
     if region_rect.is_empty() {
         return Ok(Rect::EMPTY);
     }
-    // Proximity Match looks for its source anywhere in that window.
-    let margin = (region_rect.width().max(region_rect.height()) / 2) as i32;
     let fmt = surf.format();
     let img = if all { composite_region(pre, None, SampleLayers::All, region_rect, fmt) } else { Region::read(surf, region_rect) };
     let (w, h, ch) = (img.width(), img.height(), img.ch);
@@ -816,12 +790,8 @@ fn spot_heal_surface(surf: &mut Surface, pre: &Document, stroke: &Stroke, kind: 
     let filled = match kind {
         SpotType::ContentAware => content_aware(&img.data),
         SpotType::CreateTexture => inpaint::synthesize(w, h, ch, &img.data, &domain, (size / 4.0).clamp(6.0, 32.0) as usize, 0x5eed),
-        SpotType::ProximityMatch => {
-            let ring = (size / 8.0).clamp(3.0, 16.0) as usize;
-            match inpaint::best_offset(w, h, ch, &img.data, &domain, ring, margin) {
-                Some((dx, dy)) => proximity_source_patch(&img.data, w, h, ch, &domain, dx, dy).unwrap_or_else(|| content_aware(&img.data)),
-                None => content_aware(&img.data),
-            }
+        SpotType::MatchNearby => {
+            photocraft_algo::resynth::heal(w, h, ch, &img.data, &domain, 0x5eed).unwrap_or_else(|| poisson::membrane_fill(w, h, ch, &img.data, &domain))
         }
     };
     let src = Region { rect: region_rect, ch, data: filled };
@@ -838,11 +808,12 @@ fn spot_healing(s: &mut Session, p: &Value) -> Result<Value> {
     let kind = match string(p, "type", "contentAware") {
         "contentAware" => SpotType::ContentAware,
         "createTexture" => SpotType::CreateTexture,
-        "proximityMatch" => SpotType::ProximityMatch,
-        o => return Err(bad(CMD, format!("unknown type `{o}` (contentAware|createTexture|proximityMatch)"))),
+        // `proximityMatch`: the old name.
+        "matchNearby" | "proximityMatch" => SpotType::MatchNearby,
+        o => return Err(bad(CMD, format!("unknown type `{o}` (contentAware|createTexture|matchNearby)"))),
     };
     let all = sample_all_layers(p);
-    let dmg = run_stroke(s, "Spot Healing Brush", id, p, |pre, surf, sel, lock| spot_heal_surface(surf, pre, &stroke, kind, all, sel, lock))?;
+    let dmg = run_stroke(s, "Spot Repair Brush", id, p, |pre, surf, sel, lock| spot_heal_surface(surf, pre, &stroke, kind, all, sel, lock))?;
     Ok(json!({ "damage": damage_json(dmg) }))
 }
 
@@ -888,7 +859,7 @@ fn color_dab(fmt: &PixelFormat, work: &mut Region, fp: &Footprint, strength: f32
 /// brush stroke, capped at full coverage, so Exposure caps a stroke the way Opacity caps a paint
 /// stroke: overlapping dabs and passes within one stroke don't compound the tone curve, and a
 /// new stroke builds on the last.
-fn tone_stroke(fmt: PixelFormat, toned: impl Fn([f32; 3]) -> [f32; 3] + 'static) -> DabEffect {
+fn tone_stroke(fmt: PixelFormat, toned: impl Fn([f32; 3]) -> [f32; 3] + Send + 'static) -> DabEffect {
     /// Side of the cells that remember, per touched pixel, the coverage applied so far and the
     /// original pixel (copied from the working pixels the first time a dab reaches it). Dense
     /// cells rather than a map per pixel: a map lookup per covered pixel made long strokes with
@@ -974,7 +945,7 @@ enum DabTool {
 }
 
 /// One dab's edit of the working copy.
-pub(crate) type DabEffect = Box<dyn FnMut(&mut Region, &Footprint)>;
+pub(crate) type DabEffect = Box<dyn FnMut(&mut Region, &Footprint) + Send>;
 
 impl DabTool {
     /// The tool for `cmd` and its history label.
@@ -1311,7 +1282,7 @@ pub fn specs() -> Vec<CommandSpec> {
         },
         CommandSpec {
             id: "paint.healingBrush",
-            label: "Healing Brush",
+            label: "Repair Brush",
             menu: &[],
             shortcut: None,
             params: brush_params!(
@@ -1323,10 +1294,10 @@ pub fn specs() -> Vec<CommandSpec> {
         },
         CommandSpec {
             id: "paint.spotHealing",
-            label: "Spot Healing Brush",
+            label: "Spot Repair Brush",
             menu: &[],
             shortcut: None,
-            params: brush_params!(r#","type":"contentAware|createTexture|proximityMatch"="contentAware","sampleAllLayers":bool=false"#),
+            params: brush_params!(r#","type":"contentAware|createTexture|matchNearby"="contentAware","sampleAllLayers":bool=false"#),
             enabled: has_pixel_layer,
             run: spot_healing,
             journal: true,
@@ -1343,7 +1314,7 @@ pub fn specs() -> Vec<CommandSpec> {
         },
         CommandSpec {
             id: "paint.contentAwareMove",
-            label: "Content-Aware Move",
+            label: "Move and Fill",
             menu: &[],
             shortcut: None,
             params: r#"{"offset":[dx,dy] (how far the selection was dragged),"mode":"move|extend"="move","structure":1..7=4 (3..7 copy the content exactly but for a band about a patch wide along its edge; 2 widens the band, 1 re-synthesises the content too),"color":0..10=0 (0 keeps the content's level; higher values bring it towards its new place, by up to about 0.04 × color),"sampleAllLayers":bool=false,"scaleX":%=100,"scaleY":%=100 (Transform On Drop: 1..10000, negative flips),"rotate":deg=0 (Transform On Drop, clockwise; scale and rotation are about the selection's centre, before the offset; a transformed patch may reach past the canvas edge),"layer":id?=active,"target":"pixels"|"mask"|"quickMask"|{"channel":i}=Channels panel target} → {"damage","offset","mode","transformed"?} (a background job; the selection moves, and is transformed, with the content)"#,
@@ -1353,15 +1324,27 @@ pub fn specs() -> Vec<CommandSpec> {
         },
         CommandSpec {
             id: "paint.remove",
-            label: "Remove",
+            label: "Quick Fill",
             menu: &[],
             shortcut: None,
             params: brush_params!(
-                r#","strokes":[[[x,y,pressure?],…],…]? (several strokes removed together, as one job and one undo step; else "points"),"closeLoops":bool=true (a stroke around an object removes what it encloses),"sampleAllLayers":bool=false,"newLayer":bool=false (the fill goes to a new layer above the target, which stays as it was) → {"damage","layer"?} (a background job)"#
+                r#","strokes":[[[x,y,pressure?],…],…]? (several strokes removed together, as one job and one undo step; else "points"),"closeLoops":bool=true (a stroke around an object removes what it encloses),"sampleAllLayers":bool=false,"newLayer":bool=false (the fill goes to a new layer above the target, which stays as it was),"selection":bool=false (remove what's selected instead of strokes; no points),"ai":{"side":64..2048=800,"fill":base64 (side × side RGB8, from the model),"matchColor":bool=true (blend it in to take the colour round the hole)}? (AI Remove: the model's square from paint.removeAI goes back into the hole, scaled back up if it was scaled down) → {"damage","layer"?} (a background job)"#
             ),
             enabled: has_pixel_layer,
             run: remove::remove,
             journal: true,
+        },
+        CommandSpec {
+            id: remove::AI_CMD,
+            label: "AI Remove Input",
+            menu: &[],
+            shortcut: None,
+            params: brush_params!(
+                r#","strokes":[[[x,y,pressure?],…],…]?,"closeLoops":bool=true,"sampleAllLayers":bool=false,"selection":bool=false (the selection is the hole; no points),"ai":{"side":64..2048=800}? → {"image": base64 side × side RGB8, "mask": base64 side × side bytes (255 = the hole), "side", "crop":[x,y,w,h], "scale"} (the full-size square round the stroke, at the top left; a hole that doesn't fit it with 128 pixels round it is scaled down with that margin; the document is unchanged)"#
+            ),
+            enabled: has_pixel_layer,
+            run: remove::ai_input,
+            journal: false,
         },
         CommandSpec {
             id: "paint.dodge",

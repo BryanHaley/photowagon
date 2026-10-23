@@ -117,10 +117,6 @@ pub fn keys(app: &mut PhotocraftApp, ctx: &egui::Context) {
         if let Some(step) = take_step(ctx) {
             d.step(step);
         }
-    } else if let Some(d) = app.wide_angle.as_mut() {
-        if let Some(step) = take_step(ctx) {
-            d.step(step);
-        }
     } else if let Some(s) = app.distort.vanishing.as_mut()
         && let Some(step) = take_step(ctx)
     {

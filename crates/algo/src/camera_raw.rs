@@ -172,6 +172,8 @@ pub struct CameraRaw {
     /// The document's transfer curve: 0 for sRGB's, else the gamma of a power-law space (1.8
     /// for ProPhoto). Set from the document's profile; Whites and Blacks act on light.
     pub encoding_gamma: f32,
+    /// The Monochrome profile.
+    pub convert_to_grayscale: bool,
 }
 
 impl Default for CameraRaw {
@@ -228,6 +230,7 @@ impl Default for CameraRaw {
             seed: 0,
             pixel_scale: 1.0,
             encoding_gamma: 0.0,
+            convert_to_grayscale: false,
         }
     }
 }
@@ -559,6 +562,7 @@ impl CameraRaw {
             && self.noise_color == 0.0
             && self.grain_amount == 0.0
             && self.vignette_amount == 0.0
+            && !self.convert_to_grayscale
     }
 }
 
@@ -645,7 +649,7 @@ pub fn develop(px: &mut [[f32; 4]], w: usize, h: usize, p: &CameraRaw, float: bo
         whites_blacks::apply(px, w, xw, xb, enc);
     }
     // 4–7: per-pixel colour stages.
-    let need_color = p.vibrance != 0.0 || p.saturation != 0.0 || !p.curves_neutral() || !p.hsl_neutral() || !p.grade_neutral();
+    let need_color = p.vibrance != 0.0 || p.saturation != 0.0 || !p.curves_neutral() || !p.hsl_neutral() || !p.grade_neutral() || p.convert_to_grayscale;
     if need_color {
         let par = (!(p.curve_highlights == 0.0 && p.curve_lights == 0.0 && p.curve_darks == 0.0 && p.curve_shadows == 0.0)).then(|| parametric_lut(p, 1024));
         let pts = |c: &Vec<[f32; 2]>| (!is_linear(c)).then(|| curve_lut(c, 1024));
@@ -705,6 +709,9 @@ pub fn develop(px: &mut [[f32; 4]], w: usize, h: usize, p: &CameraRaw, float: bo
                         let k = 2f32.powf(dl / 100.0 * 1.0 * s);
                         c = out.map(|x| x * k);
                     }
+                }
+                if p.convert_to_grayscale {
+                    c = [luma(c); 3];
                 }
                 if grade {
                     let l = luma(c).clamp(0.0, 1.0);

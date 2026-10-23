@@ -102,17 +102,18 @@ fn blob_session(depth: u32) -> Session {
 }
 
 #[test]
-fn content_aware_fill_huge_area_neither_panics_nor_wraps() {
+fn content_aware_fill_refuses_custom_sampling_areas() {
     let mut s = blob_session(8);
-    // `[1e30, 0, 1e30, 10]` overflowed the i32 additions in the area parser (a debug-build
-    // panic, a garbage sampling window in release); the additions saturate now, so this is
-    // simply a whole-canvas window.
-    let r = s.execute("edit.contentAwareFill", json!({"sampling": "custom", "area": [1e30, 0.0, 1e30, 10.0], "colorAdaptation": "none"})).unwrap();
-    assert!(r["filled"].as_u64().unwrap() > 100);
-    // A malformed area names the problem instead of silently falling back.
-    for area in [json!([0.0, 0.0, null, 10.0]), json!([0.0, 0.0, 10.0]), json!("nope")] {
-        let err = s.execute("edit.contentAwareFill", json!({"sampling": "custom", "area": area})).unwrap_err();
-        assert!(err.to_string().contains("`area`"), "{err}");
+    for p in [
+        json!({"sampling": "custom"}),
+        json!({"sampling": "custom", "area": [0, 0, 20, 48]}),
+        json!({"area": [0, 0, 20, 48]}),
+        json!({"channel": 0}),
+        json!({"sampling": "rectangular", "margin": 12}),
+        json!({"samplingStrokes": [{"mode": "add", "size": 20, "points": [[5, 5]]}]}),
+    ] {
+        let err = s.execute("edit.contentAwareFill", p.clone()).unwrap_err().to_string();
+        assert!(err.contains("custom sampling areas aren't supported"), "{p}: {err}");
     }
 }
 
@@ -131,8 +132,8 @@ fn huge_selection(size: (u32, u32), rects: &[Rect]) -> Session {
     s
 }
 
-/// A sampling window too large to read, or whose margin overflows, is the size error: no panic,
-/// no huge allocation, the document and history untouched (#963).
+/// A sampling window too large to read is the size error: no panic, no huge allocation, the
+/// document and history untouched (#963).
 #[test]
 fn content_aware_fill_huge_window_is_an_error() {
     // Largest extent whose `ext * 3` still fits in i32.
@@ -150,21 +151,14 @@ fn content_aware_fill_huge_window_is_an_error() {
             vec![Rect::new(i32::MIN, i32::MIN, i32::MIN + 1, i32::MIN + 1), dot, Rect::new(max - 2, max - 2, max - 1, max - 1)],
             json!({}),
         ),
-        (
-            "rectangular, small selection",
-            (300_000, 300_000),
-            vec![Rect::new(150_000, 150_000, 150_001, 150_001)],
-            json!({"sampling": "rectangular", "margin": 100_000}),
-        ),
         ("rectangular, huge extent", big, vec![dot, Rect::new(EDGE + 1, 0, EDGE + 2, 1)], json!({"sampling": "rectangular"})),
-        ("custom, whole canvas", big, vec![dot], json!({"sampling": "custom", "area": [0, 0, 2_000_000_000, 2_000_000_000]})),
     ];
     for (name, size, rects, p) in cases {
         let mut s = huge_selection(size, &rects);
         let before = s.active().unwrap().doc.clone();
         let past = s.active().unwrap().history.past_len();
         let err = s.execute("edit.contentAwareFill", p).expect_err(name).to_string();
-        assert!(err.contains("too large for Content-Aware fill"), "{name}: {err}");
+        assert!(err.contains("too large for Fill from Surroundings"), "{name}: {err}");
         let st = s.active().unwrap();
         assert!(std::sync::Arc::ptr_eq(&before, &st.doc), "{name}: the document changed");
         assert_eq!(st.history.past_len(), past, "{name}: a history step was recorded");
@@ -268,8 +262,7 @@ fn content_aware_fill_samples_photoshops_window() {
 
 #[test]
 fn content_aware_fill_takes_the_workspace_edits() {
-    // The plan the workspace previews: lasso edits change the fill area (and the window follows),
-    // sampling-brush strokes change what may be copied, also outside the window.
+    // The plan the workspace previews: lasso edits change the fill area (and the window follows).
     let mut s = Session::new();
     s.execute("file.new", json!({"width": 600, "height": 400, "background": "white"})).unwrap();
     s.execute("select.rect", json!({"x": 275, "y": 175, "width": 50, "height": 50})).unwrap();
@@ -278,30 +271,20 @@ fn content_aware_fill_takes_the_workspace_edits() {
     let plan = |p: Value| content_aware_plan(&doc, id, &p, "edit.contentAwareFill");
     let count = |m: &[bool]| m.iter().filter(|v| **v).count();
     let base = plan(json!({"sampling": "rectangular"})).unwrap();
-    assert_eq!((base.window, count(&base.hole)), (Rect::new(200, 100, 400, 300), 2500));
+    assert_eq!((base.rect, count(&base.hole)), (Rect::new(200, 100, 400, 300), 2500));
     assert_eq!(count(&base.source), 200 * 200 - 2500);
     // A lasso square added beside the selection: a bigger fill area, a window around both.
     let p = plan(json!({"sampling": "rectangular", "fillEdits": [{"op": "add", "points": [[340, 175], [390, 175], [390, 225], [340, 225]]}]})).unwrap();
     assert_eq!(count(&p.hole), 5000);
-    assert!(p.window.width() > 200 && p.window.contains_rect(&Rect::new(275, 175, 390, 225)), "{:?}", p.window);
+    assert!(p.rect.width() > 200 && p.rect.contains_rect(&Rect::new(275, 175, 390, 225)), "{:?}", p.rect);
     // Expand by 2 grows the 50 px square to about 54 px (rounded corners).
     let p = plan(json!({"sampling": "rectangular", "fillEdits": [{"op": "expand", "by": 2}]})).unwrap();
     assert!((54 * 54 - 20..=54 * 54).contains(&count(&p.hole)), "{}", count(&p.hole));
     // Subtracting it all leaves nothing to fill.
     assert!(plan(json!({"fillEdits": [{"op": "subtract", "points": [[0, 0], [600, 0], [600, 400], [0, 400]]}]})).is_err());
-    // A subtracting stroke takes a band out of the sampling area; an adding one far away reaches
-    // past the window, and the plan's rectangle grows to hold it.
-    let p = plan(json!({"sampling": "rectangular", "samplingStrokes": [{"mode": "subtract", "size": 10, "points": [[210, 110], [390, 110]]}]})).unwrap();
-    assert!((count(&base.source) - count(&p.source)).abs_diff(10 * 190) < 60);
-    let p = plan(json!({"sampling": "rectangular", "samplingStrokes": [{"mode": "add", "size": 20, "points": [[540, 350], [580, 350]]}]})).unwrap();
-    assert!(p.rect.contains(560, 350) && !p.window.contains(560, 350));
-    assert!(count(&p.source) > count(&base.source) + 600);
-    // Custom from strokes alone; bad edits are errors.
-    let p = plan(json!({"sampling": "custom", "samplingStrokes": [{"mode": "add", "size": 20, "points": [[100, 100], [160, 100]]}]})).unwrap();
-    assert!((1450..1600).contains(&count(&p.source)), "a 20 px brush along 60 px: {}", count(&p.source));
+    // Auto samples the same as Rectangular.
+    assert_eq!(plan(json!({})).unwrap().source, base.source);
     for bad in [
-        json!({"samplingStrokes": [{"mode": "paint", "size": 10, "points": [[0, 0]]}]}),
-        json!({"samplingStrokes": [{"size": 0, "points": [[0, 0]]}]}),
         json!({"fillEdits": [{"op": "add", "points": [[0, "x"]]}]}),
         json!({"fillEdits": [{"op": "expand", "by": -3}]}),
     ] {
@@ -316,7 +299,7 @@ fn content_aware_fill_takes_the_workspace_edits() {
 fn content_aware_fill_outputs_and_sampling() {
     let mut s = blob_session(8);
     let base = s.active().unwrap().active_layer.unwrap();
-    let r = s.execute("edit.contentAwareFill", json!({"output": "new", "sampling": "rectangular", "margin": 12})).unwrap();
+    let r = s.execute("edit.contentAwareFill", json!({"output": "new", "sampling": "rectangular"})).unwrap();
     let nid = LayerId(r["layer"].as_u64().unwrap());
     assert_ne!(nid, base);
     // The new layer holds only the fill.
@@ -324,9 +307,8 @@ fn content_aware_fill_outputs_and_sampling() {
     let b = l.surface().unwrap().content_bounds();
     assert!(Rect::new(26, 16, 38, 30).contains_rect(&b), "{b:?}");
     s.undo();
-    let r = s.execute("edit.contentAwareFill", json!({"output": "duplicate", "sampling": "custom", "area": [0, 0, 20, 48], "mirror": true})).unwrap();
+    let r = s.execute("edit.contentAwareFill", json!({"output": "duplicate", "mirror": true})).unwrap();
     assert_eq!(s.active().unwrap().doc.layer(LayerId(r["layer"].as_u64().unwrap())).unwrap().name, "Background copy");
-    assert!(s.execute("edit.contentAwareFill", json!({"sampling": "custom"})).is_err());
     assert!(s.execute("edit.contentAwareFill", json!({"output": "elsewhere"})).is_err());
     s.execute("select.deselect", json!({})).unwrap();
     assert!(!s.is_enabled("edit.contentAwareFill"));
@@ -387,6 +369,8 @@ fn content_aware_scale_places_the_result_and_previews_it_reduced() {
             Ok(())
         })
         .unwrap();
+        // A selection doesn't limit what is scaled: the whole layer's content is.
+        s.execute("select.rect", json!({"x": 10, "y": 10, "width": 8, "height": 8})).unwrap();
         let p = json!({"width": 16, "height": 40, "x": 10, "y": 2});
         let preview = super::ContentAwareScalePreview::new(&s, &p, 10).unwrap();
         assert_eq!(preview.region(), Rect::new(4, 4, 36, 28));
@@ -406,8 +390,7 @@ fn content_aware_scale_places_the_result_and_previews_it_reduced() {
 
 #[test]
 fn content_aware_scale_enlarges_a_one_pixel_line() {
-    // A 1 px wide (or tall) layer has no seam to spare, so enlarging it used to return the line
-    // unchanged and crash or write a short buffer. The line's single column (row) is repeated.
+    // A 1 px wide (or tall) line: its single column (row) is repeated.
     for (line, params, to) in [
         (Rect::new(10, 0, 11, 48), json!({"width": 5}), [5, 48]),
         (Rect::new(10, 0, 11, 48), json!({"width": 6, "height": 30}), [6, 30]),

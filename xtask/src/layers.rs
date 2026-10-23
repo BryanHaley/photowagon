@@ -66,6 +66,8 @@ pub const TABLE: &[(&str, Class)] = &[
     ("ui-egui", Class::Layer(6)),
     ("automation", Class::Layer(6)),
     ("platform", Class::Layer(6)),
+    // The engine as a Swift API (UniFFI) for the iOS app.
+    ("ffi", Class::Layer(6)),
     ("testkit", Class::Testkit),
     // L7 apps and tooling
     ("photocraft", Class::Exempt),

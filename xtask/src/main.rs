@@ -7,7 +7,9 @@ mod corpus;
 mod corpus_pins;
 mod i18n_coverage;
 mod ico;
+mod ios;
 mod layers;
+mod licenses;
 mod perf;
 mod pinned;
 mod scorecard;
@@ -44,6 +46,10 @@ commands:
                   regenerate docs/scorecard.md (--check: fail if it is stale)
   version [set X.Y.Z[-pre]]
                   print the workspace version, or set it (Cargo.toml + Cargo.lock)
+  ios [--sim | --device] [--release]
+                  build the iOS app's Rust core (photocraft-ffi) as ios/Frameworks/PhotoCraftCore.xcframework
+                  and its Swift bindings (UniFFI), and target/ios/Acknowledgements.json (every bundled
+                  library's licence); needs rustup's iOS targets and Xcode
   ico <out.ico> <in.png>...
                   pack square PNGs (<= 256 px) into a Windows .ico (see packaging/icons.sh)
 ";
@@ -64,6 +70,7 @@ fn main() -> ExitCode {
         Some("scorecard") => scorecard::run(&root(), &rest),
         Some("version") => version::run(&root(), &rest),
         Some("ico") => ico::run(&rest),
+        Some("ios") => ios::cmd(&root(), &rest),
         Some("-h" | "--help" | "help") | None => {
             print!("{USAGE}");
             Ok(())

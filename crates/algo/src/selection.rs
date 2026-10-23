@@ -134,6 +134,22 @@ pub fn mask_to_surface(m: &[f32], area: Rect) -> Surface {
     surface_from_masks(area, m, None, |_, v| v)
 }
 
+/// Applies `f` to two coverages; where both are partial, each is first rounded to 0 or 1.
+fn harden_both_soft(a: f32, b: f32, f: impl Fn(f32, f32) -> f32) -> f32 {
+    let soft = |v: f32| v > 0.0 && v < 1.0;
+    if soft(a) && soft(b) {
+        let step = |v: f32| if v >= 0.5 { 1.0 } else { 0.0 };
+        f(step(a), step(b))
+    } else {
+        f(a, b)
+    }
+}
+
+/// [`harden_both_soft`] on 8-bit coverage.
+fn harden_both_soft8(a: u8, b: u8, f: impl Fn(f32, f32) -> f32) -> u8 {
+    coverage8(harden_both_soft(f32::from(a) / 255.0, f32::from(b) / 255.0, f))
+}
+
 /// Combines `new` with `old` by `mode`. Returns `None` when nothing is selected.
 pub fn combine(old: Option<&Surface>, new: &[f32], area: Rect, mode: SelectionMode) -> Option<Surface> {
     if area.is_empty() {
@@ -147,9 +163,9 @@ pub fn combine(old: Option<&Surface>, new: &[f32], area: Rect, mode: SelectionMo
         _ => {
             let prev = mask_from_surface(old, area);
             match mode {
-                SelectionMode::Add => surface_from_masks(area, new, Some(&prev), |p, v| p.max(q(v))),
-                SelectionMode::Subtract => surface_from_masks(area, new, Some(&prev), |p, v| (p - q(v)).max(0.0)),
-                _ => surface_from_masks(area, new, Some(&prev), |p, v| p.min(q(v))),
+                SelectionMode::Add => surface_from_masks(area, new, Some(&prev), |p, v| harden_both_soft(p, q(v), |p, v| p.max(v))),
+                SelectionMode::Subtract => surface_from_masks(area, new, Some(&prev), |p, v| harden_both_soft(p, q(v), |p, v| (p - v).max(0.0))),
+                _ => surface_from_masks(area, new, Some(&prev), |p, v| harden_both_soft(p, q(v), f32::min)),
             }
         }
     };
@@ -250,6 +266,205 @@ impl Region {
         let value = row.and_then(|i| i.checked_add(x.abs_diff(self.bbox.x0) as usize)).and_then(|i| self.mask.get(i)).copied().unwrap_or(0);
         f32::from(value) / 255.0
     }
+
+    /// The part under (`x`, `y`) when the region is several objects touching through thin
+    /// bridges (two people side by side): the region is shrunk until the bridges break, the
+    /// piece under the point is kept and grown back inside the region. The region itself when
+    /// shrinking doesn't leave at least two sizeable pieces.
+    pub fn split_at(&self, x: i32, y: i32) -> Region {
+        let (w, h) = (self.bbox.width() as usize, self.bbox.height() as usize);
+        if w < 8 || h < 8 || self.mask.len() < w * h {
+            return self.clone();
+        }
+        let inside: Vec<bool> = self.mask.iter().map(|v| *v >= 64).collect();
+        let dist = chamfer(w, h, |i| !inside[i]);
+        // Bridges up to about 5% of the region's larger side are broken.
+        let r = (w.max(h) as f32 * 0.025).max(2.0);
+        let core: Vec<bool> = dist.iter().map(|d| *d > r).collect();
+        let (labels, sizes) = label_components(w, h, &core);
+        let total: usize = sizes.iter().sum();
+        if sizes.iter().filter(|n| **n * 10 >= total).count() < 2 {
+            return self.clone();
+        }
+        // The piece under the point, else the nearest one.
+        let (px, py) = ((x - self.bbox.x0).clamp(0, w as i32 - 1) as usize, (y - self.bbox.y0).clamp(0, h as i32 - 1) as usize);
+        let pick = match labels[py * w + px] {
+            0 => {
+                let d = chamfer_labels(w, h, &labels);
+                d[py * w + px].1
+            }
+            l => l,
+        };
+        if pick == 0 {
+            return self.clone();
+        }
+        let grown = chamfer(w, h, |i| labels[i] == pick);
+        let mask: Vec<u8> =
+            (0..w * h).map(|i| if inside[i] && grown[i] <= r + 1.5 || (grown[i] <= r + 2.5 && self.mask[i] > 0) { self.mask[i] } else { 0 }).collect();
+        Region { bbox: self.bbox, mask }.trimmed().unwrap_or_else(|| self.clone())
+    }
+
+    /// The same region in its tight box; `None` when nothing is covered.
+    fn trimmed(&self) -> Option<Region> {
+        let w = self.bbox.width() as usize;
+        let (mut x0, mut y0, mut x1, mut y1) = (usize::MAX, usize::MAX, 0, 0);
+        for (i, v) in self.mask.iter().enumerate() {
+            if *v > 0 {
+                let (x, y) = (i % w.max(1), i / w.max(1));
+                (x0, y0, x1, y1) = (x0.min(x), y0.min(y), x1.max(x + 1), y1.max(y + 1));
+            }
+        }
+        if x0 >= x1 {
+            return None;
+        }
+        let mask = (y0..y1).flat_map(|y| (x0..x1).map(move |x| y * w + x)).map(|i| self.mask.get(i).copied().unwrap_or(0)).collect();
+        Some(Region { bbox: Rect::new(self.bbox.x0 + x0 as i32, self.bbox.y0 + y0 as i32, self.bbox.x0 + x1 as i32, self.bbox.y0 + y1 as i32), mask })
+    }
+
+    /// The connected part (4-neighbour, coverage over a quarter) holding document pixel
+    /// `(x, y)`, keeping its soft edge; `None` if the point isn't covered.
+    pub fn component_at(&self, x: i32, y: i32) -> Option<Region> {
+        let (w, h) = (self.bbox.width() as usize, self.bbox.height() as usize);
+        if self.at(x, y) < 0.25 || self.mask.len() < w * h {
+            return None;
+        }
+        let solid = |i: usize| self.mask.get(i).is_some_and(|v| *v >= 64);
+        let mut seen = vec![false; w * h];
+        let start = (y - self.bbox.y0) as usize * w + (x - self.bbox.x0) as usize;
+        let (mut stack, mut x0, mut y0, mut x1, mut y1) = (vec![start], w, h, 0, 0);
+        if let Some(s) = seen.get_mut(start) {
+            *s = true;
+        }
+        while let Some(i) = stack.pop() {
+            let (cx, cy) = (i % w, i / w);
+            (x0, y0, x1, y1) = (x0.min(cx), y0.min(cy), x1.max(cx + 1), y1.max(cy + 1));
+            let around = [(cx > 0).then(|| i - 1), (cx + 1 < w).then(|| i + 1), (cy > 0).then(|| i - w), (cy + 1 < h).then(|| i + w)];
+            for n in around.into_iter().flatten() {
+                if solid(n) && seen.get(n) == Some(&false) {
+                    seen[n] = true;
+                    stack.push(n);
+                }
+            }
+        }
+        // Grow by a pixel so the soft fringe outside the solid part comes along.
+        let (x0, y0, x1, y1) = (x0.saturating_sub(1), y0.saturating_sub(1), (x1 + 1).min(w), (y1 + 1).min(h));
+        let near = |cx: usize, cy: usize| {
+            (cy.saturating_sub(1)..(cy + 2).min(h)).any(|ny| (cx.saturating_sub(1)..(cx + 2).min(w)).any(|nx| seen.get(ny * w + nx) == Some(&true)))
+        };
+        let mut mask = Vec::with_capacity((x1 - x0) * (y1 - y0));
+        for cy in y0..y1 {
+            for cx in x0..x1 {
+                mask.push(if near(cx, cy) { self.mask.get(cy * w + cx).copied().unwrap_or(0) } else { 0 });
+            }
+        }
+        let bbox = Rect::new(self.bbox.x0 + x0 as i32, self.bbox.y0 + y0 as i32, self.bbox.x0 + x1 as i32, self.bbox.y0 + y1 as i32);
+        Some(Region { bbox, mask })
+    }
+}
+
+/// Distance (3-4 chamfer, in pixels) from every pixel to the nearest `seed` pixel.
+fn chamfer(w: usize, h: usize, seed: impl Fn(usize) -> bool) -> Vec<f32> {
+    let mut d: Vec<f32> = (0..w * h).map(|i| if seed(i) { 0.0 } else { f32::MAX / 4.0 }).collect();
+    let (a, b) = (1.0, 4.0 / 3.0);
+    for y in 0..h {
+        for x in 0..w {
+            let i = y * w + x;
+            let mut v = d[i];
+            if x > 0 {
+                v = v.min(d[i - 1] + a);
+            }
+            if y > 0 {
+                v = v.min(d[i - w] + a);
+                if x > 0 {
+                    v = v.min(d[i - w - 1] + b);
+                }
+                if x + 1 < w {
+                    v = v.min(d[i - w + 1] + b);
+                }
+            }
+            d[i] = v;
+        }
+    }
+    for y in (0..h).rev() {
+        for x in (0..w).rev() {
+            let i = y * w + x;
+            let mut v = d[i];
+            if x + 1 < w {
+                v = v.min(d[i + 1] + a);
+            }
+            if y + 1 < h {
+                v = v.min(d[i + w] + a);
+                if x + 1 < w {
+                    v = v.min(d[i + w + 1] + b);
+                }
+                if x > 0 {
+                    v = v.min(d[i + w - 1] + b);
+                }
+            }
+            d[i] = v;
+        }
+    }
+    d
+}
+
+/// For every pixel, the distance to the nearest labelled pixel and its label.
+fn chamfer_labels(w: usize, h: usize, labels: &[u32]) -> Vec<(f32, u32)> {
+    let mut d: Vec<(f32, u32)> = labels.iter().map(|l| if *l > 0 { (0.0, *l) } else { (f32::MAX / 4.0, 0) }).collect();
+    let step = |d: &mut Vec<(f32, u32)>, i: usize, j: usize, c: f32| {
+        if d[j].0 + c < d[i].0 {
+            d[i] = (d[j].0 + c, d[j].1);
+        }
+    };
+    for y in 0..h {
+        for x in 0..w {
+            let i = y * w + x;
+            if x > 0 {
+                step(&mut d, i, i - 1, 1.0);
+            }
+            if y > 0 {
+                step(&mut d, i, i - w, 1.0);
+            }
+        }
+    }
+    for y in (0..h).rev() {
+        for x in (0..w).rev() {
+            let i = y * w + x;
+            if x + 1 < w {
+                step(&mut d, i, i + 1, 1.0);
+            }
+            if y + 1 < h {
+                step(&mut d, i, i + w, 1.0);
+            }
+        }
+    }
+    d
+}
+
+/// 4-connected components of `on`: a label per pixel (0 = off) and each label's size
+/// (`sizes[l - 1]`).
+fn label_components(w: usize, h: usize, on: &[bool]) -> (Vec<u32>, Vec<usize>) {
+    let mut labels = vec![0u32; w * h];
+    let mut sizes = Vec::new();
+    for start in 0..w * h {
+        if !on[start] || labels[start] != 0 {
+            continue;
+        }
+        let l = sizes.len() as u32 + 1;
+        let (mut stack, mut n) = (vec![start], 0usize);
+        labels[start] = l;
+        while let Some(i) = stack.pop() {
+            n += 1;
+            let (x, y) = (i % w, i / w);
+            for j in [(x > 0).then(|| i - 1), (x + 1 < w).then(|| i + 1), (y > 0).then(|| i - w), (y + 1 < h).then(|| i + w)].into_iter().flatten() {
+                if on[j] && labels[j] == 0 {
+                    labels[j] = l;
+                    stack.push(j);
+                }
+            }
+        }
+        sizes.push(n);
+    }
+    (labels, sizes)
 }
 
 /// Magic wand on 8-bit pixels: a scanline flood fill (or a global match) that only allocates a
@@ -401,15 +616,15 @@ pub fn combine_region(old: Option<&Surface>, new: Option<&Region>, mode: Selecti
         (SelectionMode::Subtract | SelectionMode::Intersect, None) => None,
         (SelectionMode::Intersect, Some(o)) => {
             let p = prev_u8(o);
-            from_bytes(&p.iter().zip(&new.mask).map(|(a, b)| *a.min(b)).collect::<Vec<_>>())
+            from_bytes(&p.iter().zip(&new.mask).map(|(a, b)| harden_both_soft8(*a, *b, f32::min)).collect::<Vec<_>>())
         }
         (SelectionMode::Add | SelectionMode::Subtract, Some(o)) => {
             if b.is_empty() {
                 return nonempty(o.clone());
             }
             let p = prev_u8(o);
-            let out: Vec<f32> =
-                p.iter().zip(&new.mask).map(|(a, n)| if mode == SelectionMode::Add { *a.max(n) } else { a.saturating_sub(*n) } as f32 / 255.0).collect();
+            let op = |a: f32, n: f32| if mode == SelectionMode::Add { a.max(n) } else { (a - n).max(0.0) };
+            let out: Vec<f32> = p.iter().zip(&new.mask).map(|(a, n)| f32::from(harden_both_soft8(*a, *n, op)) / 255.0).collect();
             let mut s = o.clone();
             s.write_region(b, &out);
             s.prune();
@@ -895,6 +1110,37 @@ pub fn polygon(points: &[(f32, f32)], area: Rect, anti_alias: bool) -> Vec<f32> 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn touching_objects_split_at_a_thin_bridge() {
+        // Two 40 × 40 squares joined by a 4 px bridge; a single square stays whole.
+        let (w, h) = (100usize, 40usize);
+        let mut mask = vec![0u8; w * h];
+        for y in 0..h {
+            for x in 0..w {
+                if !(40..60).contains(&x) || (18..22).contains(&y) {
+                    mask[y * w + x] = 255;
+                }
+            }
+        }
+        let pair = Region { bbox: Rect::new(0, 0, w as i32, h as i32), mask };
+        let left = pair.split_at(10, 20);
+        assert!(left.bbox.x1 <= 46 && left.bbox.x0 == 0, "{:?}", left.bbox);
+        let right = pair.split_at(90, 20);
+        assert!(right.bbox.x0 >= 54 && right.bbox.x1 == 100, "{:?}", right.bbox);
+        let one = Region { bbox: Rect::new(0, 0, 40, 40), mask: vec![255; 1600] };
+        assert_eq!(one.split_at(20, 20).bbox, one.bbox);
+    }
+
+    #[test]
+    fn a_component_is_the_connected_part_under_the_point() {
+        // Two blobs in a 6 × 1 region: [255 255 0 0 255 255].
+        let r = Region { bbox: Rect::new(10, 0, 16, 1), mask: vec![255, 255, 0, 0, 255, 255] };
+        let left = r.component_at(10, 0).unwrap();
+        assert_eq!((left.bbox, left.mask.iter().filter(|v| **v > 0).count()), (Rect::new(10, 0, 13, 1), 2));
+        assert_eq!(r.component_at(15, 0).unwrap().bbox, Rect::new(13, 0, 16, 1));
+        assert!(r.component_at(12, 0).is_none() && r.component_at(40, 0).is_none());
+    }
 
     fn img(w: usize, h: usize, f: impl Fn(usize, usize) -> [f32; 4]) -> Vec<[f32; 4]> {
         (0..h).flat_map(|y| (0..w).map(move |x| (x, y))).map(|(x, y)| f(x, y)).collect()
@@ -1410,9 +1656,9 @@ mod tests {
         let q: Vec<f32> = new.iter().map(|v| (v.clamp(0.0, 1.0) * 255.0).round() / 255.0).collect();
         let out: Vec<f32> = match mode {
             SelectionMode::Replace => q,
-            SelectionMode::Add => prev.iter().zip(&q).map(|(a, b)| a.max(*b)).collect(),
-            SelectionMode::Subtract => prev.iter().zip(&q).map(|(a, b)| (a - b).max(0.0)).collect(),
-            SelectionMode::Intersect => prev.iter().zip(&q).map(|(a, b)| a.min(*b)).collect(),
+            SelectionMode::Add => prev.iter().zip(&q).map(|(a, b)| harden_both_soft(*a, *b, f32::max)).collect(),
+            SelectionMode::Subtract => prev.iter().zip(&q).map(|(a, b)| harden_both_soft(*a, *b, |a, b| (a - b).max(0.0))).collect(),
+            SelectionMode::Intersect => prev.iter().zip(&q).map(|(a, b)| harden_both_soft(*a, *b, f32::min)).collect(),
         };
         let out: Vec<f32> = out.into_iter().map(|v| if v < 0.5 / 255.0 { 0.0 } else { v }).collect();
         if out.iter().all(|v| *v <= 0.0) {
@@ -1556,5 +1802,29 @@ mod tests {
             }
         }
         assert!(combine_region(None, None, SelectionMode::Subtract).is_none());
+    }
+
+    #[test]
+    fn combining_two_partial_pixels_rounds_both_first() {
+        let area = Rect::new(0, 0, 3, 1);
+        let mut old = Surface::new(PixelFormat::GRAY8);
+        old.write_region(area, &[0.6, 0.6, 1.0]);
+        let new = [0.4f32, 0.0, 0.4];
+        let region = Region { bbox: area, mask: new.iter().map(|v| coverage8(*v)).collect() };
+        // (soft, soft) is rounded; (soft, 0) and (1, soft) combine as they are.
+        for (mode, want) in [
+            (SelectionMode::Add, [1.0, 0.6, 1.0]),
+            (SelectionMode::Subtract, [1.0, 0.6, 0.6]),
+            (SelectionMode::Intersect, [0.0, 0.0, 0.4]),
+        ] {
+            let a = combine(Some(&old), &new, area, mode);
+            let b = combine_region(Some(&old), Some(&region), mode);
+            for s in [a, b] {
+                let got: Vec<f32> = (0..3).map(|x| s.as_ref().map_or(0.0, |s| s.pixel(x, 0)[0])).collect();
+                for (g, w) in got.iter().zip(want) {
+                    assert!((g - w).abs() < 1.5 / 255.0, "{mode:?}: {got:?} vs {want:?}");
+                }
+            }
+        }
     }
 }

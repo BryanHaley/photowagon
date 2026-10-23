@@ -78,7 +78,7 @@ fn kind_name(k: Kind) -> &'static str {
     match k {
         Kind::Type => "Type",
         Kind::Shape => "Shape",
-        Kind::SmartObject => "Smart Object",
+        Kind::SmartObject => "Embedded",
         Kind::Fill => "Fill",
     }
 }
@@ -232,7 +232,7 @@ fn convert_to_smart_object_applies_a_smart_filter() {
     let id = prompt(&app).unwrap().id;
     app.ui.dialog_mut(id).unwrap().fields.insert("choice".into(), json!("smartObject"));
     answer(&mut app, id);
-    assert_eq!(active_content(&app), "Smart Object");
+    assert_eq!(active_content(&app), "Embedded");
     let blur = filter_dialog(&app).expect("Gaussian Blur opens on the Smart Object");
     crate::dialogs::confirm(&mut app, blur).unwrap();
     let st = app.session.active().unwrap();
@@ -305,7 +305,7 @@ fn the_convert_button_converts_to_a_smart_object() {
     h.run_steps(4);
     h.get_by_label("Convert to Smart Object").click();
     h.run_steps(4);
-    assert_eq!(active_content(h.state()), "Smart Object");
+    assert_eq!(active_content(h.state()), "Embedded");
     assert!(filter_dialog(h.state()).is_some());
 }
 
@@ -313,11 +313,10 @@ fn the_convert_button_converts_to_a_smart_object() {
 #[test]
 fn filters_with_their_own_window_open_after_the_prompt() {
     type IsOpen = fn(&PhotocraftApp) -> bool;
-    let open: [(&str, IsOpen); 4] = [
+    let open: [(&str, IsOpen); 3] = [
         ("filter.liquify", |a| a.distort.liquify.is_some()),
         ("filter.filterGallery", |a| a.distort.gallery.is_some()),
         ("filter.cameraRaw", |a| a.camera_raw.is_some()),
-        ("filter.adaptiveWideAngle", |a| a.wide_angle.is_some()),
     ];
     for (filter, is_open) in open {
         for choice in ["rasterize", "smartObject"] {
@@ -329,7 +328,7 @@ fn filters_with_their_own_window_open_after_the_prompt() {
             app.ui.dialog_mut(id).unwrap().fields.insert("choice".into(), json!(choice));
             answer(&mut app, id);
             assert!(!app.ui.status_error, "{filter}/{choice}: {}", app.ui.status);
-            assert_eq!(active_content(&app), if choice == "rasterize" { "Pixel" } else { "Smart Object" }, "{filter}");
+            assert_eq!(active_content(&app), if choice == "rasterize" { "Pixel" } else { "Embedded" }, "{filter}");
             assert!(is_open(&app), "{filter}/{choice}: its window opens");
         }
     }

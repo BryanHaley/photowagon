@@ -106,9 +106,72 @@ fn valid_fps(fps: f32) -> f32 {
     if fps.is_finite() && fps > 0.0 { fps } else { 30.0 }
 }
 
+/// One layer as a frame shows it: frame animations change only these per frame; pixels are
+/// shared by every frame.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct FrameLayer {
+    pub visible: bool,
+    /// 0..=1.
+    pub opacity: f32,
+    /// Moved this far (pixels) from where the layer's pixels sit at offset 0.
+    #[serde(default)]
+    pub offset: [i32; 2],
+}
+
+/// One frame of a frame animation.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct AnimationFrame {
+    /// Seconds on screen (0: as fast as the viewer plays).
+    pub delay: f32,
+    /// Keyed by layer id; a layer the frame doesn't list stays as it is.
+    pub layers: std::collections::BTreeMap<u64, FrameLayer>,
+}
+
+/// A new frame's delay, seconds. Viewers play shorter GIF delays (under 0.02 s, 0 included) at
+/// 0.1 s anyway.
+pub const DEFAULT_FRAME_DELAY: f32 = 0.1;
+
+/// Window › Timeline's frame animation: frames that each show the layers their own way, played in
+/// order. The document's layers always show the current frame.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct FrameAnimation {
+    pub frames: Vec<AnimationFrame>,
+    pub current: usize,
+    /// Times to play: 0 forever.
+    pub loops: u32,
+}
+
+impl FrameAnimation {
+    /// The current frame, kept inside the frames.
+    pub fn clamp(&mut self) {
+        if self.frames.is_empty() {
+            self.frames.push(AnimationFrame { delay: DEFAULT_FRAME_DELAY, layers: Default::default() });
+        }
+        self.current = self.current.min(self.frames.len() - 1);
+        for f in &mut self.frames {
+            if !f.delay.is_finite() || f.delay < 0.0 {
+                f.delay = 0.0;
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn animation_clamps_and_round_trips() {
+        let mut a = FrameAnimation { frames: vec![], current: 5, loops: 0 };
+        a.clamp();
+        assert_eq!((a.frames.len(), a.current), (1, 0));
+        a.frames[0].delay = f32::NAN;
+        a.frames[0].layers.insert(7, FrameLayer { visible: false, opacity: 0.5, offset: [3, -2] });
+        a.clamp();
+        assert_eq!(a.frames[0].delay, 0.0);
+        let j = serde_json::to_string(&a).unwrap();
+        assert_eq!(serde_json::from_str::<FrameAnimation>(&j).unwrap(), a);
+    }
 
     #[test]
     fn new_and_clamp() {

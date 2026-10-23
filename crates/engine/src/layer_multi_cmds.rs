@@ -269,7 +269,7 @@ fn can_align(s: &Session) -> std::result::Result<(), String> {
     }
 }
 fn can_distribute(s: &Session) -> std::result::Result<(), String> {
-    if selected(s).len() >= 3 { Ok(()) } else { Err("select three or more layers to distribute".into()) }
+    if selected(s).len() >= 3 { Ok(()) } else { Err("select three or more layers".into()) }
 }
 fn can_link(s: &Session) -> std::result::Result<(), String> {
     let d = doc_state(s)?;
@@ -381,6 +381,8 @@ pub fn translate(s: &mut Session, p: &Value) -> Result<Value> {
         }
         let moves: Vec<_> = ids.iter().map(|&id| (id, dx, dy)).collect();
         move_layers(doc, &before, &moves)?;
+        // In a frame animation, a move belongs to the current frame.
+        crate::anim_cmds::moved(doc, &ids, dx, dy);
         for id in alone {
             let locks = doc.effective_locks(id);
             let l = doc.layer_mut(id).ok_or(EngineError::NoLayer(id))?;
@@ -703,6 +705,7 @@ fn doc_pixels_equal(a: &Document, b: &Document) -> bool {
         slices: _,
         variables: _,
         timeline: _,
+        animation: _,
         file_encoding: _,
     } = a;
     *size == b.size

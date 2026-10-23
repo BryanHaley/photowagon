@@ -3,9 +3,7 @@
 //! fonts found by scanning platform directories (plus Fontconfig's file list on Linux),
 //! user-registered font data, and PostScript-name lookup for PSD import.
 
-use std::collections::HashMap;
-#[cfg(not(target_arch = "wasm32"))]
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, LazyLock};
 
@@ -187,6 +185,8 @@ pub struct ResolvedFont {
 pub struct FontDb {
     pub(crate) fcx: FontContext,
     system_loaded: bool,
+    /// Files added by [`FontDb::load_font_files`].
+    loaded_paths: HashSet<std::path::PathBuf>,
     /// PostScript name → (family, weight, italic), filled lazily.
     ps_cache: HashMap<String, Option<ResolvedFont>>,
     fallbacks: Vec<String>,
@@ -212,6 +212,7 @@ impl FontDb {
         let mut db = FontDb {
             fcx: FontContext { collection, source_cache: SourceCache::default() },
             system_loaded: false,
+            loaded_paths: HashSet::new(),
             ps_cache: HashMap::new(),
             fallbacks: Vec::new(),
             missing_glyph_protection: true,
@@ -269,6 +270,24 @@ impl FontDb {
             self.face_cache.clear();
             self.refresh_generics();
         }
+    }
+
+    /// Adds font files by path (for platforms where the app lists the installed fonts, like iOS).
+    /// Files are memory-mapped when a face is first used. Returns how many paths were new.
+    pub fn load_font_files(&mut self, paths: impl IntoIterator<Item = std::path::PathBuf>) -> usize {
+        let mut n = 0;
+        for path in paths {
+            if self.loaded_paths.insert(path.clone()) {
+                self.fcx.collection.load_fonts_from_paths([path]);
+                n += 1;
+            }
+        }
+        if n > 0 {
+            self.ps_cache.clear();
+            self.face_cache.clear();
+            self.refresh_generics();
+        }
+        n
     }
 
     /// Registers font data (TTF/OTF, or every face of a TTC/OTC). Returns the family names added.

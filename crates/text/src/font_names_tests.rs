@@ -188,3 +188,16 @@ fn localized_family_names_map_english_families_to_native_names() {
     assert!(!local.contains_key(DEFAULT_FAMILY));
     assert!(local.values().all(|v| !v.is_empty()));
 }
+
+#[test]
+fn font_files_load_by_path_once() {
+    let dir = std::env::temp_dir().join(format!("photocraft-fonts-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("path-test.ttf");
+    std::fs::write(&path, localized_font(&INTER_REGULAR, "Path Test", "パス テスト")).unwrap();
+    let mut db = FontDb::new();
+    assert_eq!(db.load_font_files([path.clone(), dir.join("missing.ttf")]), 2);
+    assert!(db.families().iter().any(|f| f == "Path Test"));
+    assert_eq!(db.load_font_files([path]), 0);
+    std::fs::remove_dir_all(dir).ok();
+}

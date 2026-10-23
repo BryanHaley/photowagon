@@ -53,7 +53,7 @@ fn has_adjustments(s: &Session) -> std::result::Result<(), String> {
     if d.doc.layers.iter().any(|l| l.visible && matches!(l.content, LayerContent::Adjustment(_))) {
         Ok(())
     } else {
-        Err("the document has no visible adjustment layers to export".into())
+        Err("no visible adjustment layers".into())
     }
 }
 
@@ -1258,7 +1258,7 @@ fn load_files_into_stack(s: &mut Session, p: &Value) -> Result<Value> {
         s.execute("edit.autoAlignLayers", json!({"projection": "auto"}))?;
         if smart {
             let name = s.active().map(|d| d.doc.name.clone()).unwrap_or_default();
-            s.edit("Convert to Smart Object", |doc, active| {
+            s.edit("Convert to Embedded Layer", |doc, active| {
                 let layers = std::mem::take(&mut doc.layers);
                 let smart = crate::smart_cmds::layers_to_smart(doc, &name, layers)?;
                 *active = Some(smart.id);
@@ -1657,7 +1657,7 @@ pub fn specs() -> Vec<CommandSpec> {
             "Place Embedded…",
             &["File"],
             None,
-            r##"{"path":str,"scale":%? (default: fit when larger than the canvas),"fit":bool? (default: Preferences > General > Resize Image During Place),"smartObject":bool? (default: Preferences > General > Always Create Smart Objects When Placing),"center":[x,y]?}"##,
+            r##"{"path":str,"scale":%? (default: fit when larger than the canvas),"fit":bool? (default: Preferences > General > Resize Image During Place),"smartObject":bool? (default: Preferences > General > Always Create Embedded Layers When Placing),"center":[x,y]?}"##,
             native_doc,
             |s, p| place(s, p, false)
         ),
@@ -1720,7 +1720,7 @@ pub fn specs() -> Vec<CommandSpec> {
             "Load Files into Stack…",
             &["File", "Scripts"],
             None,
-            r##"{"paths":[str]|folder,"align":bool=false (Auto-Align Layers on them first),"createSmartObject":bool=false} → new document with one layer per file (inside one smart object with createSmartObject)"##,
+            r##"{"paths":[str]|folder,"align":bool=false (Auto-Align Layers on them first),"createSmartObject":bool=false} → new document with one layer per file (inside one embedded layer with createSmartObject)"##,
             native,
             load_files_into_stack
         ),

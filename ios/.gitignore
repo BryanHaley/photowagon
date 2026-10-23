@@ -1,0 +1,4 @@
+# Generated: `cargo xtask ios` (the Rust core and its Swift bindings) and `xcodegen` (the project).
+/Frameworks/
+/PhotoWagon/Core/photocraft_ffi.swift
+/PhotoWagon.xcodeproj/

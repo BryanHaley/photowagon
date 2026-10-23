@@ -65,12 +65,12 @@ fn bad(cmd: &str, msg: impl Into<String>) -> EngineError {
 
 /// Encodes a document as embedded smart-object contents: an in-memory `.pcraft` bundle.
 pub fn encode_source(doc: &Document) -> Result<Vec<u8>> {
-    photocraft_format::save_to_bytes(doc, &Default::default()).map_err(|e| other(format!("can't encode smart object contents: {e}")))
+    photocraft_format::save_to_bytes(doc, &Default::default()).map_err(|e| other(format!("can't encode embedded layer contents: {e}")))
 }
 
 /// Decodes smart-object contents (a `.pcraft` bundle, PSD/PSB, or any flat image format).
 pub fn decode_source(file_name: &str, bytes: &[u8]) -> Result<Document> {
-    crate::file_cmds::import(file_name, bytes).map_err(|e| other(format!("can't read smart object contents \"{file_name}\": {e}")))
+    crate::file_cmds::import(file_name, bytes).map_err(|e| other(format!("can't read embedded layer contents \"{file_name}\": {e}")))
 }
 
 fn base_name(path: &str) -> String {
@@ -204,7 +204,7 @@ pub fn svg_source_image(bytes: &[u8], fmt: PixelFormat, scale: f64) -> Result<So
     if let Some(img) = cache_get(&key) {
         return Ok(img);
     }
-    let buf = photocraft_io::svg::rasterize(bytes, scale as f32).map_err(|e| other(format!("can't render the SVG smart object: {e}")))?;
+    let buf = photocraft_io::svg::rasterize(bytes, scale as f32).map_err(|e| other(format!("can't render the SVG embedded layer: {e}")))?;
     let img = SourceImage { surface: Arc::new(buffer_to_surface(&buf, fmt)), bounds: buf.rect };
     cache_put(key, img.clone());
     Ok(img)
@@ -260,7 +260,7 @@ pub fn stack_image(file_name: &str, bytes: &[u8], fmt: PixelFormat, mode: photoc
         })
         .collect();
     if frames.is_empty() {
-        return Err(EngineError::Other("the smart object's contents have no visible layers".into()));
+        return Err(EngineError::Other("the embedded layer's contents have no visible layers".into()));
     }
     let stat = match mode {
         photocraft_doc::StackMode::Entropy => Stat::Entropy,
@@ -482,7 +482,7 @@ pub fn refresh(doc: &mut Document, id: LayerId) -> Result<bool> {
 fn refresh_in(doc: &mut Document, id: LayerId, ctx: &JobCtx) -> Result<bool> {
     let mut l = doc.layer(id).cloned().ok_or(EngineError::NoLayer(id))?;
     if !matches!(l.content, LayerContent::Smart(_)) {
-        return Err(other("the layer is not a smart object"));
+        return Err(other("the layer is not an embedded layer"));
     }
     let ok = refresh_layer_in(doc, &mut l, ctx)?;
     if ok && let Some(dst) = doc.layer_mut(id) {
@@ -504,20 +504,20 @@ fn refresh_or_fail_in(doc: &mut Document, id: LayerId, ctx: &JobCtx) -> Result<(
     {
         return Err(crate::doc_path::refusal("the linked file", path, why));
     }
-    Err(other("the smart object's contents are unavailable (missing linked file?), so it can't be re-rendered"))
+    Err(other("the embedded layer's contents are unavailable (missing linked file?), so it can't be re-rendered"))
 }
 
 fn smart(doc: &Document, id: LayerId) -> Result<&SmartObject> {
     match &doc.layer(id).ok_or(EngineError::NoLayer(id))?.content {
         LayerContent::Smart(sm) => Ok(sm),
-        _ => Err(other("the layer is not a smart object")),
+        _ => Err(other("the layer is not an embedded layer")),
     }
 }
 
 fn smart_mut(doc: &mut Document, id: LayerId) -> Result<&mut SmartObject> {
     match &mut doc.layer_mut(id).ok_or(EngineError::NoLayer(id))?.content {
         LayerContent::Smart(sm) => Ok(sm),
-        _ => Err(other("the layer is not a smart object")),
+        _ => Err(other("the layer is not an embedded layer")),
     }
 }
 
@@ -542,7 +542,7 @@ pub(crate) fn add_smart_filter(doc: &mut Document, id: LayerId, sf: photocraft_d
         return refresh_or_fail(doc, id);
     }
     let bounds = selection.map(Surface::content_bounds).filter(|b| !b.is_empty()).unwrap_or(canvas);
-    let cache = sm.cache.as_ref().ok_or_else(|| other("smart object has no pixels"))?;
+    let cache = sm.cache.as_ref().ok_or_else(|| other("embedded layer has no pixels"))?;
     let out = crate::filters::apply_filter_to_surface(&sf.command, &sf.params, cache, bounds, selection, canvas)?
         .ok_or_else(|| other(format!("unknown filter {}", sf.command)))?;
     sm.cache = Some(out);
@@ -747,7 +747,7 @@ fn convert(s: &mut Session, p: &Value) -> Result<Value> {
         Some(id) => vec![LayerId(id)],
         None => crate::layer_multi_cmds::selected(s),
     };
-    let new_id = s.edit("Convert to Smart Object", |doc, active| {
+    let new_id = s.edit("Convert to Embedded Layer", |doc, active| {
         let ids = crate::layer_multi_cmds::top_level(doc, &ids);
         let top = *ids.last().ok_or_else(|| other("no layer selected"))?;
         let l = doc.layer(top).ok_or(EngineError::NoLayer(top))?;
@@ -775,7 +775,7 @@ fn convert(s: &mut Session, p: &Value) -> Result<Value> {
 
 fn via_copy(s: &mut Session, p: &Value) -> Result<Value> {
     let id = layer_param(s, p)?;
-    s.edit("New Smart Object via Copy", |doc, active| {
+    s.edit("New Embedded Layer via Copy", |doc, active| {
         let src = doc.layer(id).ok_or(EngineError::NoLayer(id))?;
         let mut copy = src.duplicate();
         copy.name = doc.copy_name(&src.name);
@@ -786,7 +786,7 @@ fn via_copy(s: &mut Session, p: &Value) -> Result<Value> {
                 sm.source = SmartSource::Embedded { file_name, bytes };
             }
         } else {
-            return Err(other("the layer is not a smart object"));
+            return Err(other("the layer is not an embedded layer"));
         }
         detach_psd(&mut copy);
         let new_id = doc.insert_above(Some(id), copy);
@@ -849,7 +849,7 @@ pub fn replace_contents_bytes(s: &mut Session, id: LayerId, file_name: &str, byt
 
 /// The file name and bytes of smart object `id`'s contents.
 pub fn contents_of(doc: &Document, id: LayerId) -> Result<(String, Arc<Vec<u8>>)> {
-    source_bytes(&doc.metadata, &smart(doc, id)?.source).ok_or_else(|| other("the smart object's contents are unavailable"))
+    source_bytes(&doc.metadata, &smart(doc, id)?.source).ok_or_else(|| other("the embedded layer's contents are unavailable"))
 }
 
 /// Writes the smart object's file as it is. To a path with another extension (a `.png` for
@@ -890,7 +890,7 @@ fn edit_contents(s: &mut Session, p: &Value) -> Result<Value> {
     }
     let source = &smart(&st.doc, id)?.source;
     let (name, bytes) = authorized_source_bytes(s, "layer.smartObjects.editContents", &st.doc.metadata, source)?
-        .ok_or_else(|| other("the smart object's contents are unavailable"))?;
+        .ok_or_else(|| other("the embedded layer's contents are unavailable"))?;
     let mut child = decode_source(&name, &bytes)?;
     // Bundles keep their document id; each open copy needs its own.
     child.id = DocId::fresh();
@@ -909,14 +909,14 @@ pub fn commit_child(s: &mut Session, index: usize) -> Result<bool> {
     let Some(st) = s.docs.get(index) else { return Ok(false) };
     let child = st.doc.clone();
     let Some(link) = s.smart_links.iter().find(|l| l.child == child.id).copied() else { return Ok(false) };
-    let parent = s.docs.iter().position(|d| d.doc.id == link.parent).ok_or_else(|| other("the smart object's document was closed"))?;
+    let parent = s.docs.iter().position(|d| d.doc.id == link.parent).ok_or_else(|| other("the embedded layer's document was closed"))?;
     let bytes = Arc::new(encode_source(&child)?);
     let prev = s.active;
     s.active = Some(parent);
     let r = s.edit("Edit Contents", |doc, _| {
         let ids = instances(doc, link.contents_id);
         if ids.is_empty() {
-            return Err(other("the smart object's instances were removed"));
+            return Err(other("the embedded layer's instances were removed"));
         }
         for id in ids {
             let sm = smart_mut(doc, id)?;
@@ -951,7 +951,7 @@ pub(crate) fn on_close(s: &mut Session, index: usize) {
 
 fn is_smart_child(s: &Session) -> std::result::Result<(), String> {
     let d = s.active().ok_or("no document open")?;
-    if s.smart_links.iter().any(|l| l.child == d.doc.id) { Ok(()) } else { Err("this document isn't smart object contents".into()) }
+    if s.smart_links.iter().any(|l| l.child == d.doc.id) { Ok(()) } else { Err("this document isn't embedded layer contents".into()) }
 }
 
 fn update_all(s: &mut Session) -> Result<Value> {
@@ -1000,7 +1000,7 @@ fn edit_filters(s: &mut Session, p: &Value, label: &str, f: impl FnOnce(&mut Sma
 fn filter_index(cmd: &str, p: &Value, sm: &SmartObject) -> Result<usize> {
     let n = sm.smart_filters.len();
     if n == 0 {
-        return Err(other("the smart object has no smart filters"));
+        return Err(other("the embedded layer has no live filters"));
     }
     match p.get("index") {
         None => Ok(n - 1),
@@ -1010,7 +1010,7 @@ fn filter_index(cmd: &str, p: &Value, sm: &SmartObject) -> Result<usize> {
 
 fn set_filter_visible(s: &mut Session, p: &Value) -> Result<Value> {
     const CMD: &str = "layer.smartFilter.setVisible";
-    edit_filters(s, p, "Smart Filter Visibility", |sm| {
+    edit_filters(s, p, "Live Filter Visibility", |sm| {
         let i = filter_index(CMD, p, sm)?;
         let f = &mut sm.smart_filters[i];
         f.visible = p.get("visible").and_then(Value::as_bool).unwrap_or(!f.visible);
@@ -1022,11 +1022,11 @@ fn set_filter_params(s: &mut Session, p: &Value) -> Result<Value> {
     const CMD: &str = "layer.smartFilter.setParams";
     let new = p.get("params").cloned().ok_or_else(|| bad(CMD, "pass `params` (merged into the filter's parameters)"))?;
     let authorize = s.authorize;
-    edit_filters(s, p, "Edit Smart Filter", |sm| {
+    edit_filters(s, p, "Edit Live Filter", |sm| {
         let i = filter_index(CMD, p, sm)?;
         let f = &mut sm.smart_filters[i];
         if f.command == photocraft_io::smart_map::UNSUPPORTED_FILTER {
-            return Err(bad(CMD, "this smart filter isn't implemented in PhotoCraft: it is kept as is (it can be hidden, moved or deleted)"));
+            return Err(bad(CMD, "this live filter isn't implemented in PhotoCraft: it is kept as is (it can be hidden, moved or deleted)"));
         }
         match (&mut f.params, new) {
             (Value::Object(old), Value::Object(n)) => old.extend(n),
@@ -1048,7 +1048,7 @@ fn blending_options(s: &mut Session, p: &Value) -> Result<Value> {
         None => None,
     };
     let opacity = p.get("opacity").and_then(Value::as_f64).map(|o| if o > 1.0 { o / 100.0 } else { o } as f32);
-    edit_filters(s, p, "Smart Filter Blending Options", |sm| {
+    edit_filters(s, p, "Live Filter Blending Options", |sm| {
         let i = filter_index(CMD, p, sm)?;
         let f = &mut sm.smart_filters[i];
         if let Some(b) = blend {
@@ -1062,7 +1062,7 @@ fn blending_options(s: &mut Session, p: &Value) -> Result<Value> {
 }
 
 fn delete_filter(s: &mut Session, p: &Value) -> Result<Value> {
-    edit_filters(s, p, "Delete Smart Filter", |sm| {
+    edit_filters(s, p, "Delete Live Filter", |sm| {
         let i = filter_index("layer.smartFilter.delete", p, sm)?;
         sm.smart_filters.remove(i);
         Ok(())
@@ -1071,7 +1071,7 @@ fn delete_filter(s: &mut Session, p: &Value) -> Result<Value> {
 
 fn move_filter(s: &mut Session, p: &Value) -> Result<Value> {
     const CMD: &str = "layer.smartFilter.move";
-    edit_filters(s, p, "Move Smart Filter", |sm| {
+    edit_filters(s, p, "Move Live Filter", |sm| {
         let i = filter_index(CMD, p, sm)?;
         let n = sm.smart_filters.len();
         let to = p.get("to").and_then(Value::as_u64).map(|t| t as usize).filter(|t| *t < n).ok_or_else(|| bad(CMD, format!("`to` must be 0..{n}")))?;
@@ -1090,7 +1090,7 @@ fn transfer_filters(s: &mut Session, p: &Value) -> Result<Value> {
     let id_of = |key: &str| p.get(key).and_then(Value::as_u64).map(LayerId).ok_or_else(|| bad(CMD, format!("`{key}` must be a layer id")));
     let (from, to) = (id_of("from")?, id_of("to")?);
     if from == to {
-        return Err(bad(CMD, "the smart filters are already on that layer"));
+        return Err(bad(CMD, "the live filters are already on that layer"));
     }
     // The other `layer.smartFilter.*` commands name a filter `index`; here a guessed `index`
     // would otherwise be dropped and every filter moved.
@@ -1100,10 +1100,10 @@ fn transfer_filters(s: &mut Session, p: &Value) -> Result<Value> {
     let copy = p.get("copy").and_then(Value::as_bool).unwrap_or(false);
     let doc = &s.active().ok_or(EngineError::NoDocument)?.doc;
     let src = smart(doc, from)?;
-    smart(doc, to).map_err(|_| bad(CMD, "smart filters can only be dropped on a smart object"))?;
+    smart(doc, to).map_err(|_| bad(CMD, "live filters can only be dropped on an embedded layer"))?;
     let n = src.smart_filters.len();
     if n == 0 {
-        return Err(other("the smart object has no smart filters"));
+        return Err(other("the embedded layer has no live filters"));
     }
     let index = match p.get("filter") {
         None | Some(Value::Null) => None,
@@ -1114,10 +1114,10 @@ fn transfer_filters(s: &mut Session, p: &Value) -> Result<Value> {
         None => (src.smart_filters.clone(), src.filter_mask.clone()),
     };
     let label = match (copy, index.is_some()) {
-        (true, true) => "Copy Smart Filter",
-        (true, false) => "Copy Smart Filters",
-        (false, true) => "Move Smart Filter",
-        (false, false) => "Move Smart Filters",
+        (true, true) => "Copy Live Filter",
+        (true, false) => "Copy Live Filters",
+        (false, true) => "Move Live Filter",
+        (false, false) => "Move Live Filters",
     };
     crate::jobs::edit_job(
         s,
@@ -1155,7 +1155,7 @@ fn active_smart(s: &Session) -> std::result::Result<&SmartObject, String> {
     let id = d.active_layer.ok_or("no active layer")?;
     match &d.doc.layer(id).ok_or("no active layer")?.content {
         LayerContent::Smart(sm) => Ok(sm),
-        other => Err(format!("the active layer is {} {} layer, not a smart object", other.article(), other.kind_name())),
+        _ => Err("not an embedded layer".into()),
     }
 }
 fn has_smart(s: &Session) -> std::result::Result<(), String> {
@@ -1164,17 +1164,17 @@ fn has_smart(s: &Session) -> std::result::Result<(), String> {
 fn has_linked(s: &Session) -> std::result::Result<(), String> {
     match active_smart(s)?.source {
         SmartSource::Linked { .. } => Ok(()),
-        _ => Err("the smart object is embedded".into()),
+        _ => Err("the embedded layer isn't linked".into()),
     }
 }
 fn has_doc(s: &Session) -> std::result::Result<(), String> {
     s.active().map(|_| ()).ok_or_else(|| "no document open".into())
 }
 fn has_smart_filters(s: &Session) -> std::result::Result<(), String> {
-    if active_smart(s)?.smart_filters.is_empty() { Err("the smart object has no smart filters".into()) } else { Ok(()) }
+    if active_smart(s)?.smart_filters.is_empty() { Err("the embedded layer has no live filters".into()) } else { Ok(()) }
 }
 fn has_filter_mask(s: &Session) -> std::result::Result<(), String> {
-    active_smart(s)?.filter_mask.as_ref().map(|_| ()).ok_or_else(|| "the smart object has no filter mask".into())
+    active_smart(s)?.filter_mask.as_ref().map(|_| ()).ok_or_else(|| "the embedded layer has no filter mask".into())
 }
 fn convertible(s: &Session) -> std::result::Result<(), String> {
     let d = s.active().ok_or("no document open")?;
@@ -1183,7 +1183,7 @@ fn convertible(s: &Session) -> std::result::Result<(), String> {
 }
 fn not_smart(s: &Session) -> std::result::Result<(), String> {
     convertible(s)?;
-    if active_smart(s).is_ok() { Err("the layer is already a smart object".into()) } else { Ok(()) }
+    if active_smart(s).is_ok() { Err("the layer is already an embedded layer".into()) } else { Ok(()) }
 }
 
 macro_rules! spec {
@@ -1192,14 +1192,14 @@ macro_rules! spec {
     };
 }
 
-const SO: &[&str] = &["Layer", "Smart Objects"];
-const SF: &[&str] = &["Layer", "Smart Filter"];
+const SO: &[&str] = &["Layer", "Embedded Layers"];
+const SF: &[&str] = &["Layer", "Live Filter"];
 
 pub fn specs() -> Vec<CommandSpec> {
     vec![
         spec!(
             "layer.smartObjects.convertToSmartObject",
-            "Convert to Smart Object",
+            "Convert to Embedded Layer",
             SO,
             r##"{"layer":id?} (default: combine selected layers)"##,
             convertible,
@@ -1207,19 +1207,19 @@ pub fn specs() -> Vec<CommandSpec> {
         ),
         spec!(
             "filter.convertForSmartFilters",
-            "Convert for Smart Filters",
+            "Convert for Live Filters",
             &["Filter"],
             r##"{"layer":id?} (default: combine selected layers)"##,
             not_smart,
             convert
         ),
-        spec!("layer.smartObjects.newSmartObjectViaCopy", "New Smart Object via Copy", SO, r##"{"layer":id?}"##, has_smart, via_copy),
+        spec!("layer.smartObjects.newSmartObjectViaCopy", "New Embedded Layer via Copy", SO, r##"{"layer":id?}"##, has_smart, via_copy),
         spec!("layer.smartObjects.rasterize", "Rasterize", SO, r##"{"layer":id?}"##, has_smart, |s, p| s.execute("layer.rasterize.smartObject", p.clone())),
         spec!(
             "layer.smartObjects.editContents",
             "Edit Contents",
             SO,
-            r##"{"layer":id?} → opens the contents as a new document; saving (layer.smartObjects.saveContents) or closing it updates the smart object"##,
+            r##"{"layer":id?} → opens the contents as a new document; saving (layer.smartObjects.saveContents) or closing it updates the embedded layer"##,
             has_smart,
             edit_contents
         ),
@@ -1249,7 +1249,7 @@ pub fn specs() -> Vec<CommandSpec> {
             "layer.smartObjects.updateChanged",
             "Update Changed Linked Content",
             &[],
-            "{} — re-render the active document's linked smart objects whose files changed on disk since they were last seen (size or modification time); the desktop app does this by itself every two seconds, as Photoshop does while a document is open. Files seen for the first time are only remembered. One Update Modified Content undo step per file → {updated: [layer ids]}",
+            "{} — re-render the active document's linked embedded layers whose files changed on disk since they were last seen (size or modification time); the desktop app does this by itself every two seconds, as Photoshop does while a document is open. Files seen for the first time are only remembered. One Update Modified Content undo step per file → {updated: [layer ids]}",
             |s| s.active().map(|_| ()).ok_or_else(|| "no document open".into()),
             crate::link_watch::update_changed
         ),
@@ -1265,7 +1265,7 @@ pub fn specs() -> Vec<CommandSpec> {
             "layer.smartObjects.convertToLayers",
             "Convert to Layers",
             SO,
-            r##"{"layer":id?} (contents unpacked at the placement: one layer, or a group named after the smart object; smart filters are discarded)"##,
+            r##"{"layer":id?} (contents unpacked at the placement: one layer, or a group named after the embedded layer; live filters are discarded)"##,
             has_smart,
             unpack::convert_to_layers
         ),
@@ -1284,7 +1284,7 @@ pub fn specs() -> Vec<CommandSpec> {
             |s, p| {
                 let path = path_param("layer.smartObjects.convertToLinked", p)?.to_string();
                 set_source(s, p, "Convert to Linked", false, |meta, src| {
-                    let (_, bytes) = source_bytes(meta, src).ok_or_else(|| other("the smart object's contents are unavailable"))?;
+                    let (_, bytes) = source_bytes(meta, src).ok_or_else(|| other("the embedded layer's contents are unavailable"))?;
                     crate::file_cmds::write_file(&path, &bytes)?;
                     Ok(SmartSource::Linked { path })
                 })
@@ -1293,12 +1293,12 @@ pub fn specs() -> Vec<CommandSpec> {
         // Smart filters
         spec!(
             "layer.smartFilter.disableSmartFilters",
-            "Disable Smart Filters",
+            "Disable Live Filters",
             SF,
             r##"{"layer":id?,"enabled":bool? (default: toggle)}"##,
             has_smart_filters,
             |s, p| {
-                edit_filters(s, p, "Disable Smart Filters", |sm| {
+                edit_filters(s, p, "Disable Live Filters", |sm| {
                     sm.filters_enabled = p.get("enabled").and_then(Value::as_bool).unwrap_or(!sm.filters_enabled);
                     Ok(())
                 })
@@ -1333,8 +1333,8 @@ pub fn specs() -> Vec<CommandSpec> {
             has_smart_filters,
             blending_options
         ),
-        spec!("layer.smartFilter.clearSmartFilters", "Clear Smart Filters", SF, r##"{"layer":id?}"##, has_smart_filters, |s, p| {
-            edit_filters(s, p, "Clear Smart Filters", |sm| {
+        spec!("layer.smartFilter.clearSmartFilters", "Clear Live Filters", SF, r##"{"layer":id?}"##, has_smart_filters, |s, p| {
+            edit_filters(s, p, "Clear Live Filters", |sm| {
                 sm.smart_filters.clear();
                 sm.filter_mask = None;
                 Ok(())
@@ -1342,7 +1342,7 @@ pub fn specs() -> Vec<CommandSpec> {
         }),
         spec!(
             "layer.smartFilter.setVisible",
-            "Show/Hide Smart Filter",
+            "Show/Hide Live Filter",
             &[],
             r##"{"layer":id?,"index":u32?,"visible":bool? (default: toggle)}"##,
             has_smart_filters,
@@ -1350,17 +1350,17 @@ pub fn specs() -> Vec<CommandSpec> {
         ),
         spec!(
             "layer.smartFilter.setParams",
-            "Edit Smart Filter",
+            "Edit Live Filter",
             &[],
             r##"{"layer":id?,"index":u32?,"params":{…} (merged)}"##,
             has_smart_filters,
             set_filter_params
         ),
-        spec!("layer.smartFilter.delete", "Delete Smart Filter", &[], r##"{"layer":id?,"index":u32?}"##, has_smart_filters, delete_filter),
-        spec!("layer.smartFilter.move", "Move Smart Filter", &[], r##"{"layer":id?,"index":u32?,"to":u32}"##, has_smart_filters, move_filter),
+        spec!("layer.smartFilter.delete", "Delete Live Filter", &[], r##"{"layer":id?,"index":u32?}"##, has_smart_filters, delete_filter),
+        spec!("layer.smartFilter.move", "Move Live Filter", &[], r##"{"layer":id?,"index":u32?,"to":u32}"##, has_smart_filters, move_filter),
         spec!(
             "layer.smartFilter.transfer",
-            "Move or Copy Smart Filters",
+            "Move or Copy Live Filters",
             &[],
             r##"{"from":id,"to":id,"filter":u32? (default: all, with the filter mask),"copy":bool=false}"##,
             has_doc,

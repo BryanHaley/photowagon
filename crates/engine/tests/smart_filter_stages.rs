@@ -11,7 +11,7 @@ fn rendered(s: &Session) -> Surface {
     let d = s.active().unwrap();
     match &d.doc.layer(d.active_layer.unwrap()).unwrap().content {
         LayerContent::Smart(sm) => sm.cache.clone().unwrap(),
-        other => panic!("not a smart object: {}", other.kind_name()),
+        other => panic!("not an embedded layer: {}", other.kind_name()),
     }
 }
 
@@ -42,7 +42,7 @@ fn toggling_the_top_filter_reuses_the_stages_below_it_until_purged() {
         assert!(smart_cmds::stack_cache_bytes() > 0);
         assert!(s.is_enabled("edit.purge.all"));
         let purged = s.execute("edit.purge.all", json!({})).unwrap();
-        assert!(purged["purged"].as_array().unwrap().contains(&json!("smart filter cache")), "{purged}");
+        assert!(purged["purged"].as_array().unwrap().contains(&json!("live filter cache")), "{purged}");
         assert_eq!(smart_cmds::stack_cache_bytes(), 0);
 
         s.execute("layer.smartFilter.setVisible", json!({"index": 1, "visible": false})).unwrap();

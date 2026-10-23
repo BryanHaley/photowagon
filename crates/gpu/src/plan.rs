@@ -395,6 +395,9 @@ pub const F_ADD_DIFF: u32 = 16384;
 pub const F_BLEND_IF: u32 = 524288;
 /// Blend / Atop / FxMerge of a type layer: coverage mixed at `psblend::TEXT_GAMMA`.
 pub const F_TEXT_GAMMA: u32 = 8192;
+/// Blend: Transparency Shapes Layer off, so the special eight take alpha as Fill
+/// (`compose::blend_into_fill`).
+pub const F_ALPHA_FILL: u32 = 1048576;
 
 /// A layer's Blend If ranges for `F_BLEND_IF`: Gray, then the colour channels, each as
 /// [this layer, underlying layer]; every range as two floats, `black low × 256 + black high` and
@@ -783,7 +786,7 @@ impl<'a> Planner<'a> {
         p.mode = layer.blend;
         p.opacity = layer.opacity;
         p.fill = layer.fill_opacity;
-        p.flags = gamma_flag(layer);
+        p.flags = gamma_flag(layer) | if layer.advanced.transparency_shapes { 0 } else { F_ALPHA_FILL };
         p.extra[3] = photocraft_compose::text_gamma(layer);
         p.clip = clip;
         let merged = self.emit(p);

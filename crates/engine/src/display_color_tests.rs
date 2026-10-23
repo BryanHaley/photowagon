@@ -455,3 +455,15 @@ fn parallel_plain_quantize_matches_the_scalar_rounding() {
         assert_eq!(*o, p.map(q), "{p:?}");
     }
 }
+
+#[test]
+fn srgb_thumbnails_convert_from_the_document_profile() {
+    let pro = Builtin::ProPhotoCompat.profile();
+    let px = |d: &Document| crate::display_color::srgb_thumbnail(d, 4).unwrap().pixels[..3].to_vec();
+    let skin = px(&rgb_doc(Some(pro), [0.55, 0.35, 0.25], SampleType::U16));
+    let raw = [0.55f32, 0.35, 0.25].map(|v| (v * 255.0).round() as u8);
+    assert!(skin[0] - skin[2] > raw[0] - raw[2] + 30, "ProPhoto is wider: the sRGB values spread out ({skin:?} vs {raw:?})");
+    let grey = px(&rgb_doc(Some(pro), [0.5; 3], SampleType::U16));
+    assert!(grey[0].abs_diff(grey[1]) <= 1 && grey[1].abs_diff(grey[2]) <= 1, "grey stays grey: {grey:?}");
+    assert_eq!(px(&rgb_doc(None, [0.2, 0.4, 0.6], SampleType::U8)), vec![51, 102, 153], "sRGB unchanged");
+}

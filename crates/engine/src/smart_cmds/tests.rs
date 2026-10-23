@@ -746,7 +746,7 @@ fn convert_to_layers_round_trips_a_layer_at_every_depth() {
         convert(&mut s);
         let smart = flat(&s);
         let r = convert_to_layers(&mut s);
-        assert_eq!(r["group"], false, "one layer replaces the smart object");
+        assert_eq!(r["group"], false, "one layer replaces the embedded layer");
         let l = active_layer(&s);
         assert_eq!(l.id.0, r["layer"].as_u64().unwrap());
         assert!(matches!(&l.content, LayerContent::Raster(px) if px.format() == s.active().unwrap().doc.pixel_format()), "depth {depth}");
@@ -784,13 +784,13 @@ fn convert_to_layers_unpacks_several_layers_into_a_group_with_the_smart_layers_p
     let r = convert_to_layers(&mut s);
     assert_eq!((r["group"].as_bool(), r["discardedSmartFilters"].as_u64()), (Some(true), Some(2)));
     let g = active_layer(&s);
-    assert_eq!((g.name.as_str(), g.blend), ("Placed", BlendMode::Normal), "named after the smart object, isolated");
+    assert_eq!((g.name.as_str(), g.blend), ("Placed", BlendMode::Normal), "named after the embedded layer, isolated");
     assert!((g.opacity - 0.5).abs() < 1e-6);
     let names: Vec<_> = g.children().unwrap().iter().map(|c| c.name.as_str()).collect();
     assert_eq!(names.last(), Some(&"Top"));
     assert_eq!(names.len(), 2);
     assert!(max_diff(&flat(&s), &before) <= 1.0 / 255.0 + 1e-6);
-    assert!(!s.is_enabled("layer.smartObjects.convertToLayers"), "a group isn't a smart object");
+    assert!(!s.is_enabled("layer.smartObjects.convertToLayers"), "a group isn't an embedded layer");
 }
 
 #[test]
@@ -1099,7 +1099,7 @@ fn displace_smart_filter_reads_its_map_path_on_re_render() {
         convert(&mut s);
         let before = flat(&s);
         s.execute("filter.distort.displace", json!({"horizontal": 8, "vertical": 8, "mapPath": map.to_str().unwrap()})).unwrap();
-        assert!(max_diff(&before, &flat(&s)) > 0.1, "the smart filter displaced the pixels at {depth}-bit");
+        assert!(max_diff(&before, &flat(&s)) > 0.1, "the live filter displaced the pixels at {depth}-bit");
         // A later re-render (here: hide and show the filter) reads the map again.
         s.execute("layer.smartFilter.setVisible", json!({"index": 0, "visible": false})).unwrap();
         assert_eq!(max_diff(&before, &flat(&s)), 0.0, "hidden at {depth}-bit");
@@ -1107,4 +1107,21 @@ fn displace_smart_filter_reads_its_map_path_on_re_render() {
         assert!(max_diff(&before, &flat(&s)) > 0.1, "shown again at {depth}-bit");
     }
     std::fs::remove_dir_all(&dir).ok();
+}
+
+#[test]
+fn what_blend_if_hides_is_transparent_in_the_embedded_layer() {
+    let mut s = session(8);
+    s.execute("select.rect", json!({"x": 10, "y": 10, "width": 30, "height": 20})).unwrap();
+    s.execute("edit.fill", json!({"contents": "color", "color": "#0000ff"})).unwrap();
+    s.execute("select.rect", json!({"x": 10, "y": 40, "width": 30, "height": 4})).unwrap();
+    s.execute("edit.fill", json!({"contents": "color", "color": "#000000"})).unwrap();
+    s.execute("select.deselect", json!({})).unwrap();
+    s.execute("layer.layerStyle.blendingOptions", json!({"blendIf": {"channel": "blue", "thisLayer": [0, 0, 100, 160]}})).unwrap();
+    s.execute("layer.smartObjects.convertToSmartObject", json!({})).unwrap();
+    s.execute("select.loadSelection", json!({"channel": "transparency"})).unwrap();
+    let st = s.execute("document.stats", json!({"of": "selection", "rect": [12, 12, 38, 28]})).unwrap();
+    assert!(st["mean"][0].as_f64().unwrap() < 0.01, "the hidden blue: {st}");
+    let kept = s.execute("document.stats", json!({"of": "selection", "rect": [12, 41, 38, 43]})).unwrap();
+    assert!(kept["mean"][0].as_f64().unwrap() > 0.99, "the black stripe: {kept}");
 }

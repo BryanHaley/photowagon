@@ -237,7 +237,7 @@ fn has_pixels(s: &Session) -> std::result::Result<(), String> {
     if matches!(l.content, LayerContent::Raster(_)) {
         Ok(())
     } else {
-        Err(format!("active layer is {} {} layer, not a pixel layer", l.content.article(), l.content.kind_name()))
+        Err(format!("not on {} layers", l.content.kind_name()))
     }
 }
 
@@ -252,7 +252,7 @@ pub(crate) fn has_adjustable(s: &Session) -> std::result::Result<(), String> {
     match &l.content {
         LayerContent::Raster(_) => Ok(()),
         LayerContent::Smart(sm) if sm.cache.is_some() => Ok(()),
-        other => Err(format!("active layer is {} {} layer, not a pixel layer", other.article(), other.kind_name())),
+        other => Err(format!("not on {} layers", other.kind_name())),
     }
 }
 
@@ -310,7 +310,7 @@ pub(crate) fn adjust_as_filter(kind: &str, p: &Value, surf: &Surface) -> Option<
     };
     let mut out = surf.clone();
     if kind == "shadowsHighlights" {
-        let sh = shadows_highlights_params(p);
+        let sh = shadows_highlights_params(p).ok()?;
         process_surface(&mut out, None, &mut |px, r| tone::shadows_highlights(px, r.width() as usize, r.height() as usize, &sh));
     } else {
         let mode = surf.format().mode;
@@ -322,27 +322,32 @@ pub(crate) fn adjust_as_filter(kind: &str, p: &Value, surf: &Surface) -> Option<
 }
 
 fn shadows_highlights(s: &mut Session, p: &Value) -> Result<Value> {
+    shadows_highlights_params(p)?;
     if adjust_as_smart_filter(s, "shadowsHighlights", "Shadows/Highlights", p)? {
         return Ok(Value::Null);
     }
-    let sh = shadows_highlights_params(p);
+    let sh = shadows_highlights_params(p)?;
     rgba_edit(s, "Shadows/Highlights", p, |px, r| tone::shadows_highlights(px, r.width() as usize, r.height() as usize, &sh))
 }
 
-fn shadows_highlights_params(p: &Value) -> ShadowsHighlights {
+fn shadows_highlights_params(p: &Value) -> Result<ShadowsHighlights> {
+    for key in ["shadowRadius", "highlightRadius"] {
+        if p.get(key).is_some() {
+            return Err(bad("image.adjustments.shadowsHighlights", format!("`{key}` was removed: use `radius` (one radius for shadows and highlights)")));
+        }
+    }
     let d = ShadowsHighlights::default();
-    ShadowsHighlights {
+    Ok(ShadowsHighlights {
         shadow_amount: num(p, "shadowAmount", d.shadow_amount).clamp(0.0, 100.0),
         shadow_tone: num(p, "shadowTone", d.shadow_tone).clamp(0.0, 100.0),
-        shadow_radius: num(p, "shadowRadius", d.shadow_radius).clamp(0.0, 2500.0),
         highlight_amount: num(p, "highlightAmount", d.highlight_amount).clamp(0.0, 100.0),
         highlight_tone: num(p, "highlightTone", d.highlight_tone).clamp(0.0, 100.0),
-        highlight_radius: num(p, "highlightRadius", d.highlight_radius).clamp(0.0, 2500.0),
+        radius: num(p, "radius", d.radius).clamp(0.0, 2500.0),
         color: num(p, "color", d.color).clamp(-100.0, 100.0),
         midtone: num(p, "midtone", d.midtone).clamp(-100.0, 100.0),
         black_clip: num(p, "blackClip", d.black_clip).clamp(0.0, 50.0),
         white_clip: num(p, "whiteClip", d.white_clip).clamp(0.0, 50.0),
-    }
+    })
 }
 
 fn replace_color(s: &mut Session, p: &Value) -> Result<Value> {
@@ -498,7 +503,7 @@ pub fn specs() -> Vec<CommandSpec> {
             "image.adjustments.shadowsHighlights",
             "Shadows/Highlights…",
             ["Image", "Adjustments"],
-            r##"{"shadowAmount":0..100=35,"shadowTone":0..100=50,"shadowRadius":0..2500=30,"highlightAmount":0..100=0,"highlightTone":0..100=50,"highlightRadius":0..2500=30,"color":-100..100=20,"midtone":-100..100=0,"blackClip":0..50=0.01,"whiteClip":0..50=0.01}"##,
+            r##"{"shadowAmount":0..100=35,"shadowTone":0..100=50,"highlightAmount":0..100=0,"highlightTone":0..100=50,"radius":0..2500=30,"color":-100..100=20,"midtone":-100..100=0,"blackClip":0..50=0.01,"whiteClip":0..50=0.01}"##,
             has_adjustable,
             shadows_highlights
         ),

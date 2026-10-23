@@ -3717,3 +3717,67 @@ curves	Smooth	Làm mượt
 	Increase Brush Size	Tăng kích thước cọ
 	Decrease Brush Hardness	Giảm độ cứng của cọ
 	Increase Brush Hardness	Tăng độ cứng của cọ
+# Renamed engine strings (same translations as the names they replaced).
+	Create Embedded Layer after Loading Layers	Tạo đối tượng thông minh sau khi tải lớp
+	Contact Sheet…	Contact Sheet II…
+	Fill from Surroundings…	Tô theo nội dung…
+	Content-Preserving Scale	Co giãn theo nội dung
+	Create Batch App…	Tạo Droplet…
+	Merge to HDR…	Ghép HDR Pro…
+	Panorama…	Photomerge…
+	Pin Warp	Biến dạng con rối
+	Clear Live Filters	Xóa bộ lọc thông minh
+	Convert to Embedded Layer	Chuyển thành đối tượng thông minh
+	Disable Live Filters	Tắt bộ lọc thông minh
+	New Embedded Layer via Copy	Đối tượng thông minh mới bằng sao chép
+	Live Filter	Bộ lọc thông minh
+	Embedded Layer	Đối tượng thông minh
+	Embedded Layers	Đối tượng thông minh
+	Refine Selection…	Chọn và tạo mặt nạ…
+	Blur Effects	Thư viện làm mờ
+	Develop…	Bộ lọc Camera Raw…
+	Convert for Live Filters	Chuyển cho bộ lọc thông minh
+	Fluid Warp…	Hóa lỏng…
+	Perspective Planes…	Điểm tụ…
+	Spot Repair Brush Tool	Công cụ Cọ sửa khuyết điểm
+	Repair Brush Tool	Công cụ Cọ phục hồi
+	Move and Fill Tool	Công cụ Di chuyển theo nội dung
+	Embedded Layer Layer	Lớp đối tượng thông minh
+	Filter for embedded layers	Lọc đối tượng thông minh
+	Save these settings as a Raw Develop .xmp file	Lưu các cài đặt này thành tệp .xmp Camera Raw
+	Load settings from a Raw Develop .xmp file	Tải cài đặt từ tệp .xmp Camera Raw
+	Loaded Raw Develop settings from {file}	Đã tải cài đặt Camera Raw từ {file}
+	Loaded Raw Develop settings from {file} ({n} not supported)	Đã tải cài đặt Camera Raw từ {file} ({n} không được hỗ trợ)
+	Develop ({layer})	Bộ lọc Camera Raw ({layer})
+	Raw Develop isn't open	Camera Raw chưa mở
+	Raw Develop Defaults	Mặc định Camera Raw
+	Raw Develop	Camera Raw
+	Fluid Warp is not open	Hóa lỏng chưa mở
+	Pin Warp is not active	Biến dạng con rối chưa hoạt động
+	Commit Pin Warp ({key})	Áp dụng biến dạng con rối ({key})
+	Raw Develop ({name})	Camera Raw ({name})
+	Contact Sheet	Contact Sheet II
+	Create Batch App	Tạo Droplet
+	Apply Perspective Planes ({key})	Áp dụng Điểm tụ ({key})
+	Refine Selection (Legacy) Brush (R)	Cọ tinh chỉnh cạnh (R)
+	Perspective Planes is not active	Điểm tụ chưa được kích hoạt
+	Perspective Planes: click four corners to create a plane	Điểm tụ: bấm bốn góc để tạo mặt phẳng
+@plural	Updated {n} linked embedded layer changed on disk|Updated {n} linked embedded layers changed on disk	Đã cập nhật {n} đối tượng thông minh liên kết đã thay đổi trên đĩa
+	Raw Develop…	Camera Raw…
+	Fill from Surroundings needs a selection on a pixel layer	Tô nhận biết nội dung cần một vùng chọn trên lớp điểm ảnh
+	Could not use Pin Warp: no opaque pixels	Không thể dùng Uốn búp bê: không có điểm ảnh đục
+	Could not use Pin Warp: the layer is empty	Không thể dùng Uốn búp bê: lớp rỗng
+	Live Filters	Các bộ lọc thông minh
+	Always create embedded layers when placing	Luôn tạo đối tượng thông minh khi đặt
+	Open as embedded layer	Mở dưới dạng đối tượng thông minh
+	Rasterize Embedded Layer	Raster hoá đối tượng thông minh
+	Develop	Bộ lọc Camera Raw
+	Fill from Surroundings	Tô nhận biết nội dung
+	Move and Fill	Di chuyển nhận biết nội dung
+	Fluid Warp	Hoà lỏng
+	Panorama	Ghép ảnh
+	Refine Selection	Chọn và Mặt nạ
+	Perspective Planes	Điểm tụ
+	Refine Selection (Legacy)	Tinh chỉnh cạnh
+	Repair Brush	Cọ phục hồi
+	Spot Repair Brush	Cọ sửa khuyết điểm
