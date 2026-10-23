@@ -3,6 +3,13 @@
 A photo editor for iPhone and iPad that a user can pick up without help. Menus, tools
 and panels are where they'd look for them under names they'll recognise.
 
+<p align="center">
+  <img src="docs/images/ai-remove.jpg" width="24%" alt="AI Remove, before and after">
+  <img src="docs/images/tools.jpg" width="24%" alt="The editor and its tools">
+  <img src="docs/images/layers.jpg" width="24%" alt="A layered poster and its Layers panel">
+  <img src="docs/images/develop.jpg" width="24%" alt="Develop">
+</p>
+
 PhotoWagon is a SwiftUI app on top of the [PhotoCraft](https://github.com/storytold/photocraft)
 engine, an open-source image editor written in Rust. The engine handles layers, masks, adjustment
 layers, layer styles, type, brushes, filters and PSD files. The app calls it through a Swift bridge.

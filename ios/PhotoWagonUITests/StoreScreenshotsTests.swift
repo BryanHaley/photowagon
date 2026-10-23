@@ -37,31 +37,57 @@ final class StoreScreenshotsTests: WalkthroughTestCase {
     }
 
     func test3Layers() {
-        openSample("tulips")
+        openSample("wander")
+        step("layers-canvas") { waitIdle() }
         step("layers") {
-            if UIDevice.current.userInterfaceIdiom == .pad {
-                menu("Layer", "Duplicate Layer…")
-                if app.buttons["OK"].waitForExistence(timeout: 3) { app.buttons["OK"].firstMatch.tap() }
-            } else {
-                tool(group: "Horizontal Type", pick: "Horizontal Type")
-                at(500, 500).tap()
-                app.typeText("Spring")
-                app.buttons["OK"].firstMatch.tap()
-                if app.buttons["Commit"].waitForExistence(timeout: 2) { tapChip(app.buttons["Commit"]) }
-            }
-            menu("Layer", "New Adjustment Layer", "Vibrance…")
-            if app.buttons["OK"].waitForExistence(timeout: 3) { app.buttons["OK"].firstMatch.tap() }
-            waitIdle()
             app.buttons["layers"].tap()
             XCTAssert(app.buttons["layers.menu"].waitForExistence(timeout: 5))
+            expandSheet()
         }
     }
 
     func test4Develop() {
         openSample("balloon-sunset")
+        menu("Filter", "Develop…")
+        XCTAssert(app.buttons["raw.ok"].waitForExistence(timeout: 10))
+        let light = app.buttons["raw.panel.Light"]
+        bringToTop(light)
+        // A real edit: brighter, more contrast, highlights held back, shadows opened up.
+        for (key, value, range) in [("exposure", 0.35, 5.0), ("contrast", 22, 100), ("highlights", -45, 100), ("shadows", 38, 100), ("whites", 14, 100), ("blacks", -20, 100)] {
+            app.sliders["raw.\(key)"].adjust(toNormalizedSliderPosition: CGFloat((value + range) / (2 * range)))
+        }
+        let curve = app.buttons["raw.panel.Curve"]
+        bringToTop(curve)
+        curve.tap()
+        let graph = app.descendants(matching: .any)["curves.graph"]
+        bringToTop(curve)
+        XCTAssert(graph.waitForExistence(timeout: 5))
+        step("develop-curve") {
+            // A gentle S: shadows down, highlights up.
+            for (x, y, dy) in [(0.27, 0.73, 0.06), (0.73, 0.27, -0.06)] {
+                let from = graph.coordinate(withNormalizedOffset: CGVector(dx: x, dy: y))
+                from.press(forDuration: 0.05, thenDragTo: graph.coordinate(withNormalizedOffset: CGVector(dx: x, dy: y + dy)), withVelocity: .slow, thenHoldForDuration: 0.1)
+            }
+            sleep(2)
+        }
         step("develop") {
-            menu("Filter", "Develop…")
-            sleep(3)
+            bringToTop(light, back: true)
+            sleep(2)
+        }
+    }
+
+    /// Scrolls Develop's settings until `element` sits just under the preview, looking further
+    /// down the list (or back up) while it isn't built yet.
+    private func bringToTop(_ element: XCUIElement, back: Bool = false) {
+        let form = app.collectionViews.firstMatch
+        let target = form.frame.minY + 24
+        for _ in 0..<12 {
+            let dy = element.exists ? element.frame.midY - target : (back ? -1 : 1) * form.frame.height * 0.5
+            if abs(dy) < 12 { return }
+            let step = max(min(dy, form.frame.height * 0.6), -form.frame.height * 0.6)
+            // In the left margin, clear of the sliders.
+            let start = form.coordinate(withNormalizedOffset: CGVector(dx: 0.02, dy: step > 0 ? 0.8 : 0.2))
+            start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: -step)), withVelocity: .slow, thenHoldForDuration: 0.4)
         }
     }
 
