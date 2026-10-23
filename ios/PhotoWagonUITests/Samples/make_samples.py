@@ -123,7 +123,8 @@ light = light.resize((1600, 1000), Image.BILINEAR)
 wall = Image.blend(Image.blend(blotch, grain, 0.35), light, 0.3).point(lambda v: int(40 + v * 0.45))
 Image.merge("RGB", (wall, wall, wall.point(lambda v: min(v + 4, 255)))).save("concrete.jpg", quality=88)
 
-# design.psd (the layered design the Layers walkthrough opens), from the repository root:
+# design.psd (the layered design the Layers walkthrough opens) is committed. It was made with
+# PhotoCraft's command-line app, since removed from this repository, from the repository root:
 #   S=$PWD/ios/PhotoWagonUITests/Samples; cargo run -q -p photocraft-cli -- run --new '{"width":1080,"height":1080,"name":"design"}' \
 #     --cmd layer.newFillLayer.gradient --params '{"from":"#e3683b","to":"#9e1f1a","angle":90}' --cmd layer.renameLayer --params '{"name":"Gradient Background"}' \
 #     --cmd type.create --params '{"x":540,"y":400,"text":"The Good","name":"The Good","align":"center","size":170,"color":"#ffffff"}' \

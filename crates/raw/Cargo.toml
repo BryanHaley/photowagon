@@ -28,8 +28,8 @@ zune-core = { workspace = true }
 rayon = { workspace = true }
 # JPEG XL-compressed DNG (DNG 1.7, e.g. Samsung Expert RAW). Pure Rust, MIT OR Apache-2.0. Pinned
 # exactly: it parses untrusted files; moving the pin is a reviewed change (re-run the raw fuzz target).
-# Native only: it added 0.88 MB to the browser build's wasm, which has a hard size cap
-# (packaging/web/package.sh); there JPEG XL DNG is reported as unsupported (src/jxl.rs).
+# Native only: it added 0.88 MB to a wasm build; there JPEG XL DNG is reported as unsupported
+# (src/jxl.rs).
 jxl-oxide = { version = "=0.12.6", default-features = false, features = ["rayon"] }
 
 [dev-dependencies]

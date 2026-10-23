@@ -1,5 +1,7 @@
 # PhotoCraft vs Adobe Photoshop: target-app parity
 
+> **PhotoWagon fork:** PhotoCraft's desktop, web and CLI apps (`apps/`, `crates/ui-egui` and the crates only they used) were removed on 2026-10-23. Their parts of this document are kept as history; the iOS app (`ios/`) and the Swift bridge (`crates/ffi`) are the only front end now.
+
 > **Last reviewed:** 2026-10-12 · **Last updated:** 2026-10-13 · **Change:** minor (on-canvas corner radius widgets, TOOL-214-12; `.atn` import maps 112 events; Free Transform H/V skew fields; stale rows corrected against `main` and the scorecard, estimates unchanged; Photoshop Actions `.atn` load and save; 2026-10-10: Tilt-Shift measurements added; earlier the same day: major, full re-measure against Photoshop 2026 27.11.0; merged `parity-estimate.md` and the roadmap's honest assessment; stale missing-tool rows corrected: Color Replacement and Red Eye are live toolbar tools, Frame landed; percentages unchanged) · **Target:** Adobe Photoshop 2026
 
 The authoritative answer to "how close is PhotoCraft to Photoshop, and how much work is left". The

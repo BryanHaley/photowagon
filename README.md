@@ -27,7 +27,6 @@ open PhotoWagon.xcodeproj    # build and run (iOS 17 or later)
 | `ios/PhotoWagonUITests` | SwiftUI tests |
 | `crates/ffi` | The Swift bridge (UniFFI) |
 | `crates/*` | The PhotoCraft engine (Rust) |
-| `apps/*`, `crates/ui-egui` | PhotoCraft's own desktop, web and command-line apps |
 
 ## Patents
 

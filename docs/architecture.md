@@ -1,5 +1,7 @@
 # PhotoCraft architecture
 
+> **PhotoWagon fork:** PhotoCraft's desktop, web and CLI apps (`apps/`, `crates/ui-egui` and the crates only they used) were removed on 2026-10-23. Their parts of this document are kept as history; the iOS app (`ios/`) and the Swift bridge (`crates/ffi`) are the only front end now.
+
 > **Last reviewed:** 2026-10-10 · **Last updated:** 2026-10-13 · **Change:** minor (workspace size and test counts recounted; current-state summary added; the design plan below is kept, with its deviations listed) · **Target:** Adobe Photoshop 2026
 
 ## Current state (2026-10-10)

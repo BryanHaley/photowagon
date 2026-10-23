@@ -22,8 +22,7 @@ skrifa = "0.44"
 flate2 = { workspace = true }
 
 # ICU dictionary data for Japanese word boundaries and complex-script (Thai, Lao, Khmer, Burmese)
-# line breaking. Native only: the CJK dictionary alone is 3.8 MB of wasm, and the web build must
-# stay under Cloudflare's 25 MiB per-file cap (packaging/web/package.sh). The web build falls back
+# line breaking. Native only: the CJK dictionary alone is 3.8 MB of wasm. A wasm build falls back
 # to the generic Unicode rules for those scripts.
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 parley = { version = "0.11", default-features = false, features = ["std", "complex-scripts"] }

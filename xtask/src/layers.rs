@@ -12,9 +12,6 @@ pub enum Class {
     Layer(u8),
     /// Layer 0, and additionally may depend on no workspace crate at all.
     Standalone,
-    /// Test tooling: may depend on anything up to L5 (it sits at L6 for rule
-    /// purposes); other crates may use it only as a dev-dependency.
-    Testkit,
     /// Binaries and build tooling: exempt from the rules.
     Exempt,
 }
@@ -24,7 +21,6 @@ impl Class {
         match self {
             Class::Layer(l) => Some(l),
             Class::Standalone => Some(0),
-            Class::Testkit => Some(6),
             Class::Exempt => None,
         }
     }
@@ -46,8 +42,6 @@ pub const TABLE: &[(&str, Class)] = &[
     ("raw", Class::Standalone),
     ("affinity", Class::Standalone),
     ("adobe-assets", Class::Standalone),
-    // Pen tablet input (the one isolated `unsafe` helper: AppKit interop on macOS).
-    ("tablet", Class::Standalone),
     ("doc", Class::Layer(1)),
     ("ops", Class::Layer(2)),
     ("paint", Class::Layer(2)),
@@ -63,17 +57,9 @@ pub const TABLE: &[(&str, Class)] = &[
     ("ml", Class::Layer(4)),
     ("plugins", Class::Layer(4)),
     ("engine", Class::Layer(5)),
-    ("ui-egui", Class::Layer(6)),
-    ("automation", Class::Layer(6)),
-    ("platform", Class::Layer(6)),
     // The engine as a Swift API (UniFFI) for the iOS app.
     ("ffi", Class::Layer(6)),
-    ("testkit", Class::Testkit),
-    // L7 apps and tooling
-    ("photocraft", Class::Exempt),
-    ("cli", Class::Exempt),
-    ("web", Class::Exempt),
-    ("web-boot", Class::Exempt),
+    // Build tooling
     ("xtask", Class::Exempt),
 ];
 
@@ -150,7 +136,6 @@ pub enum Violation {
     Unregistered { krate: String },
     Upward { krate: String, dep: String, from: u8, to: u8, kind: DepKind },
     StandaloneHasWorkspaceDep { krate: String, dep: String },
-    TestkitAsNormalDep { krate: String },
     UiBelowL6 { krate: String, dep: String, layer: u8 },
 }
 
@@ -165,9 +150,6 @@ impl std::fmt::Display for Violation {
             }
             Violation::StandaloneHasWorkspaceDep { krate, dep } => {
                 write!(f, "{krate}: standalone crate must not depend on workspace crate {dep}")
-            }
-            Violation::TestkitAsNormalDep { krate } => {
-                write!(f, "{krate}: photocraft-testkit may only be a dev-dependency")
             }
             Violation::UiBelowL6 { krate, dep, layer } => {
                 write!(f, "{krate} (L{layer}) depends on UI crate `{dep}`; UI toolkits are only allowed in L6+")
@@ -204,8 +186,6 @@ pub fn check(crates: &[Crate]) -> Vec<Violation> {
                 match classify(&d.name) {
                     // Unregistered deps are reported on their own entry.
                     None => {}
-                    Some(Class::Testkit) if d.kind != DepKind::Dev => out.push(Violation::TestkitAsNormalDep { krate: c.name.clone() }),
-                    Some(Class::Testkit) => {}
                     Some(dc) => {
                         let to = dc.layer().unwrap_or(u8::MAX);
                         if to >= layer && !(to == layer && intra_layer_allowed(&c.name, &d.name)) {
@@ -257,7 +237,6 @@ pub fn describe(class: Option<Class>) -> String {
     match class {
         Some(Class::Layer(l)) => format!("L{l}"),
         Some(Class::Standalone) => "L0 standalone".into(),
-        Some(Class::Testkit) => "testkit".into(),
         Some(Class::Exempt) => "exempt".into(),
         None => "UNREGISTERED".into(),
     }
@@ -277,9 +256,8 @@ mod tests {
         let g = [
             c("photocraft-geom", &[("kurbo", Normal, false)]),
             c("photocraft-doc", &[("photocraft-geom", Normal, true)]),
-            c("photocraft-engine", &[("photocraft-doc", Normal, true), ("photocraft-testkit", Dev, true)]),
-            c("photocraft-ui-egui", &[("photocraft-engine", Normal, true), ("egui", Normal, false)]),
-            c("photocraft-cli", &[("photocraft-ui-egui", Normal, true)]),
+            c("photocraft-engine", &[("photocraft-doc", Normal, true)]),
+            c("photocraft-ffi", &[("photocraft-engine", Normal, true), ("uniffi", Normal, false)]),
         ];
         assert!(check(&g).is_empty(), "{:?}", check(&g));
     }
@@ -352,8 +330,7 @@ mod tests {
             assert!(matches!(v[..], [Violation::UiBelowL6 { layer: 5, .. }]), "{dep}");
         }
         assert!(check(&[c("photocraft-engine", &[("egui_extras_not", Normal, false)])]).is_empty());
-        assert!(check(&[c("photocraft-ui-egui", &[("craft-ui", Normal, false)])]).is_empty());
-        assert!(check(&[c("photocraft-platform", &[("winit", Normal, false)])]).is_empty());
+        assert!(check(&[c("photocraft-ffi", &[("egui", Normal, false)])]).is_empty());
     }
 
     #[test]
@@ -364,20 +341,8 @@ mod tests {
     }
 
     #[test]
-    fn testkit_only_as_dev_dependency() {
-        let v = check(&[c("photocraft-raster", &[("photocraft-testkit", Normal, true)])]);
-        assert!(matches!(v[..], [Violation::TestkitAsNormalDep { .. }]));
-        assert!(check(&[c("photocraft-raster", &[("photocraft-testkit", Dev, true)])]).is_empty());
-        // testkit itself may use anything up to L5 but not L6 crates.
-        assert!(check(&[c("photocraft-testkit", &[("photocraft-engine", Normal, true)])]).is_empty());
-        assert!(!check(&[c("photocraft-testkit", &[("photocraft-ui-egui", Normal, true)])]).is_empty());
-    }
-
-    #[test]
-    fn apps_and_xtask_exempt() {
-        for app in ["photocraft", "photocraft-cli", "photocraft-web", "photocraft-web-boot", "xtask"] {
-            assert!(check(&[c(app, &[("egui", Normal, false), ("photocraft-ui-egui", Normal, true)])]).is_empty());
-        }
+    fn xtask_exempt() {
+        assert!(check(&[c("xtask", &[("egui", Normal, false), ("photocraft-ffi", Normal, true)])]).is_empty());
     }
 
     #[test]

@@ -1,6 +1,5 @@
 //! A document view any toolkit can host: the composite lives on the GPU as mipmapped tiles
 //! (premultiplied `Rgba8Unorm`) and is drawn with zoom, pan and rotation into a render target.
-//! The egui canvas (ui-egui `gpu_canvas.rs`) uses the same shaders.
 
 use photocraft_compose::Buffer;
 use photocraft_doc::{DocId, Document};

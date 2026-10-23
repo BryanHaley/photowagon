@@ -1,5 +1,7 @@
 # Roadmap
 
+> **PhotoWagon fork:** PhotoCraft's desktop, web and CLI apps (`apps/`, `crates/ui-egui` and the crates only they used) were removed on 2026-10-23. Their parts of this document are kept as history; the iOS app (`ios/`) and the Swift bridge (`crates/ffi`) are the only front end now.
+
 > **Last reviewed:** 2026-10-11 · **Last updated:** 2026-10-11 · **Change:** minor (adaptive Unsharp Mask performance evidence linked; Photomerge status correction retained; alpha gate, focus and estimates unchanged) · **Target:** Adobe Photoshop 2026
 
 - UI.5: Panels can detach, join other tab groups, split, resize and redock through shared docking transactions. Custom layouts persist with workspaces, respect workspace locking, and retain collapse flags for intact native groups.
