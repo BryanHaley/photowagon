@@ -384,15 +384,8 @@ mod tests {
         let (w, h) = (200, 24);
         let (a, b) = (3277.0 / 32768.0, 29491.0 / 32768.0);
         let mut img: Vec<[f32; 4]> = (0..w * h).map(|i| if i % w < 100 { [a, a, a, 1.0] } else { [b, b, b, 1.0] }).collect();
-        let p = ShadowsHighlights {
-            shadow_amount: 100.0,
-            shadow_tone: 100.0,
-            radius: 10.0,
-            color: 0.0,
-            black_clip: 0.0,
-            white_clip: 0.0,
-            ..Default::default()
-        };
+        let p =
+            ShadowsHighlights { shadow_amount: 100.0, shadow_tone: 100.0, radius: 10.0, color: 0.0, black_clip: 0.0, white_clip: 0.0, ..Default::default() };
         shadows_highlights(&mut img, w, h, &p);
         let row = &img[12 * w..13 * w];
         for (x, want) in [(92, 16370), (98, 14439), (99, 12146), (100, 30891), (101, 30403), (102, 30146), (108, 29979)] {

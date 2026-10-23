@@ -6,7 +6,9 @@ use photocraft_codecs::{ChannelLayout, EncodeOptions, Format, Image, decode, det
 /// pixels, with the zlib wrapper taken off the image data and a `CgBI` chunk put in front.
 fn cgbi(w: u32, h: u32, straight: &[u8]) -> Vec<u8> {
     let stored: Vec<u8> = straight
-        .as_chunks::<4>().0.iter()
+        .as_chunks::<4>()
+        .0
+        .iter()
         .flat_map(|p| {
             let a = u32::from(p[3]);
             let pm = |c: u8| ((u32::from(c) * a + 127) / 255) as u8;
@@ -63,6 +65,14 @@ fn an_xcode_cgbi_matches_its_source() {
     let rgba = |b: Vec<u8>| decode(&b).unwrap().convert(ChannelLayout::Rgba, photocraft_codecs::SampleType::U8).data().to_vec();
     let (a, b) = (rgba(std::fs::read(cgbi).unwrap()), rgba(std::fs::read(source).unwrap()));
     assert_eq!(a.len(), b.len());
-    let worst = a.as_chunks::<4>().0.iter().zip(b.as_chunks::<4>().0).filter(|(_, q)| q[3] > 0).map(|(p, q)| (0..4).map(|i| p[i].abs_diff(q[i])).max().unwrap()).max().unwrap();
+    let worst = a
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(b.as_chunks::<4>().0)
+        .filter(|(_, q)| q[3] > 0)
+        .map(|(p, q)| (0..4).map(|i| p[i].abs_diff(q[i])).max().unwrap())
+        .max()
+        .unwrap();
     assert!(worst <= 8, "worst channel difference {worst}");
 }

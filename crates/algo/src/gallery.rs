@@ -251,7 +251,8 @@ impl PreparedIris {
 /// Variable Blur: each pixel is blurred by its `mask` value (0–1) times `blur`.
 pub(crate) fn variable(src: &Image, out: Rect, ctx: &Ctx, blur: f32, mask: Option<&Image>) -> Vec<f32> {
     let smax = sigma_of(blur).max(0.0);
-    let mask = mask.filter(|m| m.ch > 0 && (m.rect.width() as usize).checked_mul(m.rect.height() as usize).and_then(|p| p.checked_mul(m.ch)) == Some(m.data.len()));
+    let mask =
+        mask.filter(|m| m.ch > 0 && (m.rect.width() as usize).checked_mul(m.rect.height() as usize).and_then(|p| p.checked_mul(m.ch)) == Some(m.data.len()));
     variable_blur(src, out, ctx, smax, false, |x, y| {
         let Some(m) = mask else { return smax };
         let v = m.get(x.floor() as i32, y.floor() as i32, 0);

@@ -131,7 +131,8 @@ fn tone_histogram(s: &mut Session, p: &Value) -> Result<Value> {
 /// Point pick.
 fn adjustment_eyedropper_cmd(s: &mut Session, p: &Value) -> Result<Value> {
     let d = s.active().ok_or(EngineError::NoDocument)?;
-    let kind = p.get("kind").and_then(Value::as_str).filter(|k| matches!(*k, "levels" | "curves")).ok_or_else(|| bad("`kind` must be \"levels\" or \"curves\""))?;
+    let kind =
+        p.get("kind").and_then(Value::as_str).filter(|k| matches!(*k, "levels" | "curves")).ok_or_else(|| bad("`kind` must be \"levels\" or \"curves\""))?;
     let e = p.get("eyedropper").ok_or_else(|| bad("`eyedropper` is required"))?;
     let hide = layer_of(p, &d.doc)?.filter(|id| is_adjustment(&d.doc, *id));
     let (picker, sample) = eyedropper_sample(&d.doc, hide, e)?;

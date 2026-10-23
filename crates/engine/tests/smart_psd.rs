@@ -229,9 +229,9 @@ fn camera_raw_psd_fixture() {
         .smart_filters
         .iter()
         .position(|f| {
-            photocraft_io::smart_map::item_for_filter(f).ok().is_some_and(
-                |item| matches!(item.get("Fltr"), Some(photocraft_psd::descriptor::Value::Descriptor(d)) if d.class_id.is("Adobe Camera Raw")),
-            )
+            photocraft_io::smart_map::item_for_filter(f)
+                .ok()
+                .is_some_and(|item| matches!(item.get("Fltr"), Some(photocraft_psd::descriptor::Value::Descriptor(d)) if d.class_id.is("Adobe Camera Raw")))
         })
         .expect("a Raw Develop filter");
     let original_item = photocraft_io::smart_map::item_for_filter(&sm.smart_filters[index]).unwrap();

@@ -33,11 +33,7 @@ const SOURCES: [ColorMode; 5] = [ColorMode::Rgb, ColorMode::Cmyk, ColorMode::Lab
 
 fn enabled(s: &Session) -> std::result::Result<(), String> {
     let d = s.active().ok_or("no document open")?;
-    if SOURCES.contains(&d.doc.mode) {
-        Ok(())
-    } else {
-        Err(format!("not from {:?} mode", d.doc.mode))
-    }
+    if SOURCES.contains(&d.doc.mode) { Ok(()) } else { Err(format!("not from {:?} mode", d.doc.mode)) }
 }
 
 /// Native colour planes of the flattened image (opaque over white): one `Vec` per colour

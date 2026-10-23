@@ -178,14 +178,23 @@ fn copy_and_move_a_mask_to_another_layer() {
     let other = LayerId(other["layer"].as_u64().unwrap_or_else(|| s.active().unwrap().active_layer.unwrap().0));
     s.execute(COPY_TO, json!({"layer": id.0, "to": other.0})).unwrap();
     let doc = &s.active().unwrap().doc;
-    assert_eq!(doc.layer(other).unwrap().mask.as_ref().unwrap().surface.pixel(1, 2)[0], s.active().unwrap().doc.layer(id).unwrap().mask.as_ref().unwrap().surface.pixel(1, 2)[0]);
+    assert_eq!(
+        doc.layer(other).unwrap().mask.as_ref().unwrap().surface.pixel(1, 2)[0],
+        s.active().unwrap().doc.layer(id).unwrap().mask.as_ref().unwrap().surface.pixel(1, 2)[0]
+    );
     assert!(doc.layer(id).unwrap().mask.is_some(), "a copy keeps the original");
     s.execute(COPY_TO, json!({"layer": other.0, "to": id.0, "move": true})).unwrap();
     let doc = &s.active().unwrap().doc;
     assert!(doc.layer(other).unwrap().mask.is_none(), "moved off");
     assert!(s.undo());
     assert!(s.active().unwrap().doc.layer(other).unwrap().mask.is_some());
-    for bad in [json!({"layer": id.0, "to": id.0}), json!({"layer": id.0}), json!({"layer": id.0, "to": 9999}), json!({"layer": background.0, "to": id.0}), json!({"layer": id.0, "to": other.0, "move": 1})] {
+    for bad in [
+        json!({"layer": id.0, "to": id.0}),
+        json!({"layer": id.0}),
+        json!({"layer": id.0, "to": 9999}),
+        json!({"layer": background.0, "to": id.0}),
+        json!({"layer": id.0, "to": other.0, "move": 1}),
+    ] {
         assert!(s.execute(COPY_TO, bad.clone()).is_err(), "{bad}");
     }
 }

@@ -18,10 +18,6 @@ use std::borrow::Cow;
 
 use crate::poisson::membrane_fill;
 
-
-
-
-
 /// SplitMix64: tiny deterministic RNG.
 #[derive(Clone)]
 pub(crate) struct Rng(u64);
@@ -101,11 +97,6 @@ pub enum Px {
     Hole,
 }
 
-
-
-
-
-
 /// Summed-area table of a boolean grid (`(w+1) × (h+1)`). Not inlined: in [`synthesize`] it made
 /// Create Texture's candidate loop slower (measured).
 #[inline(never)]
@@ -147,20 +138,6 @@ fn hole_bbox(w: usize, h: usize, hole: &[bool]) -> Option<(usize, usize, usize, 
     b
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 /// A channel deviation under which a patch counts as flat for [`fit`] (about 5 levels of 255).
 const FLAT: f32 = 0.02;
 
@@ -189,18 +166,6 @@ pub(crate) fn fit(a: Adapt, n: f32, st: f32, stt: f32, ss: f32, sss: f32) -> (f3
     let b = (mt - g * ms).clamp(-a.bias, a.bias);
     (g, b)
 }
-
-
-
-
-
-
-
-
-
-
-
-
 
 /// Content-aware completion of `hole` (see module docs), copying from any pixel outside it. Returns
 /// `None` when there is no fully-known patch to copy from (the caller can fall back to
@@ -267,7 +232,6 @@ fn complete_cow<'a>(
 ) -> Result<Result<Vec<f32>, Cow<'a, [f32]>>, photocraft_raster::Cancelled> {
     Ok(crate::exemplar::complete(w, h, ch, &img, px, p.adapt.bias, ctl)?.ok_or(img))
 }
-
 
 /// Create texture: fill the hole with blocks of surrounding texture (see module docs).
 pub fn synthesize(w: usize, h: usize, ch: usize, img: &[f32], hole: &[bool], block: usize, seed: u64) -> Vec<f32> {
@@ -508,7 +472,6 @@ mod tests {
             .collect()
     }
 
-
     /// A long thin hole goes the thin way (a shallow pyramid that starts from a membrane): it is
     /// filled, only it changes, and the result does not depend on the thread count either.
     #[test]
@@ -548,12 +511,6 @@ mod tests {
             assert_eq!(one, run(16), "{ch} channels, 16 threads");
         }
     }
-
-
-
-
-
-
 
     #[test]
     fn owned_completion_fills_in_place_or_gives_the_pixels_back() {

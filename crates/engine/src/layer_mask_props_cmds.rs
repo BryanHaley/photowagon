@@ -90,25 +90,28 @@ fn copy_to(s: &mut Session, p: &Value) -> Result<Value> {
 }
 
 pub fn specs() -> Vec<CommandSpec> {
-    vec![CommandSpec {
-        id: COPY_TO,
-        label: "Copy Layer Mask",
-        menu: &[],
-        shortcut: None,
-        params: r##"{"layer":id? (default active),"to":id,"move":bool=false} → {layer}; replaces the mask on `to`"##,
-        enabled: |s| s.active().map(|_| ()).ok_or_else(|| "no document open".into()),
-        run: copy_to,
-        journal: true,
-    }, CommandSpec {
-        id: EDIT,
-        label: "Edit Layer Mask",
-        menu: &[],
-        shortcut: None,
-        params: r##"{"layer":id? (default active),"document":id? (reject a stale dialog),"density":0..100?,"feather":0..1000? (pixels)} → {layer,density,feather}; at least one property required; mask pixels are preserved"##,
-        enabled: |s| s.active().map(|_| ()).ok_or_else(|| "no document open".into()),
-        run: edit,
-        journal: true,
-    }]
+    vec![
+        CommandSpec {
+            id: COPY_TO,
+            label: "Copy Layer Mask",
+            menu: &[],
+            shortcut: None,
+            params: r##"{"layer":id? (default active),"to":id,"move":bool=false} → {layer}; replaces the mask on `to`"##,
+            enabled: |s| s.active().map(|_| ()).ok_or_else(|| "no document open".into()),
+            run: copy_to,
+            journal: true,
+        },
+        CommandSpec {
+            id: EDIT,
+            label: "Edit Layer Mask",
+            menu: &[],
+            shortcut: None,
+            params: r##"{"layer":id? (default active),"document":id? (reject a stale dialog),"density":0..100?,"feather":0..1000? (pixels)} → {layer,density,feather}; at least one property required; mask pixels are preserved"##,
+            enabled: |s| s.active().map(|_| ()).ok_or_else(|| "no document open".into()),
+            run: edit,
+            journal: true,
+        },
+    ]
 }
 
 #[cfg(test)]

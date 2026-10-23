@@ -10,8 +10,8 @@
 use std::sync::Arc;
 
 use photocraft_algo::{
-    self as algo, BlurPath, BlurQuality, BlurShape, DepthSource, DiffuseMode, Distribution, ExtrudeType, FilterParams, HsbModel, IrisPin, LensType,
-    Light, LightKind, MezzotintType, SmartBlurMode, SpinPin, TextureChannel, TileFill, UndefinedAreas, WindMethod, ZigZagStyle,
+    self as algo, BlurPath, BlurQuality, BlurShape, DepthSource, DiffuseMode, Distribution, ExtrudeType, FilterParams, HsbModel, IrisPin, LensType, Light,
+    LightKind, MezzotintType, SmartBlurMode, SpinPin, TextureChannel, TileFill, UndefinedAreas, WindMethod, ZigZagStyle,
 };
 use photocraft_doc::{Document, Layer};
 use photocraft_geom::Rect;
@@ -434,8 +434,7 @@ fn reject_removed(id: &str, p: &Value) -> Result<()> {
         "filter.blurGallery.pathBlur" => &["taper"],
         _ => &[],
     };
-    let in_paths = id == "filter.blurGallery.pathBlur"
-        && p.get("paths").and_then(Value::as_array).is_some_and(|a| a.iter().any(|e| e.get("taper").is_some()));
+    let in_paths = id == "filter.blurGallery.pathBlur" && p.get("paths").and_then(Value::as_array).is_some_and(|a| a.iter().any(|e| e.get("taper").is_some()));
     match removed.iter().find(|k| p.get(**k).is_some()) {
         Some(k) => Err(EngineError::BadParams { cmd: id.into(), msg: format!("`{k}` is not supported") }),
         None if in_paths => Err(EngineError::BadParams { cmd: id.into(), msg: "`taper` is not supported".into() }),

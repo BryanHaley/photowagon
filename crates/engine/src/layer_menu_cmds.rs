@@ -38,11 +38,7 @@ fn has_layer(s: &Session) -> Enabled {
 
 fn has_raster(s: &Session) -> Enabled {
     let l = active_layer(s)?;
-    if matches!(l.content, LayerContent::Raster(_)) {
-        Ok(())
-    } else {
-        Err(format!("not on {} layers", l.content.kind_name()))
-    }
+    if matches!(l.content, LayerContent::Raster(_)) { Ok(()) } else { Err(format!("not on {} layers", l.content.kind_name())) }
 }
 
 fn has_raster_with_mask(s: &Session) -> Enabled {

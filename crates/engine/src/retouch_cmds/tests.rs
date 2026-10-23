@@ -344,7 +344,8 @@ fn healing_brush_takes_destination_colour_and_source_texture() {
 
 #[test]
 fn spot_healing_removes_blemish_all_types() {
-    for (depth, kind) in [(8u64, "contentAware"), (16, "contentAware"), (32, "contentAware"), (8, "matchNearby"), (8, "proximityMatch"), (16, "createTexture")] {
+    for (depth, kind) in [(8u64, "contentAware"), (16, "contentAware"), (32, "contentAware"), (8, "matchNearby"), (8, "proximityMatch"), (16, "createTexture")]
+    {
         let mut s = session(160, 120, depth, "rgb");
         paint_layer(&mut s, |x, y| {
             let d = ((x - 80) as f32).hypot((y - 60) as f32);
@@ -2258,7 +2259,6 @@ fn ai_remove_fades_the_fill_in_over_the_margin_the_hole_grew_by() {
     assert!((row[7] - 1.0).abs() < 0.01, "then the fill: {row:?}");
 }
 
-
 #[test]
 fn ai_remove_matches_colour_to_the_holes_edge_not_the_models_redraw_round_it() {
     use photocraft_paint::tile::{b64_decode, b64_encode};
@@ -2289,7 +2289,8 @@ fn ai_remove_ignores_the_models_edge_pixels_when_matching_colour() {
     let side = 512;
     let edge = |i: usize| {
         let (x, y) = (i % side, i / side);
-        mask[i] > 0 && [(x.wrapping_sub(1), y), (x + 1, y), (x, y.wrapping_sub(1)), (x, y + 1)].iter().any(|&(x, y)| x >= side || y >= side || mask[y * side + x] == 0)
+        mask[i] > 0
+            && [(x.wrapping_sub(1), y), (x + 1, y), (x, y.wrapping_sub(1)), (x, y + 1)].iter().any(|&(x, y)| x >= side || y >= side || mask[y * side + x] == 0)
     };
     let fill: Vec<u8> = (0..side * side).flat_map(|i| [if edge(i) { 250 } else { 128 }; 3]).collect();
     let mut apply = p.clone();

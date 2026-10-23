@@ -573,7 +573,8 @@ impl Editor {
         photocraft_paint::render_stroke(&mut surf, &brush, &pts, None, false, 1.0);
         let mut px = vec![[0u8; 4]; (w * h) as usize];
         surf.read_rgba8_into(Rect::from_xywh(0, 0, w, h), &mut px);
-        let image = photocraft_codecs::Image::from_u8(w, h, photocraft_codecs::ChannelLayout::Rgba, px.into_iter().flatten().collect()).map_err(FfiError::new)?;
+        let image =
+            photocraft_codecs::Image::from_u8(w, h, photocraft_codecs::ChannelLayout::Rgba, px.into_iter().flatten().collect()).map_err(FfiError::new)?;
         photocraft_codecs::encode(&image, photocraft_codecs::Format::Png, &Default::default()).map_err(FfiError::new)
     }
 

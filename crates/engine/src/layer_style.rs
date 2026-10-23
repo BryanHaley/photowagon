@@ -1361,7 +1361,11 @@ mod tests {
         let mut s = session();
         s.execute("layer.layerStyle.dropShadow", json!({"distance": 12, "size": 3})).unwrap();
         s.execute("layer.layerStyle.dropShadow", json!({"distance": 4, "add": true})).unwrap();
-        s.execute("layer.layerStyle.blendingOptions", json!({"fillOpacity": 30, "transparencyShapesLayer": false, "blendIf": {"channel": "gray", "underlying": [0, 40, 255, 255]}})).unwrap();
+        s.execute(
+            "layer.layerStyle.blendingOptions",
+            json!({"fillOpacity": 30, "transparencyShapesLayer": false, "blendIf": {"channel": "gray", "underlying": [0, 40, 255, 255]}}),
+        )
+        .unwrap();
         let got = s.execute("layer.layerStyle.get", json!({})).unwrap();
         let b = &got["blending"];
         assert_eq!((b["fillOpacity"].as_f64(), b["transparencyShapesLayer"].as_bool()), (Some(30.0), Some(false)), "{b}");
@@ -1466,7 +1470,11 @@ mod tests {
     #[test]
     fn clear_resets_the_blending_options_too() {
         let mut s = session();
-        s.execute("layer.layerStyle.blendingOptions", json!({"blend": "screen", "fillOpacity": 40, "blendIf": {"channel": "blue", "thisLayer": [0, 0, 100, 200]}})).unwrap();
+        s.execute(
+            "layer.layerStyle.blendingOptions",
+            json!({"blend": "screen", "fillOpacity": 40, "blendIf": {"channel": "blue", "thisLayer": [0, 0, 100, 200]}}),
+        )
+        .unwrap();
         s.execute("layer.layerStyle.clear", json!({})).unwrap();
         let b = &s.execute("layer.layerStyle.get", json!({})).unwrap()["blending"];
         assert_eq!((b["blend"].as_str(), b["fillOpacity"].as_f64()), (Some("Normal"), Some(100.0)), "{b}");

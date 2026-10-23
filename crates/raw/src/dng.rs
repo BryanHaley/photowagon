@@ -4,9 +4,9 @@
 
 use crate::color::{self, Calibration, ColorInfo, IDENTITY};
 use crate::error::{RawError, Result};
+use crate::gaintable::GainTable;
 use crate::sensor::{BlackLevels, Cfa, JpegLayout, Rect, Sensor, read_plane};
 use crate::tiff::{Ifd, Tiff, tag};
-use crate::gaintable::GainTable;
 use crate::{Limits, RawFormat, opcodes};
 
 const PHOTOMETRIC_CFA: u32 = 32803;
@@ -227,9 +227,14 @@ pub(crate) fn decode(t: &Tiff, limits: &Limits) -> Result<Sensor> {
 
     // ProfileGainTableMap: the local tone mapping phones rely on for their default look. DNG 1.7:
     // version 2 in IFD 0, then the raw IFD; version 1 in the raw IFD, then IFD 0.
-    let found = [(&ifd0, tag::PROFILE_GAIN_TABLE_MAP_2, true), (&raw, tag::PROFILE_GAIN_TABLE_MAP_2, true), (&raw, tag::PROFILE_GAIN_TABLE_MAP, false), (&ifd0, tag::PROFILE_GAIN_TABLE_MAP, false)]
-        .into_iter()
-        .find_map(|(ifd, tg, v2)| ifd.get(tg).map(|e| (e, v2)));
+    let found = [
+        (&ifd0, tag::PROFILE_GAIN_TABLE_MAP_2, true),
+        (&raw, tag::PROFILE_GAIN_TABLE_MAP_2, true),
+        (&raw, tag::PROFILE_GAIN_TABLE_MAP, false),
+        (&ifd0, tag::PROFILE_GAIN_TABLE_MAP, false),
+    ]
+    .into_iter()
+    .find_map(|(ifd, tg, v2)| ifd.get(tg).map(|e| (e, v2)));
     let gain_table = found.and_then(|(e, v2)| {
         let table = t.raw(e).and_then(|b| GainTable::parse(b, t.le, v2));
         if table.is_none() {

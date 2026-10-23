@@ -1,6 +1,8 @@
 # PhotoWagon for each version tag (v1.2.3, v1.2.3-rc.1, ...): one archive, exported twice.
-# The App Store-signed .ipa is a workflow artifact (only people with access to the repository
-# see it). An unsigned .ipa, for sideloading, goes on the public GitHub release.
+# An unsigned .ipa, for sideloading, goes on the public GitHub release for the tag. With the
+# signing secrets below set, the archive is also signed, and the App Store .ipa is a workflow
+# artifact (only people with access to the repository see it). Without them the build is unsigned
+# and the release still happens.
 #
 # Signing uses an App Store Connect API key, so no certificate or profile is stored on GitHub:
 # Xcode signs in the cloud with the team's distribution certificate. Repository secrets:
@@ -31,6 +33,7 @@ jobs:
     env:
       ARCHIVE: ${{ github.workspace }}/target/ios/PhotoWagon.xcarchive
       EXPORT: ${{ github.workspace }}/target/ios/export
+      SIGNING: ${{ secrets.ASC_KEY_ID != '' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -63,6 +66,7 @@ jobs:
           cd ios && xcodegen generate
 
       - name: API key
+        if: env.SIGNING == 'true'
         env:
           ASC_KEY_P8_BASE64: ${{ secrets.ASC_KEY_P8_BASE64 }}
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
@@ -73,7 +77,8 @@ jobs:
           chmod 600 "$dir/AuthKey_$ASC_KEY_ID.p8"
           echo "API_PRIVATE_KEYS_DIR=$dir" >> "$GITHUB_ENV"
 
-      - name: Archive
+      - name: Archive (signed)
+        if: env.SIGNING == 'true'
         env:
           TEAM: ${{ secrets.APPLE_TEAM_ID }}
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
@@ -88,7 +93,18 @@ jobs:
             CURRENT_PROJECT_VERSION=${{ steps.version.outputs.build }} \
             archive -quiet
 
+      - name: Archive (unsigned)
+        if: env.SIGNING != 'true'
+        run: |
+          xcodebuild -project ios/PhotoWagon.xcodeproj -scheme PhotoWagon -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath "$ARCHIVE" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            MARKETING_VERSION=${{ steps.version.outputs.marketing }} \
+            CURRENT_PROJECT_VERSION=${{ steps.version.outputs.build }} \
+            archive -quiet
+
       - name: Export the signed .ipa
+        if: env.SIGNING == 'true'
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
@@ -99,6 +115,7 @@ jobs:
             -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID"
 
       - name: Check the build
+        if: env.SIGNING == 'true'
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
@@ -113,6 +130,7 @@ jobs:
         run: rm -rf "$RUNNER_TEMP/private_keys"
 
       - uses: actions/upload-artifact@v4
+        if: env.SIGNING == 'true'
         with:
           name: PhotoWagon-${{ github.ref_name }}-app-store
           path: |

@@ -12,7 +12,7 @@ cp -R "$archive/Products/Applications/PhotoWagon.app" "$dir/Payload/"
 app=$dir/Payload/PhotoWagon.app
 rm -f "$app/embedded.mobileprovision"
 find "$app" -type f | while read -r f; do
-  if file -b "$f" | grep -q Mach-O; then codesign --remove-signature "$f"; fi
+  if file -b "$f" | grep -q Mach-O && codesign -d "$f" 2>/dev/null; then codesign --remove-signature "$f"; fi
 done
 find "$app" -name _CodeSignature -type d -prune -exec rm -rf {} +
 rm -f "$out"

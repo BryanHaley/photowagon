@@ -272,7 +272,12 @@ pub fn develop_sensor(s: &Sensor, opts: &DevelopOptions) -> Result<Developed> {
             // Fast path: black varies at most per 2×2 position, so black and gain
             // repeat every `period` columns (the CFA width, made even).
             let bl = &s.black;
-            let periodic = s.polynomials.is_empty() && bl.delta_h.is_empty() && bl.delta_v.is_empty() && matches!(bl.rows, 1 | 2) && matches!(bl.cols, 1 | 2) && cfa.width <= 16;
+            let periodic = s.polynomials.is_empty()
+                && bl.delta_h.is_empty()
+                && bl.delta_v.is_empty()
+                && matches!(bl.rows, 1 | 2)
+                && matches!(bl.cols, 1 | 2)
+                && cfa.width <= 16;
             let period = if cfa.width % 2 == 0 { cfa.width.max(2) } else { cfa.width * 2 };
             plane.fill_rows(band, |y0, chunk| {
                 for (r, prow) in chunk.chunks_exact_mut(stride).enumerate() {

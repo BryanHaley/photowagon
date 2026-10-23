@@ -436,7 +436,12 @@ fn animated_gif(doc: &Document, p: &Value, st: &WebSettings, cmd: &str) -> Resul
         let o = optimize(&buf.px, wdoc.size.width as usize, wdoc.bounds(), st, None, None, wdoc.resolution_dpi, true)?;
         (w, h) = (o.width, o.height);
         let delay_cs = (f64::from(f.delay) * 100.0).round().clamp(0.0, 65_535.0) as u16;
-        frames.push(photocraft_codecs::web::GifFrame { indices: o.indices, palette: o.palette, transparent: o.transparent_index.and_then(|t| u8::try_from(t).ok()), delay_cs });
+        frames.push(photocraft_codecs::web::GifFrame {
+            indices: o.indices,
+            palette: o.palette,
+            transparent: o.transparent_index.and_then(|t| u8::try_from(t).ok()),
+            delay_cs,
+        });
     }
     let bytes = photocraft_codecs::web::encode_gif_animated_plays(w, h, &frames, plays).map_err(other)?;
     Ok(Some((bytes, frames.len(), w, h)))

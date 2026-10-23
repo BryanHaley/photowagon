@@ -50,11 +50,7 @@ fn can_revert(s: &Session) -> std::result::Result<(), String> {
 
 fn has_adjustments(s: &Session) -> std::result::Result<(), String> {
     let d = s.active().ok_or("no document open")?;
-    if d.doc.layers.iter().any(|l| l.visible && matches!(l.content, LayerContent::Adjustment(_))) {
-        Ok(())
-    } else {
-        Err("no visible adjustment layers".into())
-    }
+    if d.doc.layers.iter().any(|l| l.visible && matches!(l.content, LayerContent::Adjustment(_))) { Ok(()) } else { Err("no visible adjustment layers".into()) }
 }
 
 fn has_shape(s: &Session) -> std::result::Result<(), String> {

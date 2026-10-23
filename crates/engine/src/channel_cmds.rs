@@ -1959,9 +1959,5 @@ fn has_apply_target(s: &Session) -> std::result::Result<(), String> {
     }
     let d = s.active().ok_or("no document open")?;
     let l = d.active_layer.and_then(|id| d.doc.layer(id)).ok_or("no active layer")?;
-    if matches!(l.content, LayerContent::Raster(_)) {
-        Ok(())
-    } else {
-        Err(format!("not on {} layers", l.content.kind_name()))
-    }
+    if matches!(l.content, LayerContent::Raster(_)) { Ok(()) } else { Err(format!("not on {} layers", l.content.kind_name())) }
 }

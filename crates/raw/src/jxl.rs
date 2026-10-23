@@ -126,16 +126,17 @@ impl XybOutput {
     fn samples(&self, f: &[f32], samples: usize, max: f32) -> Vec<u16> {
         let encode = |v: f32| {
             let v = if v.is_finite() { v.clamp(0.0, 1.0) } else { 0.0 };
-            let v = if !self.srgb_curve { v } else if v <= 0.003_130_8 { v * 12.92 } else { 1.055 * v.powf(1.0 / 2.4) - 0.055 };
+            let v = if !self.srgb_curve {
+                v
+            } else if v <= 0.003_130_8 {
+                v * 12.92
+            } else {
+                1.055 * v.powf(1.0 / 2.4) - 0.055
+            };
             (v * max).round() as u16
         };
         match (self.to_primaries, samples) {
-            (Some(m), 3) => f
-                .as_chunks::<3>()
-                .0
-                .iter()
-                .flat_map(|p| m.map(|r| encode(r[0] * p[0] + r[1] * p[1] + r[2] * p[2])))
-                .collect(),
+            (Some(m), 3) => f.as_chunks::<3>().0.iter().flat_map(|p| m.map(|r| encode(r[0] * p[0] + r[1] * p[1] + r[2] * p[2]))).collect(),
             _ => f.iter().map(|&v| encode(v)).collect(),
         }
     }

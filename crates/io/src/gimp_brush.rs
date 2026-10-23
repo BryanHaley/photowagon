@@ -337,7 +337,8 @@ mod tests {
 
     #[test]
     fn reads_a_krita_auto_brush() {
-        let brush = r#"<Brush type="auto_brush" spacing="0.2" angle="0"><MaskGenerator type="circle" id="default" diameter="40" ratio="0.5" hfade="0.7"/></Brush>"#;
+        let brush =
+            r#"<Brush type="auto_brush" spacing="0.2" angle="0"><MaskGenerator type="circle" id="default" diameter="40" ratio="0.5" hfade="0.7"/></Brush>"#;
         let imp = read_brush_file("inky.kpp", &kpp(&preset("paintbrush", brush)), "K").unwrap();
         let b = &imp.presets[0].brush;
         assert_eq!(imp.presets[0].name, "Inky");

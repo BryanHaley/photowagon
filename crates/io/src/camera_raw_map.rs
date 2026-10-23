@@ -314,10 +314,8 @@ pub(super) fn export_item(params: &J) -> Result<Descriptor, String> {
                 let mut level = [0.0; 2];
                 let coordinates = point.as_array().filter(|c| c.len() == 2).ok_or("Develop curve point must contain two coordinates")?;
                 for (out, coordinate) in level.iter_mut().zip(coordinates) {
-                    let number = coordinate
-                        .as_f64()
-                        .filter(|v| v.is_finite() && (0.0..=255.0).contains(v))
-                        .ok_or("Develop curve coordinates must be levels 0–255")?;
+                    let number =
+                        coordinate.as_f64().filter(|v| v.is_finite() && (0.0..=255.0).contains(v)).ok_or("Develop curve coordinates must be levels 0–255")?;
                     *out = number.round() as f32;
                 }
                 levels.push(level);

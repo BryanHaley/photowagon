@@ -287,7 +287,9 @@ pub fn to_params(adj: &Adjustment) -> Value {
             // The built-in look by its id, as `lut` takes it; a loaded file by its name only.
             let id = match lut {
                 None => Some("none"),
-                Some(_) => photocraft_cms::lutfile::BUILTIN.iter().map(|b| b.0).find(|id| photocraft_cms::lutfile::builtin(id).is_some_and(|f| f.title == *name)),
+                Some(_) => {
+                    photocraft_cms::lutfile::BUILTIN.iter().map(|b| b.0).find(|id| photocraft_cms::lutfile::builtin(id).is_some_and(|f| f.title == *name))
+                }
             };
             let mut v = json!({"interpolation": if *tetrahedral { "tetrahedral" } else { "trilinear" }, "dither": dither, "name": name});
             if let Some(id) = id {

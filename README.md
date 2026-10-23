@@ -24,7 +24,7 @@ open PhotoWagon.xcodeproj    # build and run (iOS 17 or later)
 | Path | What |
 |---|---|
 | `ios/PhotoWagon` | The SwiftUI app |
-| `ios/PhotoWagonUITests` | UI tests, one file per walkthrough |
+| `ios/PhotoWagonUITests` | SwiftUI tests |
 | `crates/ffi` | The Swift bridge (UniFFI) |
 | `crates/*` | The PhotoCraft engine (Rust) |
 | `apps/*`, `crates/ui-egui` | PhotoCraft's own desktop, web and command-line apps |
@@ -56,10 +56,15 @@ missed something, please open an issue.
 | Panorama's hard seams, with each image masking part of the next (`crates/algo/src/panorama.rs`, `crates/engine/src/photo_cmds.rs`) | Adobe: US 7,646,932 | Soft weights that fade with distance from each photo's edge. Moving objects can show ghosting |
 | Combining two soft selections where both are soft at the same pixel (`crates/algo/src/selection.rs`) | Adobe: US 7,701,470 | Where both edges are soft, each is cut at 50% first, so overlapping feathered edges come out hard there |
 | Surface Blur's sliding-histogram fast path for 8-bit images (`crates/algo/src/blur.rs`) | Adobe: US 7,920,741 | The existing non-histogram paths. 8-bit Surface Blur is slower: about 3 s at radius 10 and 10 s at radius 30 on 12 MP, up from about 1.4 s |
-| Snapping a moved layer to other layers' edges and centres, with a guide drawn for each match | Adobe: US 10,331,319, US 10,782,861 | Snapping to the canvas's edges and centre only |
-| Caching an AI model's results (e.g. Apple Vision's object masks) and reusing them for later edits instead of running the model again | Adobe: US 12,579,596 | Nothing is cached: Vision runs again for each hover, hold, tap and Select Subject. The highlight is slower to appear |
 
 We also:
+- **Left out snapping to other layers:** snapping a moved layer to other layers' edges and
+  centres, with a guide drawn for each match, is covered by Adobe's US 10,331,319 and
+  US 10,782,861. A moved layer snaps to the canvas's edges and centre only.
+- **Left out caching AI results:** keeping an AI model's results (such as Apple Vision's object
+  masks) and reusing them for later edits is covered by Adobe's US 12,579,596. Nothing is cached:
+  Vision runs again for each hover, hold, tap and Select Subject, so the highlight is slower to
+  appear.
 - **Left out HEVC:** the app doesn't bundle an HEVC (HEIC) decoder. Apple's decoder, licensed
   with iOS, opens HEIC files.
 - **Left out noise in Blur Effects:** Photoshop adds grain to the blurred areas, scaled by how
@@ -84,3 +89,7 @@ and/or other countries. This project isn't affiliated with or endorsed by Adobe.
 MIT or Apache-2.0, at your option ([LICENSE-MIT](LICENSE-MIT), [LICENSE-APACHE](LICENSE-APACHE)).
 It is built on [PhotoCraft](https://github.com/storytold/photocraft), whose code is also MIT or Apache-2.0, at your option ([LICENSE-MIT-PhotoCraft](LICENSE-MIT-PhotoCraft), [LICENSE-APACHE-PhotoCraft](LICENSE-APACHE-PhotoCraft)).
 Third-party assets keep their own licences, listed in [ATTRIBUTION.md](ATTRIBUTION.md).
+
+The PhotoWagon name, app icon and logo are trademarks of Bryan Haley. They aren't covered by the
+licences above: a fork or copy of this code needs its own name and icon, and mustn't be published
+(on the App Store or anywhere else) as PhotoWagon.

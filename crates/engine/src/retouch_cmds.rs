@@ -100,11 +100,7 @@ fn has_pixel_layer(s: &Session) -> std::result::Result<(), String> {
     }
     let d = s.active().ok_or("no document open")?;
     let l = d.active_layer.and_then(|id| d.doc.layer(id)).ok_or("no active layer")?;
-    if matches!(l.content, LayerContent::Raster(_)) || l.mask.is_some() {
-        Ok(())
-    } else {
-        Err(format!("not on {} layers", l.content.kind_name()))
-    }
+    if matches!(l.content, LayerContent::Raster(_)) || l.mask.is_some() { Ok(()) } else { Err(format!("not on {} layers", l.content.kind_name())) }
 }
 
 /// The stroke paints layer pixels (not a mask or channel), so other layers can be sampled.

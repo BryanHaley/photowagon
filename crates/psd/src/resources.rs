@@ -259,14 +259,8 @@ pub(crate) fn write_section(out: &mut Vec<u8>, res: &[ImageResource]) -> Result<
 pub fn version_info_resource(has_real_merged_data: bool) -> ImageResource {
     ImageResource::new(
         ids::VERSION_INFO,
-        VersionInfo {
-            version: 1,
-            has_real_merged_data,
-            writer: UnicodeString::new("PhotoWagon"),
-            reader: UnicodeString::new("PhotoWagon"),
-            file_version: 1,
-        }
-        .to_bytes(),
+        VersionInfo { version: 1, has_real_merged_data, writer: UnicodeString::new("PhotoWagon"), reader: UnicodeString::new("PhotoWagon"), file_version: 1 }
+            .to_bytes(),
     )
 }
 

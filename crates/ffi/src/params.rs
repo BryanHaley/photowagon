@@ -4,13 +4,28 @@
 
 #[derive(uniffi::Enum, Debug, PartialEq)]
 pub enum FieldKind {
-    Number { min: Option<f64>, max: Option<f64>, value: f64, whole: bool },
-    Choice { options: Vec<String>, value: String },
-    Toggle { value: bool },
-    Text { value: String },
+    Number {
+        min: Option<f64>,
+        max: Option<f64>,
+        value: f64,
+        whole: bool,
+    },
+    Choice {
+        options: Vec<String>,
+        value: String,
+    },
+    Toggle {
+        value: bool,
+    },
+    Text {
+        value: String,
+    },
     /// A colour (`#rrggbb`), or one of `options` (`background`, `foreground`…). An empty `value`
     /// leaves the engine's default until one is picked.
-    Color { options: Vec<String>, value: String },
+    Color {
+        options: Vec<String>,
+        value: String,
+    },
 }
 
 #[derive(uniffi::Record, Debug, PartialEq)]
@@ -190,4 +205,3 @@ mod tests {
         assert_eq!(f[0].kind, FieldKind::Number { min: None, max: None, value: 0.0, whole: true });
     }
 }
-

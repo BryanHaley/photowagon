@@ -59,10 +59,16 @@ impl GainTable {
         let tables = points_v.checked_mul(points_h).filter(|t| (1..=MAX_TABLES).contains(t))?;
         let count = tables.checked_mul(points_n).filter(|c| (1..=MAX_GAINS).contains(c))?;
         let spacing = |s: f64, n: usize| s.is_finite() && (s > 0.0 || n == 1);
-        if !spacing(spacing_v, points_v) || !spacing(spacing_h, points_h) || !origin_v.is_finite() || !origin_h.is_finite() || !weights.iter().all(|w| w.is_finite()) {
+        if !spacing(spacing_v, points_v)
+            || !spacing(spacing_h, points_h)
+            || !origin_v.is_finite()
+            || !origin_h.is_finite()
+            || !weights.iter().all(|w| w.is_finite())
+        {
             return None;
         }
-        let (header, data_type, gamma, gain_min, gain_max) = if version2 { (80, u32_at(64)?, f32_at(68)?, f32_at(72)?, f32_at(76)?) } else { (64, 3, 1.0, 0.0, 1.0) };
+        let (header, data_type, gamma, gain_min, gain_max) =
+            if version2 { (80, u32_at(64)?, f32_at(68)?, f32_at(72)?, f32_at(76)?) } else { (64, 3, 1.0, 0.0, 1.0) };
         if !(0.25..=4.0).contains(&gamma) || !gain_min.is_finite() || !gain_max.is_finite() {
             return None;
         }

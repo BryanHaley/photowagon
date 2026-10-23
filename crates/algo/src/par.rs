@@ -42,5 +42,3 @@ pub(crate) fn map<T: Send>(n: usize, par: bool, f: impl Fn(usize) -> T + Sync + 
     let _ = par;
     (0..n).map(f).collect()
 }
-
-

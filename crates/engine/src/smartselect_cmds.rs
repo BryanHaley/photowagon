@@ -160,8 +160,10 @@ pub fn find_object(doc: &Document, layer: Option<LayerId>, all_layers: bool, x: 
             let Some(part) = subject::select_subject(smp, window).and_then(|sub| sub.component_at(px, py)).map(|c| c.split_at(px, py)) else { continue };
             let r = part.bbox;
             // Cut off by the window (not by the frame): the object is bigger; look wider.
-            let cut = (r.x0 <= window.x0 + 2 && window.x0 > b.x0) || (r.x1 >= window.x1 - 2 && window.x1 < b.x1)
-                || (r.y0 <= window.y0 + 2 && window.y0 > b.y0) || (r.y1 >= window.y1 - 2 && window.y1 < b.y1);
+            let cut = (r.x0 <= window.x0 + 2 && window.x0 > b.x0)
+                || (r.x1 >= window.x1 - 2 && window.x1 < b.x1)
+                || (r.y0 <= window.y0 + 2 && window.y0 > b.y0)
+                || (r.y1 >= window.y1 - 2 && window.y1 < b.y1);
             // Spanning the frame (sea, sky, a wall): the backdrop, not an object.
             let spans = (r.x0 <= b.x0 + 2 && r.x1 >= b.x1 - 2) || (r.y0 <= b.y0 + 2 && r.y1 >= b.y1 - 2);
             if !cut && !spans {
@@ -576,7 +578,12 @@ fn edge_band(sel: &photocraft_raster::Surface, mask: Option<&Region>, band: f64,
     let bbox = sel.content_bounds().inflate(band.ceil() as i32).intersect(&bounds);
     let (w, h) = (bbox.width() as usize, bbox.height() as usize);
     let at = |i: usize| (bbox.x0 + (i % w.max(1)) as i32, bbox.y0 + (i / w.max(1)) as i32);
-    let cur: Vec<f32> = (0..w * h).map(|i| { let (x, y) = at(i); sel.sample_channel(x, y, 0) }).collect();
+    let cur: Vec<f32> = (0..w * h)
+        .map(|i| {
+            let (x, y) = at(i);
+            sel.sample_channel(x, y, 0)
+        })
+        .collect();
     let inside: Vec<bool> = cur.iter().map(|v| *v >= 0.5).collect();
     let outside: Vec<bool> = inside.iter().map(|v| !v).collect();
     // Distance to the other side of the edge.

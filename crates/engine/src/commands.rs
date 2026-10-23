@@ -39,11 +39,7 @@ fn has_layer(s: &Session) -> std::result::Result<(), String> {
 }
 fn has_pixel_layer(s: &Session) -> std::result::Result<(), String> {
     let l = crate::active_layer_of(s)?;
-    if matches!(l.content, LayerContent::Raster(_)) {
-        Ok(())
-    } else {
-        Err(format!("not on {} layers", l.content.kind_name()))
-    }
+    if matches!(l.content, LayerContent::Raster(_)) { Ok(()) } else { Err(format!("not on {} layers", l.content.kind_name())) }
 }
 /// A pixel layer, or a targeted alpha channel / Quick Mask (adjustments and fills apply to it).
 fn has_pixel_or_channel(s: &Session) -> std::result::Result<(), String> {
@@ -591,31 +587,39 @@ fn build() -> Vec<CommandSpec> {
             has_pixel_or_channel,
             crate::fill_cmds::fill
         ),
-        cmd!("edit.clear", "Clear", ["Edit"], Some("Delete"), "{\"target\":\"mask\"? (default the targeted mask or channel)} (a targeted mask, channel or Quick Mask is filled with the background colour)", has_pixel_or_channel, |s, p| {
-            let bg = s.tools.background;
-            // A targeted alpha channel or Quick Mask is filled instead (#2734).
-            if let Some(t) = crate::channel_cmds::targeted_channel(s) {
-                s.edit("Clear", |doc, _| crate::channel_cmds::clear_channel(doc, None, &t, bg))?;
-                return Ok(Value::Null);
+        cmd!(
+            "edit.clear",
+            "Clear",
+            ["Edit"],
+            Some("Delete"),
+            "{\"target\":\"mask\"? (default the targeted mask or channel)} (a targeted mask, channel or Quick Mask is filled with the background colour)",
+            has_pixel_or_channel,
+            |s, p| {
+                let bg = s.tools.background;
+                // A targeted alpha channel or Quick Mask is filled instead (#2734).
+                if let Some(t) = crate::channel_cmds::targeted_channel(s) {
+                    s.edit("Clear", |doc, _| crate::channel_cmds::clear_channel(doc, None, &t, bg))?;
+                    return Ok(Value::Null);
+                }
+                let id = layer_param(s, p)?;
+                // A targeted layer mask is filled with the background colour.
+                if p.get("target").and_then(Value::as_str) == Some("mask") {
+                    s.edit("Clear", |doc, _| crate::channel_cmds::clear_channel(doc, Some(id), p, bg))?;
+                    return Ok(Value::Null);
+                }
+                // A targeted colour channel clears that channel only (#2720).
+                if let Some(k) = crate::channel_cmds::targeted_color(s) {
+                    s.edit("Clear", |doc, _| crate::channel_cmds::clear_color_channel(doc, id, k, bg))?;
+                    return Ok(Value::Null);
+                }
+                s.edit("Clear", |doc, _| {
+                    let sel = doc.selection.clone();
+                    let area = sel.as_ref().map(|m| m.content_bounds()).unwrap_or(doc.bounds());
+                    crate::edit_cmds::clear_area(doc, id, area, sel.as_ref(), bg)
+                })?;
+                Ok(Value::Null)
             }
-            let id = layer_param(s, p)?;
-            // A targeted layer mask is filled with the background colour.
-            if p.get("target").and_then(Value::as_str) == Some("mask") {
-                s.edit("Clear", |doc, _| crate::channel_cmds::clear_channel(doc, Some(id), p, bg))?;
-                return Ok(Value::Null);
-            }
-            // A targeted colour channel clears that channel only (#2720).
-            if let Some(k) = crate::channel_cmds::targeted_color(s) {
-                s.edit("Clear", |doc, _| crate::channel_cmds::clear_color_channel(doc, id, k, bg))?;
-                return Ok(Value::Null);
-            }
-            s.edit("Clear", |doc, _| {
-                let sel = doc.selection.clone();
-                let area = sel.as_ref().map(|m| m.content_bounds()).unwrap_or(doc.bounds());
-                crate::edit_cmds::clear_area(doc, id, area, sel.as_ref(), bg)
-            })?;
-            Ok(Value::Null)
-        }),
+        ),
         // Select
         cmd!("select.all", "All", ["Select"], Some("Cmd+A"), "{}", has_doc, |s, _| {
             s.edit("Select All", |doc, _| {

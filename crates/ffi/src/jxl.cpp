@@ -300,7 +300,7 @@ static int decode_once(const void *data, size_t len, unsigned long long max_pixe
         f.pixels.resize(n);
         if (cmyk) f.black.resize(size_t(f.w) * f.h * sample);
         if (frames.empty()) {
-          for (unsigned i : kept) {
+          for (size_t k = 0; k < kept.size(); k++) {
             Extra e;
             e.pixels.resize(size_t(f.w) * f.h * sample);
             extras.push_back(std::move(e));

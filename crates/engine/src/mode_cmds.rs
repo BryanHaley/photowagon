@@ -496,13 +496,18 @@ fn duotone(s: &mut Session, p: &Value) -> Result<Value> {
 fn duotone_inks(s: &mut Session, _: &Value) -> Result<Value> {
     let d = s.active().ok_or(EngineError::NoDocument)?;
     let current = d.doc.duotone.as_ref().map(|t| t.inks.clone());
-    let inks: Vec<Value> = current.clone().unwrap_or_else(|| default_inks(4)).iter().map(|i| {
-        json!({
-            "name": i.name,
-            "color": hex(i.color.map(|v| (v.clamp(0.0, 1.0) * 255.0).round() as u8)),
-            "curve": i.curve.iter().map(|p| [(p.input * 1000.0).round() / 10.0, (p.output * 1000.0).round() / 10.0]).collect::<Vec<_>>(),
+    let inks: Vec<Value> = current
+        .clone()
+        .unwrap_or_else(|| default_inks(4))
+        .iter()
+        .map(|i| {
+            json!({
+                "name": i.name,
+                "color": hex(i.color.map(|v| (v.clamp(0.0, 1.0) * 255.0).round() as u8)),
+                "curve": i.curve.iter().map(|p| [(p.input * 1000.0).round() / 10.0, (p.output * 1000.0).round() / 10.0]).collect::<Vec<_>>(),
+            })
         })
-    }).collect();
+        .collect();
     Ok(json!({"inks": inks, "current": current.is_some()}))
 }
 

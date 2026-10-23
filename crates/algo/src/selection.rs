@@ -1812,11 +1812,7 @@ mod tests {
         let new = [0.4f32, 0.0, 0.4];
         let region = Region { bbox: area, mask: new.iter().map(|v| coverage8(*v)).collect() };
         // (soft, soft) is rounded; (soft, 0) and (1, soft) combine as they are.
-        for (mode, want) in [
-            (SelectionMode::Add, [1.0, 0.6, 1.0]),
-            (SelectionMode::Subtract, [1.0, 0.6, 0.6]),
-            (SelectionMode::Intersect, [0.0, 0.0, 0.4]),
-        ] {
+        for (mode, want) in [(SelectionMode::Add, [1.0, 0.6, 1.0]), (SelectionMode::Subtract, [1.0, 0.6, 0.6]), (SelectionMode::Intersect, [0.0, 0.0, 0.4])] {
             let a = combine(Some(&old), &new, area, mode);
             let b = combine_region(Some(&old), Some(&region), mode);
             for s in [a, b] {

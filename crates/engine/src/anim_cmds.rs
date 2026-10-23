@@ -128,7 +128,11 @@ fn info(s: &Session) -> Result<Value> {
 /// A frame index param (`key`), inside the animation.
 fn frame_param(cmd: &str, p: &Value, key: &str, len: usize) -> Result<Option<usize>> {
     let Some(v) = p.get(key).filter(|v| !v.is_null()) else { return Ok(None) };
-    v.as_u64().and_then(|i| usize::try_from(i).ok()).filter(|i| *i < len).map(Some).ok_or_else(|| bad(cmd, format!("`{key}` must be a frame from 0 to {}", len.saturating_sub(1))))
+    v.as_u64()
+        .and_then(|i| usize::try_from(i).ok())
+        .filter(|i| *i < len)
+        .map(Some)
+        .ok_or_else(|| bad(cmd, format!("`{key}` must be a frame from 0 to {}", len.saturating_sub(1))))
 }
 
 /// `frames`: a list of frame indices or "all" (default: the current frame).
@@ -267,7 +271,11 @@ fn set_delay(s: &mut Session, p: &Value) -> Result<Value> {
     const CMD: &str = "animation.setDelay";
     let a = s.active().and_then(|d| d.doc.animation.clone()).ok_or_else(|| EngineError::Other("no frame animation".into()))?;
     let which = frames_param(CMD, p, &a)?;
-    let delay = p.get("delay").and_then(Value::as_f64).filter(|d| d.is_finite() && (0.0..=600.0).contains(d)).ok_or_else(|| bad(CMD, "`delay` must be 0 to 600 seconds"))?;
+    let delay = p
+        .get("delay")
+        .and_then(Value::as_f64)
+        .filter(|d| d.is_finite() && (0.0..=600.0).contains(d))
+        .ok_or_else(|| bad(CMD, "`delay` must be 0 to 600 seconds"))?;
     s.edit("Frame Delay", |doc, _| {
         capture(doc);
         let a = animation(doc)?;
@@ -470,7 +478,8 @@ mod tests {
         let l = &doc.layers[2];
         assert_eq!(l.surface().unwrap().sample_channel(30, 15, 3), 0.0);
         assert!(l.surface().unwrap().sample_channel(25, 5, 3) > 0.9);
-        let still = crate::web_cmds::save_for_web_with_writer(&mut s, &json!({"format": "gif", "path": "y.gif", "animate": false}), &mut |_, _| Ok(())).unwrap();
+        let still =
+            crate::web_cmds::save_for_web_with_writer(&mut s, &json!({"format": "gif", "path": "y.gif", "animate": false}), &mut |_, _| Ok(())).unwrap();
         assert!(still.get("frames").is_none(), "one frame: {still}");
     }
 

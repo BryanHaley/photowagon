@@ -284,10 +284,7 @@ fn content_aware_fill_takes_the_workspace_edits() {
     assert!(plan(json!({"fillEdits": [{"op": "subtract", "points": [[0, 0], [600, 0], [600, 400], [0, 400]]}]})).is_err());
     // Auto samples the same as Rectangular.
     assert_eq!(plan(json!({})).unwrap().source, base.source);
-    for bad in [
-        json!({"fillEdits": [{"op": "add", "points": [[0, "x"]]}]}),
-        json!({"fillEdits": [{"op": "expand", "by": -3}]}),
-    ] {
+    for bad in [json!({"fillEdits": [{"op": "add", "points": [[0, "x"]]}]}), json!({"fillEdits": [{"op": "expand", "by": -3}]})] {
         assert!(plan(bad.clone()).is_err(), "{bad}");
     }
     // The command fills with the same plan; `layer` names the layer even when another is active.
