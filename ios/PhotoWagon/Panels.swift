@@ -693,8 +693,11 @@ struct ContextBar: View {
     private var sizeSlider: some View {
         PropSlider(title: "Size", value: "\(Int(model.brushSize))",
                    position: Binding(get: { pow((model.brushSize - 1) / 499, 1 / 2.2) },
-                                     set: { model.setBrush("size", (1 + pow($0, 2.2) * 499).rounded()) })) { editing in
-            model.showSizePreview = editing
+                                     set: {
+                                         model.setBrush("size", (1 + pow($0, 2.2) * 499).rounded())
+                                         model.sizePreview(editing: true)
+                                     })) { editing in
+            model.sizePreview(editing: editing)
         }
     }
 

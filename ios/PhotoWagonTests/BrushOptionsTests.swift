@@ -122,4 +122,15 @@ final class BrushOptionsTests: XCTestCase {
         model.run("tools.setBrush", ["preset": "my dust"])
         XCTAssertEqual(model.flow, 0.4, accuracy: 0.001, "Include Tool Settings brings the flow back")
     }
+
+    /// The size circle goes away even when the slider never reports the let-go.
+    func testSizePreviewHidesAfterTheLastChange() {
+        let model = makeModel(width: 100, height: 100)
+        model.sizePreview(editing: true, after: 0.1)
+        XCTAssertTrue(model.showSizePreview)
+        wait("the circle hides") { !model.showSizePreview }
+        model.sizePreview(editing: true, after: 10)
+        model.sizePreview(editing: false)
+        XCTAssertFalse(model.showSizePreview, "letting go hides it at once")
+    }
 }

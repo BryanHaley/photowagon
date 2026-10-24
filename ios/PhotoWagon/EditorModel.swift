@@ -307,6 +307,7 @@ final class EditorModel: ObservableObject {
     @Published var hint: String?
     @Published private(set) var busy = false
     @Published var showSizePreview = false
+    private var sizePreviewHide: Task<Void, Never>?
     /// Something the app shell shows, asked for from the keyboard.
     @Published var request: Request?
 
@@ -1384,6 +1385,19 @@ final class EditorModel: ObservableObject {
     }
 
     /// Change one brush setting; a slider drag is one change (`coalesce`).
+    /// The Size slider's circle: on while it's dragged, off when it's let go or `after` seconds
+    /// after the last change (iOS 27's Slider doesn't always report the let-go).
+    func sizePreview(editing: Bool, after: Double = 1) {
+        sizePreviewHide?.cancel()
+        showSizePreview = editing
+        guard editing else { return }
+        sizePreviewHide = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(after))
+            guard !Task.isCancelled else { return }
+            self?.showSizePreview = false
+        }
+    }
+
     func setBrush(_ field: String, _ value: Double) {
         _ = try? editor.execute(id: "tools.setBrush", params: json([field: value, "coalesce": "slider-\(field)"]))
         sync()
