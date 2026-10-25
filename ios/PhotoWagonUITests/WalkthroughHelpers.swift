@@ -24,6 +24,7 @@ class WalkthroughTestCase: XCTestCase {
     let probeFolder = URL(fileURLWithPath: "/tmp/photowagon-probe-\(ProcessInfo.processInfo.processIdentifier)")
 
     private var probeSeq = 0
+    private var toastsSeen = 0
 
     /// Run a read-only engine command through the app's test probe.
     @discardableResult
@@ -83,8 +84,17 @@ class WalkthroughTestCase: XCTestCase {
         // A half-height sheet shows a row or two: pull it up first.
         if !shown() { expandSheet() }
         var swipes = 0
-        while swipes < 4, !shown() { list.swipeUp(); swipes += 1 }
-        while swipes < 8, !shown() { list.swipeDown(); swipes += 1 }
+        // Short, slow drags: a swipe can fling right past a row, and a fast swipe down at the top
+        // closes the sheet on iOS 27.
+        let scroll = { (down: Bool) in
+            let (a, b) = down ? (0.75, 0.4) : (0.4, 0.75)
+            // Near the left edge, on the labels, not a slider.
+            list.coordinate(withNormalizedOffset: CGVector(dx: 0.06, dy: a))
+                .press(forDuration: 0.05, thenDragTo: list.coordinate(withNormalizedOffset: CGVector(dx: 0.06, dy: b)), withVelocity: .slow, thenHoldForDuration: 0.1)
+        }
+        // iOS 27 reports rows' new frames a moment after a scroll.
+        while swipes < 30, !shown() { scroll(true); swipes += 1; Thread.sleep(forTimeInterval: 0.5) }
+        while swipes < 60, !shown() { scroll(false); swipes += 1; Thread.sleep(forTimeInterval: 0.5) }
         XCTAssert(row.waitForExistence(timeout: 5), what)
         return row
     }
@@ -115,7 +125,7 @@ class WalkthroughTestCase: XCTestCase {
         let row = showLayer(name)
         for _ in 0..<3 {
             row.press(forDuration: 1.0)
-            let b = app.buttons[item].firstMatch
+            let b = app.buttons.named(item)
             if b.waitForExistence(timeout: 3) {
                 Thread.sleep(forTimeInterval: 0.4)
                 b.tap()
@@ -230,20 +240,36 @@ class WalkthroughTestCase: XCTestCase {
     }
 
     /// Wait for a toast that starts with `text`.
+    /// A toast beginning with `text` shown since the last one found. Read through the probe:
+    /// on iOS 27 a 2.5 s toast can be gone before a tap returns.
     func toast(_ text: String) -> Bool {
-        app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", text)).firstMatch.waitForExistence(timeout: 15)
+        let end = Date().addingTimeInterval(15)
+        while Date() < end {
+            let all = probe("app.toasts")["toasts"] as? [String] ?? []
+            if let i = all.indices.dropFirst(toastsSeen).first(where: { all[$0].hasPrefix(text) }) {
+                toastsSeen = i + 1
+                return true
+            }
+            Thread.sleep(forTimeInterval: 0.3)
+        }
+        return false
     }
 
-    /// Set a percentage slider in the options row to `percent` exactly, nudging it until it reads so.
+    /// Set a percentage slider in the options row to `percent`, within 1 (an iOS 27 option slider
+    /// has about half a point of travel per percent).
     func option(_ title: String, percent: Int) {
         let s = app.sliders["option.\(title)"].firstMatch
         XCTAssert(s.waitForExistence(timeout: 5), "option \(title)")
-        var position = Double(percent) / 100
-        for _ in 0..<8 {
-            s.adjust(toNormalizedSliderPosition: position)
+        // Halve the gap each time: some sliders aren't linear in their position.
+        var (low, high, position) = (0.0, 1.0, Double(percent) / 100)
+        for _ in 0..<12 {
+            s.slide(to: position)
+            // iOS 27 updates the slider's accessibility value a moment after it moves.
+            Thread.sleep(forTimeInterval: 0.5)
             guard let v = (s.value as? String).flatMap({ Int($0.dropLast()) }) else { return }
-            if v == percent { return }
-            position = min(max(position + Double(percent - v) / 100, 0), 1)
+            if abs(v - percent) <= 1 { return }
+            if v < percent { low = position } else { high = position }
+            position = (low + high) / 2
         }
         XCTFail("\(title) didn't reach \(percent)%: \(s.value ?? "")")
     }
@@ -252,7 +278,10 @@ class WalkthroughTestCase: XCTestCase {
     func option(_ title: String, _ position: Double) {
         let s = app.sliders["option.\(title)"].firstMatch
         XCTAssert(s.waitForExistence(timeout: 5), "option \(title)")
-        s.adjust(toNormalizedSliderPosition: position)
+        // The row may have just changed for a new tool: let iOS 27 report where its sliders are.
+        Thread.sleep(forTimeInterval: 0.5)
+        s.slide(to: position)
+        Thread.sleep(forTimeInterval: 0.5)
     }
 
     // MARK: - Files, painting and masks
@@ -263,7 +292,7 @@ class WalkthroughTestCase: XCTestCase {
         XCTAssert(button.waitForExistence(timeout: 5))
         for _ in 0..<3 {
             button.press(forDuration: 1.0)
-            let b = app.buttons[item].firstMatch
+            let b = app.buttons.named(item)
             if b.waitForExistence(timeout: 3) {
                 Thread.sleep(forTimeInterval: 0.4)
                 b.tap()
@@ -312,7 +341,7 @@ class WalkthroughTestCase: XCTestCase {
             Thread.sleep(forTimeInterval: 1.5)
             drag(doc: move.0, to: move.1)
         }
-        app.buttons["Commit"].tap()
+        tapChip(app.buttons["Commit"].firstMatch)
         waitIdle()
     }
 
@@ -345,7 +374,7 @@ class WalkthroughTestCase: XCTestCase {
         menu("Edit", "Free Transform")
         XCTAssert(app.buttons["Commit"].waitForExistence(timeout: 5), "the transform box")
         drag(doc: from, to: to)
-        app.buttons["Commit"].tap()
+        tapChip(app.buttons["Commit"].firstMatch)
         waitIdle()
     }
 
@@ -357,7 +386,9 @@ class WalkthroughTestCase: XCTestCase {
             let y = chip.frame.midY
             let left = chip.frame.minX > width / 2
             let from = app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: left ? width * 0.8 : width * 0.2, dy: y))
-            from.press(forDuration: 0.05, thenDragTo: from.withOffset(CGVector(dx: left ? -width * 0.5 : width * 0.5, dy: 0)))
+            // Slowly: a fast drag flings the row to its end.
+            from.press(forDuration: 0.05, thenDragTo: from.withOffset(CGVector(dx: left ? -width * 0.5 : width * 0.5, dy: 0)), withVelocity: .slow, thenHoldForDuration: 0.2)
+            Thread.sleep(forTimeInterval: 0.4)
         }
         chip.tap()
     }
@@ -450,7 +481,7 @@ class WalkthroughTestCase: XCTestCase {
     /// Open the menu bar and follow `path` (File › Save As…).
     func menu(_ path: String...) {
         // Inside the open menu, not a toolbar button with the same name (Filter › Blur, the Blur tool).
-        let item = { (name: String) in self.app.collectionViews.buttons[name].firstMatch }
+        let item = { (name: String) in self.app.collectionViews.buttons.named(name) }
         let menu = app.buttons["menu"]
         XCTAssert(menu.waitForExistence(timeout: 5), "the menu button")
         // The menu can open where it was left (File already expanded): start from the deepest
@@ -513,28 +544,27 @@ class WalkthroughTestCase: XCTestCase {
         // Scroll the toolbar until the group is on screen.
         let bar = app.scrollViews["toolbar"]
         let width = app.windows.firstMatch.frame.width
-        // Off-screen groups can report a stale frame: if a swipe doesn't move it, go the other way.
-        var right: Bool? = nil
-        for _ in 0..<12 {
+        // A swipe flings the toolbar to one end, past the groups in the middle: drag slowly by
+        // the distance to the middle of the screen, without momentum.
+        for _ in 0..<6 {
             let f = toolbar.frame
             if f.minX >= 0 && f.maxX <= width - 50 { break }
-            let goRight = right ?? (f.minX < 0)
-            let (a, b) = goRight ? (0.15, 0.85) : (0.85, 0.15)
-            bar.coordinate(withNormalizedOffset: CGVector(dx: a, dy: 0.5))
-                .press(forDuration: 0.05, thenDragTo: bar.coordinate(withNormalizedOffset: CGVector(dx: b, dy: 0.5)), withVelocity: .default, thenHoldForDuration: 0.2)
-            if toolbar.frame.minX == f.minX { right = !goRight }
+            let dx = max(min(f.midX - width / 2, width * 0.6), -width * 0.6)
+            let from = bar.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0.5)).withOffset(CGVector(dx: width / 2, dy: 0))
+            from.press(forDuration: 0.05, thenDragTo: from.withOffset(CGVector(dx: -dx, dy: 0)), withVelocity: .slow, thenHoldForDuration: 0.3)
         }
         toolbar.tap()
         if let pick {
             let button = app.buttons["row.\(pick)"].firstMatch
             XCTAssert(button.waitForExistence(timeout: 5), "tool \(pick)")
             button.tap()
+            Thread.sleep(forTimeInterval: 0.5)
         }
     }
 
     /// Open a "…" menu button and pick `name`; taps while the menu opens are lost.
     func pick(menu button: String, _ name: String) {
-        let item = app.collectionViews.buttons[name].firstMatch
+        let item = app.collectionViews.buttons.named(name)
         for _ in 0..<3 where !item.exists {
             tapAt(app.buttons[button])
             _ = item.waitForExistence(timeout: 3)
@@ -583,7 +613,7 @@ class WalkthroughTestCase: XCTestCase {
     func pick(_ picker: XCUIElement, _ option: String) {
         XCTAssert(picker.waitForExistence(timeout: 5), "\(picker)")
         picker.tap()
-        let button = app.buttons[option].firstMatch
+        let button = app.buttons.named(option)
         XCTAssert(button.waitForExistence(timeout: 5), "option \(option)")
         button.tap()
     }
@@ -591,7 +621,7 @@ class WalkthroughTestCase: XCTestCase {
     /// Pick a brush tip from the Brush Tip menu.
     func brushTip(_ group: String, _ name: String) {
         app.buttons["brush.tips"].firstMatch.tap()
-        let (folder, tip) = (app.buttons[group].firstMatch, app.buttons[name].firstMatch)
+        let (folder, tip) = (app.buttons.named(group), app.buttons.named(name))
         XCTAssert(folder.waitForExistence(timeout: 5), "brush tip folder \(group)")
         // Taps while the menu is still opening are lost: tap the folder until its tips show.
         Thread.sleep(forTimeInterval: 0.5)
@@ -677,6 +707,50 @@ class WalkthroughTestCase: XCTestCase {
             file.tap()
             _ = XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: gone, object: file)], timeout: 3)
         }
+    }
+}
+
+extension XCUIElement {
+    /// Drag a slider's thumb to `position` (0…1). On iOS 27 `adjust(toNormalizedSliderPosition:)`
+    /// only reaches the ends of a short slider: its thumb is about 37 points wide.
+    func slide(to position: Double) {
+        let thumb = min(37.0, frame.width / 2)
+        let track = frame.width - thumb
+        // Where the thumb is, to grab it; a target at an end goes past the track so the thumb lands
+        // on it exactly.
+        let x = { (p: Double) in thumb / 2 + max(0, min(1, p)) * track }
+        let to = { (p: Double) in p <= 0 ? -20 : p >= 1 ? self.frame.width + 20 : x(p) }
+        let origin = coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0.5))
+        let drag = { (from: Double, target: Double) in
+            origin.withOffset(CGVector(dx: x(from), dy: 0))
+                .press(forDuration: 0.1, thenDragTo: origin.withOffset(CGVector(dx: to(target), dy: 0)), withVelocity: .slow, thenHoldForDuration: 0.1)
+        }
+        // iOS 27 reports a slider's position a moment after it scrolls into view.
+        Thread.sleep(forTimeInterval: 0.4)
+        // The thumb doesn't land exactly where the finger stops: aim again by the difference.
+        var aim = position
+        for _ in 0..<8 {
+            var from = normalizedSliderPosition
+            if abs(from - position) < 0.008 { return }
+            // A drag of a few points doesn't move the thumb: go the other way first.
+            if abs(aim - from) * track < 12 {
+                let away = aim < 0.5 ? 1.0 : 0.0
+                drag(from, away)
+                from = away
+            }
+            drag(from, aim)
+            Thread.sleep(forTimeInterval: 0.4)
+            if position <= 0 || position >= 1 { continue }
+            aim = max(0.001, min(0.999, aim + position - normalizedSliderPosition))
+        }
+    }
+}
+
+extension XCUIElementQuery {
+    /// The element labelled `name`. iOS 27 adds a menu item's description to its label
+    /// ("Pencil, Paint hard-edged lines."), so that counts too.
+    func named(_ name: String) -> XCUIElement {
+        matching(NSPredicate(format: "label == %@ OR label BEGINSWITH %@", name, name + ", ")).firstMatch
     }
 }
 

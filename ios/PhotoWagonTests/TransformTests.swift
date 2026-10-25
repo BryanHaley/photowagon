@@ -225,4 +225,19 @@ final class TransformTests: XCTestCase {
         model.cancelPending()
         XCTAssertNil(model.puppet)
     }
+
+    /// Scale From Reference Point with the reference on the dragged corner's edge (Top Right,
+    /// dragging Top Left): it used to do nothing.
+    func testCornerLevelWithTheReferenceStillScales() {
+        let normal = TransformBox.cornerScale(local: (50, 100), corner: (100, 200), current: (1, 1), keep: false)
+        XCTAssertEqual(normal?.0, 0.5)
+        XCTAssertEqual(normal?.1, 0.5)
+        let kept = TransformBox.cornerScale(local: (-720, 0), corner: (-900, 0), current: (1, 1), keep: true)
+        XCTAssertEqual(kept?.0 ?? 0, 0.8, accuracy: 1e-6)
+        XCTAssertEqual(kept?.1 ?? 0, 0.8, accuracy: 1e-6, "proportions follow the one way it can scale")
+        let free = TransformBox.cornerScale(local: (-720, 30), corner: (-900, 0), current: (1, 1), keep: false)
+        XCTAssertEqual(free?.0 ?? 0, 0.8, accuracy: 1e-6)
+        XCTAssertEqual(free?.1, 1, "the other way stays")
+        XCTAssertNil(TransformBox.cornerScale(local: (5, 5), corner: (0, 0), current: (1, 1), keep: true))
+    }
 }

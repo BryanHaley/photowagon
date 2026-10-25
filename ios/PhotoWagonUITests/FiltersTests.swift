@@ -73,7 +73,7 @@ final class FiltersTests: WalkthroughTestCase {
             let alert = app.alerts["Save Preset"]
             XCTAssert(alert.waitForExistence(timeout: 5))
             alert.textFields.firstMatch.typeText("mine")
-            alert.buttons["Save"].tap()
+            alert.buttons["Save"].firstMatch.tap()
             XCTAssert(app.buttons["raw.preset.mine"].waitForExistence(timeout: 5), "the saved preset")
             app.buttons["raw.preview"].tap()
             XCTAssertEqual(app.buttons["raw.preview"].value as? String, "off")

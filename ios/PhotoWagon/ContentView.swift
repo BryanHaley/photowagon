@@ -731,7 +731,8 @@ enum SystemColorPicker {
 
 /// UI tests only (`-uiTestProbe <folder>`): the test writes `{"seq": n, "id": "document.stats",
 /// "params": {…}}` to `query.json` in that folder; the app answers in `result.json` with the same
-/// `seq`. Read-only commands only, plus `app.docToCanvas` {x, y}, `app.documents` and `app.objectHighlight`.
+/// `seq`. Read-only commands only, plus `app.docToCanvas` {x, y}, `app.documents`, `app.objectHighlight`
+/// and `app.toasts`.
 struct TestProbe: View {
     static let folder = UserDefaults.standard.string(forKey: "uiTestProbe").map { URL(fileURLWithPath: $0) }
     static var enabled: Bool { folder != nil }
@@ -763,6 +764,8 @@ struct TestProbe: View {
         } else if obj["id"] as? String == "app.objectHighlight" {
             // The last Object Finder highlight, in document pixels [x0, y0, x1, y1].
             out = ["shown": model.objectHighlight != nil, "last": model.lastObjectHighlight.map { $0.map(Double.init) as Any } ?? NSNull()]
+        } else if obj["id"] as? String == "app.toasts" {
+            out = ["toasts": model.toasts]
         } else if let id = obj["id"] as? String, Self.allowed.contains(id) {
             let params = (obj["params"]).flatMap { try? JSONSerialization.data(withJSONObject: $0) }.map { String(decoding: $0, as: UTF8.self) } ?? "{}"
             do {

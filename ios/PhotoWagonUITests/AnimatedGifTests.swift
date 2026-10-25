@@ -40,13 +40,18 @@ final class AnimatedGifTests: WalkthroughTestCase {
             menu("Layer", "New", "From Files…")
             XCTAssert(app.buttons["browser.select"].waitForExistence(timeout: 10))
             app.buttons["browser.select"].tap()
+            let place = app.buttons["browser.placeChosen"]
             for i in 1...8 {
                 let f = app.buttons["file.drop-\(i)"]
                 show(f, "drop-\(i)")
-                f.tap()
+                // Rows answer a moment late, and a tap while the list settles can be lost: tap
+                // again if the count didn't go up.
+                let ticked = NSPredicate(format: "label == %@", "Place \(i)")
+                for _ in 0..<2 {
+                    f.tap()
+                    if XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: ticked, object: place)], timeout: 3) == .completed { break }
+                }
             }
-            // Rows answer a moment late: wait for all eight to be ticked.
-            let place = app.buttons["browser.placeChosen"]
             expectation(for: NSPredicate(format: "label == 'Place 8'"), evaluatedWith: place)
             waitForExpectations(timeout: 10)
             place.tap()
@@ -127,9 +132,8 @@ final class AnimatedGifTests: WalkthroughTestCase {
             expectation(for: NSPredicate(format: "label CONTAINS '10 frames'"), evaluatedWith: estimate)
             waitForExpectations(timeout: 60)
             replace(app.textFields["web.name"], with: "water drop\n")
-            for _ in 0..<4 where !app.buttons["web.loops"].isHittableSafe { app.buttons["web.colors"].swipeUp() }
             // The option, not the Timeline's own Looping button behind the sheet (also "Forever").
-            app.buttons["web.loops"].tap()
+            show(app.buttons["web.loops"].firstMatch, "Looping Options").tap()
             let forever = app.collectionViews.buttons["Forever"]
             XCTAssert(forever.waitForExistence(timeout: 5))
             forever.tap()

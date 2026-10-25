@@ -45,7 +45,7 @@ class OpacityFillTests: WalkthroughTestCase {
         let s = app.sliders[id].firstMatch
         XCTAssert(s.waitForExistence(timeout: 5), id)
         let value = { (s.value as? String).flatMap { Int($0.dropLast()) } ?? -1 }
-        s.adjust(toNormalizedSliderPosition: Double(percent) / 100)
+        s.slide(to: Double(percent) / 100)
         let label = app.staticTexts["\(id).label"].firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
         for _ in 0..<4 where value() != percent {
             let dx = Double(percent - value()) * 3
@@ -170,14 +170,14 @@ final class FakeSunTests: OpacityFillTests {
             app.buttons["layers"].tap()
             addAdjustment("Gradient")
             XCTAssert(app.navigationBars["Gradient Fill"].waitForExistence(timeout: 5))
-            app.buttons["fill.stop.0"].tap()
+            show(app.buttons["fill.stop.0"].firstMatch, "the left colour stop").tap()
             chooseColor(containing: "yellow")
-            app.buttons["fill.stop.1"].tap()
+            show(app.buttons["fill.stop.1"].firstMatch, "the right colour stop").tap()
             chooseColor(containing: "red")
-            replace(show(app.textFields["fill.opacity.1.value"], "the right opacity stop"), with: "0\n")
-            replace(show(app.textFields["fill.opacityAt.0.value"], "the left opacity stop's location"), with: "26\n")
+            replace(show(app.descendants(matching: .any)["fill.opacity.1.value"].firstMatch, "the right opacity stop"), with: "0\n")
+            replace(show(app.descendants(matching: .any)["fill.opacityAt.0.value"].firstMatch, "the left opacity stop's location"), with: "26\n")
             pick(show(app.buttons["fill.style"], "style"), "Radial")
-            show(app.sliders["fill.scale"], "scale").adjust(toNormalizedSliderPosition: 0.9)
+            show(app.sliders["fill.scale"], "scale").slide(to: 0.9)
             flip("fill.reverse")
             let g = probe("gradient.fill.get")
             let t = g["transparency"] as? [[Double]] ?? []
@@ -215,7 +215,7 @@ final class LayerStylesTests: OpacityFillTests {
             tool(group: "Horizontal Type", pick: "Horizontal Type")
             at(w * 0.3, h * 0.4).tap()
             replace(app.textFields["prompt.field"], with: "CONCRETE")
-            app.buttons["prompt.ok"].tap()
+            app.buttons["prompt.ok"].firstMatch.tap()
             replace(app.textFields["type.size"], with: "260")
             tool(group: "Move", pick: "Move")
             XCTAssertEqual(layer(named: "CONCRETE")?["kind"] as? String, "Type")

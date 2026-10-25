@@ -9,6 +9,9 @@ final class SaveExportTests: WalkthroughTestCase {
         openFromHome()
         let found = names.map { app.buttons["file.\($0)"].waitForExistence(timeout: 5) }
         app.buttons["Cancel"].firstMatch.tap()
+        // Back to the open document.
+        let back = app.buttons["home.workspace"]
+        if back.waitForExistence(timeout: 3) { back.tap() }
         return found
     }
 

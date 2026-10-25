@@ -46,8 +46,8 @@ final class BrushTests: WalkthroughTestCase {
             XCTAssertEqual(get("mode") as? String, "Normal")
             more("Brush Settings")
             XCTAssert(app.descendants(matching: .any)["brushSettings.preview"].waitForExistence(timeout: 5), "the stroke preview")
-            show(app.sliders["brushSettings.flow"].firstMatch, "Flow").adjust(toNormalizedSliderPosition: 0.1)
-            show(app.sliders["brushSettings.smoothing.amount"].firstMatch, "Smoothing").adjust(toNormalizedSliderPosition: 0.5)
+            show(app.sliders["brushSettings.flow"].firstMatch, "Flow").slide(to: 0.1)
+            show(app.sliders["brushSettings.smoothing.amount"].firstMatch, "Smoothing").slide(to: 0.5)
             waitIdle()
             XCTAssertEqual((get("flow") as? Double) ?? 0, 0.1, accuracy: 0.03)
             XCTAssertEqual((get("smoothing.amount") as? Double) ?? 0, 0.5, accuracy: 0.05)
@@ -55,12 +55,12 @@ final class BrushTests: WalkthroughTestCase {
 
         step("Brush Settings: Shape Dynamics › Size Jitter, Control Pen Pressure; Scattering › Count") {
             flip("brushSettings.shapeDynamics")
-            show(app.sliders["brushSettings.shapeDynamics.size.jitter"].firstMatch, "Size Jitter").adjust(toNormalizedSliderPosition: 0.8)
+            show(app.sliders["brushSettings.shapeDynamics.size.jitter"].firstMatch, "Size Jitter").slide(to: 0.8)
             pick(show(app.buttons["brushSettings.shapeDynamics.size.control"].firstMatch, "Control"), "Pen Pressure")
             flip("brushSettings.scattering")
             // A drag while the list still coasts is lost: once more if nothing changed.
             for _ in 0..<2 where (get("scattering.count") as? Int ?? 1) <= 1 {
-                show(app.sliders["brushSettings.scattering.count"].firstMatch, "Count").adjust(toNormalizedSliderPosition: 0.3)
+                show(app.sliders["brushSettings.scattering.count"].firstMatch, "Count").slide(to: 0.3)
                 waitIdle()
             }
             XCTAssertEqual(get("shapeDynamics.enabled") as? Bool, true)
@@ -74,7 +74,7 @@ final class BrushTests: WalkthroughTestCase {
             let alert = app.alerts["New Brush Preset"]
             XCTAssert(alert.waitForExistence(timeout: 5))
             alert.textFields.firstMatch.typeText("dust")
-            alert.buttons["OK"].tap()
+            alert.buttons["OK"].firstMatch.tap()
             closeSheet()
             XCTAssert(presetNames.contains("dust"))
         }
@@ -116,7 +116,7 @@ final class BrushTests: WalkthroughTestCase {
             let alert = app.alerts["Brush Name"]
             XCTAssert(alert.waitForExistence(timeout: 5))
             alert.textFields.firstMatch.typeText("stroke")
-            alert.buttons["OK"].tap()
+            alert.buttons["OK"].firstMatch.tap()
             waitIdle()
             noErrorToast()
             XCTAssert(presetNames.contains("stroke"), "\(presetNames.suffix(3))")

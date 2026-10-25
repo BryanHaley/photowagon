@@ -180,15 +180,22 @@ struct ColorWell: View {
             RoundedRectangle(cornerRadius: 6).fill(Color(model.backgroundColor))
                 .frame(width: 24, height: 24).overlay(RoundedRectangle(cornerRadius: 6).stroke(.gray, lineWidth: 1))
                 .offset(x: 12, y: 12)
+                .accessibilityHidden(true)
+            ColorPicker("Foreground", selection: Binding(get: { Color(model.foreground) }, set: { model.setForeground(UIColor($0)) }), supportsOpacity: false)
+                .labelsHidden()
+                .frame(width: 28, height: 28)
+            // The swap's tap area goes above the picker: iOS 27 grows the picker's touch area over
+            // the background swatch.
+            Color.clear
+                .frame(width: 16, height: 16)
+                .contentShape(Rectangle())
+                .offset(x: 24, y: 24)
                 .onTapGesture { model.swapColors() }
                 .accessibilityElement()
                 .accessibilityAddTraits(.isButton)
                 .accessibilityLabel("Swap Colors")
                 .accessibilityIdentifier("colors.swap")
                 .accessibilityAction { model.swapColors() }
-            ColorPicker("Foreground", selection: Binding(get: { Color(model.foreground) }, set: { model.setForeground(UIColor($0)) }), supportsOpacity: false)
-                .labelsHidden()
-                .frame(width: 28, height: 28)
         }
         .frame(width: 40, height: 40)
     }
@@ -1338,6 +1345,7 @@ struct TypeOptions: View {
             }
             .pickerStyle(.segmented)
             .frame(width: 120)
+            .accessibilityIdentifier("type.align")
         }
         .onAppear {
             if let l = textLayer { model.loadTypeOptions(layer: l) }
@@ -1350,24 +1358,62 @@ struct TypeOptions: View {
 
     private var textLayer: UInt64? { model.activeLayer.flatMap { $0.kind == "Type" ? $0.id : nil } }
 
-    private func set(_ key: String, _ value: Any) {
-        if let l = textLayer { model.run("type.setStyle", ["layer": l, key: value]) }
+    private func set(_ key: String, _ value: Any, coalesce: String? = nil) {
+        guard let l = textLayer else { return }
+        var p: [String: Any] = ["layer": l, key: value]
+        if let coalesce { p["coalesce"] = coalesce }
+        model.run("type.setStyle", p)
     }
 
     private func number(_ title: String, _ unit: String, _ value: Binding<Double?>, key: String, prompt: String? = nil) -> some View {
         HStack(spacing: 2) {
             Text(title).font(.caption2).foregroundStyle(.secondary)
-            TextField(title, value: Binding(get: { value.wrappedValue }, set: { v in
-                value.wrappedValue = v
-                if let v, v != 0 || key == "tracking" { set(key, v) }
-            }), format: .number.precision(.fractionLength(0...1)), prompt: prompt.map { Text($0) })
+            TypeNumberField(title: title, prompt: prompt, value: value) { v, edit in
+                if v != 0 || key == "tracking" { set(key, v, coalesce: "type-\(key)-\(edit)") }
+            }
+            .accessibilityIdentifier("type.\(key)")
+            if !unit.isEmpty { Text(unit).font(.caption2).foregroundStyle(.secondary) }
+        }
+    }
+}
+
+/// A number field that applies as you type, so tapping the Font menu or the canvas never drops
+/// what was typed. One focus is one edit (`apply` gets its id), so it undoes in one step.
+struct TypeNumberField: View {
+    let title: String
+    let prompt: String?
+    @Binding var value: Double?
+    let apply: (Double, Int) -> Void
+    @State private var text = ""
+    @State private var edit = 0
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        TextField(title, text: $text, prompt: prompt.map { Text($0) })
+            .focused($focused)
             .keyboardType(.numbersAndPunctuation)
             .font(.caption.monospacedDigit())
             .frame(width: scaled(52))
             .textFieldStyle(.roundedBorder)
-            .accessibilityIdentifier("type.\(key)")
-            if !unit.isEmpty { Text(unit).font(.caption2).foregroundStyle(.secondary) }
-        }
+            .onAppear { text = Self.format(value) }
+            .onChange(of: value) { _, v in if !focused { text = Self.format(v) } }
+            .onChange(of: focused) { _, f in
+                if f { edit += 1 } else { text = Self.format(value) }
+            }
+            .onChange(of: text) { _, t in
+                guard focused, let v = Self.parse(t) else { return }
+                value = v
+                apply(v, edit)
+            }
+    }
+
+    static func format(_ v: Double?) -> String {
+        v.map { $0.formatted(.number.precision(.fractionLength(0...1)).grouping(.never)) } ?? ""
+    }
+
+    /// The number typed, with a comma or a point for decimals; `nil` while it isn't one yet.
+    static func parse(_ text: String) -> Double? {
+        Double(text.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: ".")).flatMap { $0.isFinite ? $0 : nil }
     }
 }
 

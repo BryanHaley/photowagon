@@ -5,7 +5,12 @@ import XCTest
 /// a profile, Effects, Curve, Color Mixer and a snapshot. See `docs/ios-walkthroughs/develop.md`
 /// for each step and where it lives in the app.
 final class DevelopTests: WalkthroughTestCase {
-    func value(_ key: String) -> String { app.descendants(matching: .any)["raw.\(key).name"].firstMatch.value as? String ?? "" }
+    /// A slider's value, scrolled into view first (the panels below the presets start off screen).
+    func value(_ key: String) -> String {
+        let row = app.descendants(matching: .any)["raw.\(key).name"].firstMatch
+        if !row.exists { show(row, key) }
+        return row.value as? String ?? ""
+    }
 
     /// Open a Develop panel (they start closed, but Light).
     func panel(_ name: String) {
@@ -46,7 +51,7 @@ final class DevelopTests: WalkthroughTestCase {
             original = stats().mean
             sandBefore = stats(sand).mean
             XCTAssertEqual(value("exposure"), "0.00")
-            app.buttons["raw.auto"].tap()
+            show(app.buttons["raw.auto"].firstMatch, "Auto").tap()
             waitIdle()
             auto = value("exposure")
             XCTAssertNotEqual(auto, "0.00", "Auto moved Exposure")
@@ -94,7 +99,7 @@ final class DevelopTests: WalkthroughTestCase {
             pick(app.buttons["raw.profile"], "Monochrome")
             panel("Effects")
             let vignette = show(app.sliders["raw.vignetteAmount"].firstMatch, "Vignette")
-            vignette.adjust(toNormalizedSliderPosition: 0.15)
+            vignette.slide(to: 0.15)
             XCTAssertLessThan(Int(value("vignetteAmount")) ?? 0, -40)
         }
 
@@ -118,7 +123,7 @@ final class DevelopTests: WalkthroughTestCase {
         step("Color Mixer › Saturation, Blue up") {
             panel("Color Mixer")
             app.buttons["Saturation"].firstMatch.tap()
-            show(app.sliders["raw.hslSat.5"].firstMatch, "Blue").adjust(toNormalizedSliderPosition: 0.9)
+            show(app.sliders["raw.hslSat.5"].firstMatch, "Blue").slide(to: 0.9)
         }
 
         step("OK: the curve and the mixer are in the filter") {
@@ -134,7 +139,7 @@ final class DevelopTests: WalkthroughTestCase {
             let alert = app.alerts["Save Snapshot"]
             XCTAssert(alert.waitForExistence(timeout: 5))
             alert.textFields.firstMatch.typeText("mono")
-            alert.buttons["Save"].tap()
+            alert.buttons["Save"].firstMatch.tap()
             pick(menu: "raw.more", "Reset to Default")
             let profile = { self.show(self.app.buttons["raw.profile"].firstMatch, "Profile").label }
             XCTAssert(profile().contains("Color"), profile())

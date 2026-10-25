@@ -56,7 +56,7 @@ final class SelectionsTests: WalkthroughTestCase {
 
         step("The mask button, then hold the mask › Load as Selection: the mask's shape selected again") {
             app.buttons["layers"].tap()
-            app.buttons["layer.lock.Background"].tap()
+            show(app.buttons["layer.lock.Background"].firstMatch, "the Background's lock").tap()
             app.buttons["layers.mask"].tap()
             waitIdle()
             XCTAssertEqual(inspect["hasSelection"] as? Bool, false, "the mask took the selection")
@@ -78,7 +78,7 @@ final class SelectionsTests: WalkthroughTestCase {
             for (x, y) in [(0.1, 0.1), (0.3, 0.1), (0.9, 0.9)] { at(w * x, h * y).tap() }
             app.buttons["Undo Last Point"].tap()
             for (x, y) in [(0.3, 0.3), (0.1, 0.3), (0.1, 0.1)] { at(w * x, h * y).tap() }
-            if app.buttons["Commit"].exists { app.buttons["Commit"].tap() }
+            if app.buttons["Commit"].exists { tapChip(app.buttons["Commit"].firstMatch) }
             waitIdle()
             let b = bounds
             XCTAssert(b.count == 4 && b[0] + b[2] < w * 0.35 && b[1] + b[3] < h * 0.35, "the wrong point is gone: \(b)")

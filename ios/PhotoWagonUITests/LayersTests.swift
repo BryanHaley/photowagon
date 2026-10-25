@@ -38,7 +38,7 @@ final class LayersPanelTests: LayersTests {
         step("Double-tap the gradient's thumbnail: pick another gradient") {
             let before = stats([0, 0, 1080, 200]).mean
             app.buttons["layers"].tap()
-            app.descendants(matching: .any)["layer.thumb.Gradient Background"].firstMatch.doubleTap()
+            show(app.descendants(matching: .any)["layer.thumb.Gradient Background"].firstMatch, "the gradient's thumbnail").doubleTap()
             XCTAssert(app.navigationBars["Gradient Fill"].waitForExistence(timeout: 5))
             let preset = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'fill.preset.Blue'")).firstMatch
             for _ in 0..<5 where !preset.isHittable { app.swipeUp() }
@@ -84,7 +84,7 @@ final class LayersPanelTests: LayersTests {
             showLayer("Background").doubleTap()
             let alert = app.alerts["New Layer"]
             XCTAssert(alert.waitForExistence(timeout: 5), "it offers to make it a normal layer")
-            alert.buttons["Cancel"].tap()
+            alert.buttons["Cancel"].firstMatch.tap()
             XCTAssertEqual(inspect["backgroundLayer"] as? Int, layerID("Background"))
             tapLayer("Background")
             app.buttons["layers.up"].tap()
@@ -134,9 +134,9 @@ final class LayersPanelTests: LayersTests {
             XCTAssertEqual(layer(named: name)?["kind"] as? String, "Shape")
             app.buttons["layers"].tap()
             XCTAssertEqual(app.descendants(matching: .any)["layer.thumb.\(name)"].firstMatch.value as? String, "Shape", "marked as a shape")
-            app.descendants(matching: .any)["layer.thumb.\(name)"].firstMatch.doubleTap()
+            show(app.descendants(matching: .any)["layer.thumb.\(name)"].firstMatch, "\(name)'s thumbnail").doubleTap()
             XCTAssert(app.navigationBars["Shape"].waitForExistence(timeout: 5))
-            app.sliders["shape.radius"].adjust(toNormalizedSliderPosition: 0.5)
+            app.sliders["shape.radius"].slide(to: 0.5)
             app.buttons["shape.fill"].tap()
             chooseColor(containing: "orange")
             let live = probe("shape.info", ["layer": layerID(name)])["live"] as? [String: Any]
@@ -156,7 +156,7 @@ final class LayersPanelTests: LayersTests {
             app.buttons["Delete Cropped Pixels"].tap()
             at(w / 2, h / 2).tap()
             drag(doc: (w, h / 2), to: (w + 300, h / 2))
-            app.buttons["Commit"].tap()
+            tapChip(app.buttons["Commit"].firstMatch)
             waitIdle()
             XCTAssertEqual(docSize.w, w + 300, accuracy: 4, "wider")
         }
@@ -172,7 +172,7 @@ final class LayerKindsTests: LayersTests {
             pickFile("bee")
             waitForCanvas()
             app.buttons["layers"].tap()
-            app.buttons["layer.lock.Background"].tap()
+            show(app.buttons["layer.lock.Background"].firstMatch, "the Background's lock").tap()
             XCTAssertNil(inspect["backgroundLayer"] as? Int)
             closeSheet()
             tool(group: "Eraser", pick: "Eraser")
@@ -182,10 +182,10 @@ final class LayerKindsTests: LayersTests {
 
         step("Magic Wand, Tolerance 20, tap the white, Delete: only the bee is left") {
             tool(group: "Object Selection", pick: "Magic Wand")
-            app.sliders["option.Tolerance"].adjust(toNormalizedSliderPosition: 20.0 / 255)
+            app.sliders["option.Tolerance"].slide(to: 20.0 / 255)
             at(50, 950).tap()
-            XCTAssert(app.buttons["Delete"].waitForExistence(timeout: 10), "selected")
-            app.buttons["Delete"].tap()
+            XCTAssert(app.buttons["Delete"].firstMatch.waitForExistence(timeout: 10), "selected")
+            app.buttons["Delete"].firstMatch.tap()
             waitIdle()
             XCTAssertLessThan(stats([0, 800, 1000, 1000], of: "pixels", layer: "Layer 0").mean.last ?? 1, 0.02, "the white is gone")
             XCTAssertGreaterThan(stats([400, 500, 600, 600], of: "pixels", layer: "Layer 0").mean.last ?? 0, 0.98, "the bee stays")
@@ -210,7 +210,7 @@ final class LayerKindsTests: LayersTests {
             let b = bounds(name)
             let spot = [Int(b[0] + b[2] * 0.35), Int(b[1] + b[3] * 0.45), Int(b[0] + b[2] * 0.45), Int(b[1] + b[3] * 0.55)]
             let before = stats(spot, of: "pixels", layer: name).mean.last ?? 0
-            app.descendants(matching: .any)["layer.thumb.\(name)"].firstMatch.doubleTap()
+            show(app.descendants(matching: .any)["layer.thumb.\(name)"].firstMatch, "\(name)'s thumbnail").doubleTap()
             XCTAssertGreaterThan((probe("app.documents")["names"] as? [String])?.count ?? 0, 2, "its contents open as another document")
             waitForCanvas()
             tool(group: "Eraser", pick: "Eraser")
@@ -222,7 +222,7 @@ final class LayerKindsTests: LayersTests {
             _ = toast("Saved the embedded layer")
             waitIdle()
             menu("File", "Close")
-            let dontSave = app.buttons["Don't Save"]
+            let dontSave = app.buttons["Don't Save"].firstMatch
             if dontSave.waitForExistence(timeout: 3) { dontSave.tap() }
             waitIdle()
             XCTAssertLessThan(stats(spot, of: "pixels", layer: name).mean.last ?? 1, before - 0.3, "erased in the embedded layer too")
@@ -233,7 +233,7 @@ final class LayerKindsTests: LayersTests {
             let b = bounds(name)
             tool(group: "Eraser", pick: "Eraser")
             drag(doc: (b[0] + b[2] * 0.6, b[1] + b[3] * 0.5), to: (b[0] + b[2] * 0.9, b[1] + b[3] * 0.5))
-            XCTAssert(app.buttons["rasterize.ok"].waitForExistence(timeout: 5), "asks to rasterize")
+            XCTAssert(app.buttons["rasterize.ok"].firstMatch.waitForExistence(timeout: 5), "asks to rasterize")
             app.buttons["Cancel"].firstMatch.tap()
             XCTAssertEqual(layer(named: name)?["kind"] as? String, "Embedded")
             app.buttons["layers"].tap()
@@ -265,7 +265,7 @@ final class LayerKindsTests: LayersTests {
             let before = lum(stats().mean)
             menu("Filter", "Develop…")
             XCTAssert(app.buttons["raw.ok"].waitForExistence(timeout: 5), "Develop")
-            app.sliders["raw.exposure"].adjust(toNormalizedSliderPosition: 0.6)
+            show(app.sliders["raw.exposure"].firstMatch, "Exposure").slide(to: 0.6)
             waitIdle()
             app.buttons["raw.ok"].tap()
             waitIdle()
@@ -286,7 +286,7 @@ final class LayerKindsTests: LayersTests {
             // Two slow taps are two single taps: try again.
             if !app.navigationBars["Add Noise"].waitForExistence(timeout: 4) { row.doubleTap() }
             XCTAssert(app.navigationBars["Add Noise"].waitForExistence(timeout: 5))
-            app.sliders["settings.amount.slider"].adjust(toNormalizedSliderPosition: 0.5)
+            app.sliders["settings.amount.slider"].slide(to: 0.5)
             app.buttons["settings.run"].tap()
             filters = layer(named: copy)?["smartFilters"] as? [[String: Any]] ?? []
             let noise = filters.first { $0["command"] as? String == "filter.noise.addNoise" }
@@ -306,13 +306,17 @@ final class LayerKindsTests: LayersTests {
             XCTAssert(app.navigationBars["Hue/Saturation"].waitForExistence(timeout: 5))
             app.navigationBars["Hue/Saturation"].buttons["sheet.done"].tap()
             closeSheet()
+            // The whole image in view, so the sky is on screen.
+            menu("View", "Fit on Screen")
             // Window › Properties leaves the canvas free to drag on.
             menu("Window", "Properties")
             XCTAssert(app.navigationBars["Hue/Saturation"].waitForExistence(timeout: 5))
             flip("hs.targeted")
             XCTAssert(app.segmentedControls["hs.dragHue"].waitForExistence(timeout: 5), "dragging in the image is on")
             // The shirt is under the half-height sheet here: drag on the sky, as blue as the shirt.
-            drag(doc: (400, 60), to: (240, 60))
+            // A longer drag, held first: iOS 27 took a short one as just the pick.
+            at(500, 60).press(forDuration: 0.3, thenDragTo: at(100, 60), withVelocity: .slow, thenHoldForDuration: 0.2)
+            waitIdle()
             let blues = (layer(named: "Hue/Saturation 1")?["adjustment"] as? [String: Any]).flatMap { ($0["params"] as? [String: Any])?["blues"] as? [String: Any] }
             XCTAssertLessThan(blues?["saturation"] as? Double ?? 0, -20, "dragging left took saturation out of the blues: \(blues ?? [:])")
             app.navigationBars["Hue/Saturation"].buttons["sheet.done"].tap()

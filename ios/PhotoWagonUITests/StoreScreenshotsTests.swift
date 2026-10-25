@@ -54,7 +54,7 @@ final class StoreScreenshotsTests: WalkthroughTestCase {
         bringToTop(light)
         // A real edit: brighter, more contrast, highlights held back, shadows opened up.
         for (key, value, range) in [("exposure", 0.35, 5.0), ("contrast", 22, 100), ("highlights", -45, 100), ("shadows", 38, 100), ("whites", 14, 100), ("blacks", -20, 100)] {
-            app.sliders["raw.\(key)"].adjust(toNormalizedSliderPosition: CGFloat((value + range) / (2 * range)))
+            app.sliders["raw.\(key)"].slide(to: CGFloat((value + range) / (2 * range)))
         }
         let curve = app.buttons["raw.panel.Curve"]
         bringToTop(curve)

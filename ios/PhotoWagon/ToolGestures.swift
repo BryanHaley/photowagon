@@ -1099,15 +1099,11 @@ extension CanvasUIView {
             let (cs, sn) = (cos(-b.angle), sin(-b.angle))
             let (vx, vy) = (p.x - pf.x, p.y - pf.y)
             let (lx, ly) = (vx * cs - vy * sn, vx * sn + vy * cs)
-            let (wx, wy) = (ci.x - fixed.x, ci.y - fixed.y)
-            guard wx != 0, wy != 0 else { return }
-            var n = b
-            (n.sx, n.sy) = (lx / wx, ly / wy)
             // Keep Proportions (⇧ swaps it for this drag).
-            if model.keepProportions != shift {
-                let s = max(abs(n.sx), abs(n.sy))
-                (n.sx, n.sy) = (s * (n.sx < 0 ? -1 : 1), s * (n.sy < 0 ? -1 : 1))
-            }
+            guard let scale = TransformBox.cornerScale(local: (lx, ly), corner: (ci.x - fixed.x, ci.y - fixed.y),
+                                                       current: (b.sx, b.sy), keep: model.keepProportions != shift) else { return }
+            var n = b
+            (n.sx, n.sy) = scale
             (n.dx, n.dy) = (0, 0)
             let moved = n.map(fixed)
             (n.dx, n.dy) = (pf.x - moved.x, pf.y - moved.y)

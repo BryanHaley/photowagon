@@ -174,7 +174,7 @@ final class ColorModeTests: BlendModesTests {
             addAdjustment("Hue/Saturation")
             expandSheet()
             pick(app.buttons["hs.part"], "Greens")
-            app.sliders["hs.hue"].firstMatch.adjust(toNormalizedSliderPosition: 0.2)
+            app.sliders["hs.hue"].firstMatch.slide(to: 0.2)
             waitIdle()
             closeProperties()
             let after = stats(patch).mean

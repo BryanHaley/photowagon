@@ -136,7 +136,7 @@ final class WorkspaceAndFilesTests: GettingStartedTests {
             tool(group: "Horizontal Type", pick: "Horizontal Type")
             at(600, 500).tap()
             replace(app.textFields["prompt.field"], with: "link")
-            app.buttons["prompt.ok"].tap()
+            app.buttons["prompt.ok"].firstMatch.tap()
             app.buttons["layers"].tap()
             let thumb = app.descendants(matching: .any)["layer.thumb.link"].firstMatch
             XCTAssert(thumb.waitForExistence(timeout: 5), "the text layer's T")
@@ -144,7 +144,7 @@ final class WorkspaceAndFilesTests: GettingStartedTests {
             let alert = app.alerts["Edit Text"]
             XCTAssert(alert.waitForExistence(timeout: 5), "double-tapping the T edits the text")
             replace(alert.textFields.firstMatch, with: "updated link")
-            alert.buttons["OK"].tap()
+            alert.buttons["OK"].firstMatch.tap()
             closeSheet()
             menu("File", "Save")
             XCTAssert(toast("Saved colours.psd"))
@@ -166,7 +166,7 @@ final class WorkspaceAndFilesTests: GettingStartedTests {
             pick(app.buttons["save.format"], "JPEG")
             let quality = app.sliders["save.quality"]
             XCTAssert(quality.waitForExistence(timeout: 5), "JPEG has a quality")
-            quality.adjust(toNormalizedSliderPosition: 0.5)
+            quality.slide(to: 0.5)
             app.buttons["save.save"].tap()
             XCTAssert(toast("Saved colours copy.jpg"))
             XCTAssert(docOpen("colours.psd", timeout: 0), "still colours.psd")
@@ -179,7 +179,7 @@ final class WorkspaceAndFilesTests: GettingStartedTests {
             let alert = app.alerts["New Action"]
             XCTAssert(alert.waitForExistence(timeout: 5))
             replace(alert.textFields.firstMatch, with: "Stripe")
-            alert.buttons["OK"].tap()
+            alert.buttons["OK"].firstMatch.tap()
             XCTAssert(app.buttons["actions.stop"].waitForExistence(timeout: 5), "recording")
             closeSheet()
             XCTAssert(statusBar.contains("Recording Stripe"), statusBar)
@@ -235,9 +235,9 @@ final class ToolsPanelsAndTransformTests: GettingStartedTests {
             tool(group: "Blur", pick: "Blur")
             let group = app.descendants(matching: .any)["group.Blur"].firstMatch
             group.press(forDuration: 1.0)
-            XCTAssert(app.buttons["Smudge"].waitForExistence(timeout: 5), "the group's menu lists Smudge")
-            XCTAssert(app.buttons["Sharpen"].exists)
-            app.buttons["Smudge"].tap()
+            XCTAssert(app.buttons.named("Smudge").waitForExistence(timeout: 5), "the group's menu lists Smudge")
+            XCTAssert(app.buttons.named("Sharpen").exists)
+            app.buttons.named("Smudge").tap()
             XCTAssert(statusBar.contains("Smudge"), statusBar)
         }
 
@@ -245,7 +245,7 @@ final class ToolsPanelsAndTransformTests: GettingStartedTests {
             tool(group: "Horizontal Type", pick: "Horizontal Type")
             at(400, 600).tap()
             replace(app.textFields["prompt.field"], with: "Text")
-            app.buttons["prompt.ok"].tap()
+            app.buttons["prompt.ok"].firstMatch.tap()
             replace(app.textFields["type.size"], with: "500")
             app.buttons["type.font"].firstMatch.tap()
             let font = app.buttons["American Typewriter"].firstMatch
@@ -321,9 +321,11 @@ final class ToolsPanelsAndTransformTests: GettingStartedTests {
             tool(group: "Horizontal Type", pick: "Horizontal Type")
             drag(doc: (300, 1100), to: (1700, 1500))
             replace(app.textFields["prompt.field"], with: "Box")
-            app.buttons["prompt.ok"].tap()
-            replace(app.textFields["type.size"], with: "100")
-            app.segmentedControls.firstMatch.buttons.element(boundBy: 1).tap()
+            app.buttons["prompt.ok"].firstMatch.tap()
+            // Return puts the keyboard away: it covers the options row.
+            replace(app.textFields["type.size"], with: "100\n")
+            app.segmentedControls["type.align"].buttons.element(boundBy: 1).tap()
+            waitIdle()
             let info = typeInfo("Box")
             let align = ((info["paragraphs"] as? [[String: Any]])?.first?["style"] as? [String: Any])?["align"] as? String
             XCTAssertEqual(align, "Center")
@@ -371,15 +373,18 @@ final class ToolsPanelsAndTransformTests: GettingStartedTests {
 
         step("Layers: hide and show with the eye, opacity") {
             app.buttons["layers"].tap()
-            app.buttons["layer.eye.Layer 1"].tap()
+            show(app.buttons["layer.eye.Layer 1"].firstMatch, "Layer 1's eye").tap()
             XCTAssertEqual(layer(named: "Layer 1")?["visible"] as? Bool, false)
-            app.buttons["layer.eye.Layer 1"].tap()
+            show(app.buttons["layer.eye.Layer 1"].firstMatch, "Layer 1's eye").tap()
             XCTAssertEqual(layer(named: "Layer 1")?["visible"] as? Bool, true)
             app.descendants(matching: .any)["layer.Layer 1"].firstMatch.tap()
             // The list scrolls to the layers; Opacity is above them.
-            let opacity = app.sliders["layers.opacity"]
-            for _ in 0..<3 where !opacity.exists { app.collectionViews.firstMatch.swipeDown() }
-            opacity.adjust(toNormalizedSliderPosition: 0.5)
+            let opacity = show(app.sliders["layers.opacity"].firstMatch, "Opacity")
+            // Checked on the layer: iOS 27 can report the slider's own position late.
+            for _ in 0..<3 where abs((layer(named: "Layer 1")?["opacity"] as? Double ?? 0) - 0.5) > 0.04 {
+                opacity.slide(to: 0.5)
+                Thread.sleep(forTimeInterval: 0.6)
+            }
             XCTAssertEqual(layer(named: "Layer 1")?["opacity"] as? Double ?? 0, 0.5, accuracy: 0.06)
             closeSheet()
         }
@@ -411,27 +416,29 @@ final class ToolsPanelsAndTransformTests: GettingStartedTests {
             // The photo opens as a locked Background: unlock it first, as in Photoshop.
             app.buttons["layers"].tap()
             showLayer("Background")
-            app.buttons["layer.lock.Background"].tap()
+            show(app.buttons["layer.lock.Background"].firstMatch, "the Background's lock").tap()
             closeSheet()
             let (l, r) = (stats([0, 0, 300, 1200]), stats([600, 0, 900, 1200]))
             XCTAssertGreaterThan(abs(lum(l.mean) - lum(r.mean)), 0.01, "the photo isn't symmetric")
             menu("Edit", "Free Transform")
             XCTAssert(app.buttons["Commit"].waitForExistence(timeout: 5))
-            app.buttons["Flip Horizontal"].tap()
-            app.buttons["Commit"].tap()
+            tapChip(app.buttons["Flip Horizontal"])
+            tapChip(app.buttons["Commit"].firstMatch)
             waitIdle()
             XCTAssertEqual(lum(stats([0, 0, 300, 1200]).mean), lum(r.mean), accuracy: 0.01, "left and right swapped")
             app.buttons["undo"].tap()
         }
 
         step("Reference point: a preset corner, scale from it keeping the proportions") {
+            // Zoomed out, so the box's handles are inside the screen's edges.
+            menu("View", "Zoom Out")
             menu("Edit", "Free Transform")
             XCTAssert(app.buttons["Commit"].waitForExistence(timeout: 5))
-            app.buttons["Reference Point"].firstMatch.tap()
+            tapChip(app.buttons["Reference Point"].firstMatch)
             app.buttons["Top Right"].tap()
-            app.buttons["Scale From Reference Point"].tap()
+            tapChip(app.buttons["Scale From Reference Point"].firstMatch)
             drag(doc: (900, 1200), to: (720, 960))
-            app.buttons["Commit"].tap()
+            tapChip(app.buttons["Commit"].firstMatch)
             waitIdle()
             let b = bounds("Layer 0")
             XCTAssertLessThan(b[2], 850, "smaller: \(b)")
@@ -446,10 +453,10 @@ final class ToolsPanelsAndTransformTests: GettingStartedTests {
             let (pivotBefore, farBefore) = (lum(stats(pivot, of: "pixels").mean), lum(stats(far, of: "pixels").mean))
             menu("Edit", "Free Transform")
             XCTAssert(app.buttons["Commit"].waitForExistence(timeout: 5))
-            app.buttons["Scale From Reference Point"].tap()
+            tapChip(app.buttons["Scale From Reference Point"].firstMatch)
             drag(doc: (450, 600), to: (60, 60))
             drag(doc: (1050, 1000), to: (900, 1300))
-            app.buttons["Commit"].tap()
+            tapChip(app.buttons["Commit"].firstMatch)
             waitIdle()
             noErrorToast()
             XCTAssertEqual(lum(stats(pivot, of: "pixels").mean), pivotBefore, accuracy: 0.03, "the reference point stayed put")
@@ -516,14 +523,14 @@ final class KeyboardShortcutsTests: GettingStartedTests {
             // A locked Background: unlock it first, as in Photoshop.
             app.buttons["layers"].tap()
             showLayer("Background")
-            app.buttons["layer.lock.Background"].tap()
+            show(app.buttons["layer.lock.Background"].firstMatch, "the Background's lock").tap()
             closeSheet()
             key("t", .command)
             XCTAssert(app.buttons["Commit"].waitForExistence(timeout: 5), "⌘T starts Free Transform")
             XCUIElement.perform(withKeyModifiers: .shift) {
                 drag(doc: (1050, 100), to: (1050, 500))
             }
-            app.buttons["Commit"].tap()
+            tapChip(app.buttons["Commit"].firstMatch)
             waitIdle()
             let w = bounds("Layer 0")[2]
             let fits = stride(from: 15.0, through: 75, by: 15).contains { a in
@@ -550,9 +557,9 @@ final class BackgroundSwapTests: GettingStartedTests {
             menu("File", "Place Embedded…")
             pickFile("background")
             XCTAssert(app.buttons["Commit"].waitForExistence(timeout: 20))
-            app.buttons["Scale From Reference Point"].tap()
+            tapChip(app.buttons["Scale From Reference Point"].firstMatch)
             drag(doc: (900, 937), to: (1150, 1150))
-            app.buttons["Commit"].tap()
+            tapChip(app.buttons["Commit"].firstMatch)
             waitIdle()
             XCTAssertEqual(layers.count, 2)
             let b = bounds("background")
@@ -564,7 +571,7 @@ final class BackgroundSwapTests: GettingStartedTests {
 
         step("Layers: unlock the Background, put the new background under it, rename it subject") {
             app.buttons["layers"].tap()
-            app.buttons["layer.lock.Background"].tap()
+            show(app.buttons["layer.lock.Background"].firstMatch, "the Background's lock").tap()
             let placed = app.descendants(matching: .any)["layer.background"]
             XCTAssert(placed.waitForExistence(timeout: 5), "the placed layer is named after its file")
             placed.tap()
@@ -575,7 +582,7 @@ final class BackgroundSwapTests: GettingStartedTests {
             let alert = app.alerts["Rename Layer"]
             XCTAssert(alert.waitForExistence(timeout: 5), "double-tapping a layer name renames it")
             replace(alert.textFields.firstMatch, with: "subject")
-            alert.buttons["OK"].tap()
+            alert.buttons["OK"].firstMatch.tap()
             XCTAssert(app.descendants(matching: .any)["layer.subject"].waitForExistence(timeout: 5))
             closeSheet()
             XCTAssertEqual(layers.map { $0["name"] as? String }, ["subject", "background"])
@@ -614,7 +621,8 @@ final class BackgroundSwapTests: GettingStartedTests {
             XCTAssertEqual(inspect["maskTarget"] as? Bool, true)
             tool(group: "Blur", pick: "Smudge")
             option("Strength", percent: 50)
-            XCTAssertEqual(app.sliders["option.Strength"].value as? String, "50%")
+            let strength = Int((app.sliders["option.Strength"].value as? String ?? "").dropLast()) ?? 0
+            XCTAssertEqual(strength, 50, accuracy: 1)
             let size = brush["size"] as? Double ?? 0
             key("]")
             XCTAssertGreaterThan(brush["size"] as? Double ?? 0, size)
@@ -661,7 +669,7 @@ final class BackgroundSwapTests: GettingStartedTests {
             for (x, y) in [(485.0, 405.0), (561.0, 405.0), (561.0, 562.0), (485.0, 562.0), (485.0, 405.0)] {
                 at(x, y).tap()
             }
-            if app.buttons["Commit"].exists { app.buttons["Commit"].tap() }
+            if app.buttons["Commit"].exists { tapChip(app.buttons["Commit"].firstMatch) }
             XCTAssert(app.buttons["Quick Fill"].waitForExistence(timeout: 10))
             app.buttons["Quick Fill"].tap()
             waitIdle()

@@ -92,6 +92,21 @@ struct TransformBox: Equatable {
 
     var center: Point { Point(x: (x0 + x1) / 2, y: (y0 + y1) / 2) }
     var origin: Point { pivot ?? center }
+
+    /// The scale for a corner dragged to `local` (from the fixed point, unrotated), where it
+    /// started at `corner` from it. A corner level with the fixed point (the reference point on
+    /// its edge) scales the other way only; with `keep` both ways follow it.
+    static func cornerScale(local: (Float, Float), corner: (Float, Float), current: (Float, Float), keep: Bool) -> (Float, Float)? {
+        let sx = corner.0 != 0 ? local.0 / corner.0 : nil
+        let sy = corner.1 != 0 ? local.1 / corner.1 : nil
+        guard sx != nil || sy != nil else { return nil }
+        if keep {
+            let s = max(abs(sx ?? 0), abs(sy ?? 0))
+            let sign = { (v: Float?, was: Float) in (v ?? was) < 0 ? Float(-1) : 1 }
+            return (s * sign(sx, current.0), s * sign(sy, current.1))
+        }
+        return (sx ?? current.0, sy ?? current.1)
+    }
     var corners: [Point] { [Point(x: x0, y: y0), Point(x: x1, y: y0), Point(x: x1, y: y1), Point(x: x0, y: y1)] }
 
     /// Where source point `q` goes.
@@ -302,7 +317,12 @@ final class EditorModel: ObservableObject {
     @Published private(set) var maskView: UInt64?
     /// History panel: past steps (the last is the current state), then the steps Redo brings back.
     @Published private(set) var history: (past: [String], redo: [String]) = ([], [])
-    @Published var toast: String?
+    @Published var toast: String? {
+        didSet { if let toast { toasts = Array((toasts + [toast]).suffix(50)) } }
+    }
+    /// Every toast shown, newest last (the UI tests read it: a toast can come and go before
+    /// XCUITest looks).
+    private(set) var toasts: [String] = []
     /// A short-lived name in the same bubble: the tool just picked, a button held down.
     @Published var hint: String?
     @Published private(set) var busy = false

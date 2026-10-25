@@ -21,12 +21,12 @@ class LayerMaskTests: WalkthroughTestCase {
         let thumb = maskThumb(name)
         for _ in 0..<3 {
             thumb.press(forDuration: 1.0)
-            let b = app.buttons[item].firstMatch
+            let b = app.buttons.named(item)
             if b.waitForExistence(timeout: 3) {
                 Thread.sleep(forTimeInterval: 0.4)
                 b.tap()
                 if let sub {
-                    let s = app.buttons[sub].firstMatch
+                    let s = app.buttons.named(sub)
                     XCTAssert(s.waitForExistence(timeout: 3), sub)
                     Thread.sleep(forTimeInterval: 0.3)
                     s.tap()
@@ -125,8 +125,13 @@ final class MaskBasicsTests: LayerMaskTests {
         }
 
         step("Tap the link between the thumbnails: unlinked") {
-            show(element("layer.link.\(fill)"), "the link").tap()
+            let link = show(element("layer.link.\(fill)"), "the link")
+            link.tap()
             waitIdle()
+            // A small target: a tap can miss it. Give the first time to show before tapping again.
+            let end = Date().addingTimeInterval(3)
+            while mask(fill)["linked"] as? Bool != false, Date() < end { Thread.sleep(forTimeInterval: 0.3) }
+            if mask(fill)["linked"] as? Bool != false { link.tap(); waitIdle() }
             XCTAssertEqual(mask(fill)["linked"] as? Bool, false)
         }
 
@@ -146,7 +151,7 @@ final class MaskBasicsTests: LayerMaskTests {
             maskThumb(other).tap()
             waitIdle()
             app.buttons["layers.delete"].tap()
-            let delete = app.buttons["deleteMask.delete"]
+            let delete = app.buttons["deleteMask.delete"].firstMatch
             XCTAssert(delete.waitForExistence(timeout: 5), "asks to apply or delete")
             delete.tap()
             waitIdle()
@@ -186,7 +191,7 @@ final class SkyMaskTests: LayerMaskTests {
 
         step("Tap the Background's lock: a normal layer") {
             app.buttons["layers"].tap()
-            app.buttons["layer.lock.Background"].tap()
+            show(app.buttons["layer.lock.Background"].firstMatch, "the Background's lock").tap()
             waitIdle()
             XCTAssertNotNil(layer(named: "Layer 0"))
             closeSheet()
@@ -227,7 +232,7 @@ final class SkyMaskTests: LayerMaskTests {
             // The bottom right corner, in towards the middle.
             let corner = b.count == 4 ? (b[0] + b[2], b[1] + b[3]) : (w, h)
             drag(doc: (min(corner.0, w - 2), min(corner.1, h - 2)), to: (w * 0.7, h * 0.7))
-            app.buttons["Commit"].tap()
+            tapChip(app.buttons["Commit"].firstMatch)
             waitIdle()
             XCTAssertNotEqual(maskMean("Layer 0"), m, accuracy: 0.005, "the mask changed")
             XCTAssertEqual(pixels(), before, "the layer's pixels are where they were")

@@ -13,7 +13,7 @@ final class BlendIfSlidersTests: WalkthroughTestCase {
         step("Open the photo, unlock it, double-tap the right of the layer: Layer Style") {
             openSample("background")
             app.buttons["layers"].tap()
-            app.buttons["layer.lock.Background"].tap()
+            show(app.buttons["layer.lock.Background"].firstMatch, "the Background's lock").tap()
             openStyle("Layer 0")
         }
 

@@ -96,4 +96,16 @@ final class HelperTests: XCTestCase {
         model.tool = .polygonLasso
         XCTAssertNil(model.hint, "the same tool again says nothing")
     }
+
+    /// The Type options' number fields read what's typed so far, either decimal mark.
+    func testTypeNumberFieldParsing() {
+        XCTAssertEqual(TypeNumberField.parse("500"), 500)
+        XCTAssertEqual(TypeNumberField.parse("12,5"), 12.5)
+        XCTAssertEqual(TypeNumberField.parse("-20"), -20)
+        XCTAssertNil(TypeNumberField.parse(""))
+        XCTAssertNil(TypeNumberField.parse("-"))
+        XCTAssertNil(TypeNumberField.parse("inf"))
+        XCTAssertEqual(TypeNumberField.format(1500), "1500")
+        XCTAssertEqual(TypeNumberField.format(nil), "")
+    }
 }

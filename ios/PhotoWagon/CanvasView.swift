@@ -507,6 +507,10 @@ final class CanvasUIView: UIView, UIPointerInteractionDelegate, UIGestureRecogni
 
     override var canBecomeFirstResponder: Bool { true }
     override var keyCommands: [UIKeyCommand]? { keys }
+    // iOS 27 shows the on-screen keyboard for this first responder without a hardware keyboard,
+    // though it only takes key commands.
+    private let noKeyboard = UIView(frame: .zero)
+    override var inputView: UIView? { noKeyboard }
 
     @objc func keyPressed(_ c: UIKeyCommand) {
         dropFinishedTouches()

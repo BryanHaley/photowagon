@@ -53,7 +53,7 @@ class SettingsScreensTests: WalkthroughTestCase {
     /// Drag on `e` between fractions of its size.
     func drag(_ e: XCUIElement, from a: (Double, Double), to b: (Double, Double)) {
         e.coordinate(withNormalizedOffset: CGVector(dx: a.0, dy: a.1))
-            .press(forDuration: 0.1, thenDragTo: e.coordinate(withNormalizedOffset: CGVector(dx: b.0, dy: b.1)))
+            .press(forDuration: 0.1, thenDragTo: e.coordinate(withNormalizedOffset: CGVector(dx: b.0, dy: b.1)), withVelocity: .slow, thenHoldForDuration: 0.1)
     }
 }
 
@@ -83,17 +83,25 @@ final class CurvesScreenTests: SettingsScreensTests {
         step("Pencil: draw a dark curve, Smooth it, then back to points") {
             app.segmentedControls["curves.mode"].buttons.element(boundBy: 1).tap()
             XCTAssert(app.buttons["curves.smooth"].waitForExistence(timeout: 5))
-            // Away from the screen's bottom edge, where iOS holds touches for its own gesture.
-            drag(element("curves.graph"), from: (0.15, 0.75), to: (0.9, 0.55))
+            // On iOS 27 the graph runs past the bottom of the screen: scroll the sheet until it all
+            // shows, away from the bottom edge where iOS holds touches for its own gesture.
+            let graph = element("curves.graph")
+            let list = app.collectionViews.firstMatch
+            for _ in 0..<4 where graph.frame.maxY > app.windows.firstMatch.frame.height - 60 {
+                let from = list.coordinate(withNormalizedOffset: CGVector(dx: 0.03, dy: 0.5))
+                from.press(forDuration: 0.05, thenDragTo: from.withOffset(CGVector(dx: 0, dy: -200)), withVelocity: .slow, thenHoldForDuration: 0.2)
+                Thread.sleep(forTimeInterval: 0.5)
+            }
+            drag(graph, from: (0.15, 0.75), to: (0.9, 0.55))
             waitIdle()
             XCTAssertLessThan(lum(stats(area).mean), before - 0.1, "darker")
-            app.buttons["curves.smooth"].tap()
-            app.segmentedControls["curves.mode"].buttons.element(boundBy: 0).tap()
+            show(app.buttons["curves.smooth"].firstMatch, "Smooth").tap()
+            show(app.segmentedControls["curves.mode"].firstMatch, "the edit mode").buttons.element(boundBy: 0).tap()
             waitIdle()
             XCTAssertGreaterThanOrEqual((element("curves.graph").value as? String ?? "").split(separator: " ").count, 5, "points that follow the drawing")
         }
         step("Preset Negative, then Auto, then OK: one Curves step") {
-            pick(app.buttons["curves.preset"], "Negative")
+            pick(show(app.buttons["curves.preset"].firstMatch, "the preset"), "Negative")
             waitIdle()
             XCTAssertLessThan(lum(stats(sky).mean), 0.4, "the sky went dark")
             app.buttons["curves.auto"].tap()
@@ -110,7 +118,7 @@ final class ColorScreensTests: SettingsScreensTests {
             openBeach()
             let before = stats(area).mean
             open("Image", "Adjustments", "Color Balance…", title: "Color Balance")
-            app.sliders["balance.0"].adjust(toNormalizedSliderPosition: 1)
+            app.sliders["balance.0"].slide(to: 1)
             waitIdle()
             let after = stats(area).mean
             XCTAssertGreaterThan(after[0] - after[2], before[0] - before[2] + 0.05, "\(before) → \(after)")
@@ -129,7 +137,7 @@ final class ColorScreensTests: SettingsScreensTests {
             let before = stats(sky).mean
             open("Image", "Adjustments", "Selective Color…", title: "Selective Color")
             pick(app.buttons["selective.colors"], "Blues")
-            app.sliders["selective.0"].adjust(toNormalizedSliderPosition: 0)
+            app.sliders["selective.0"].slide(to: 0)
             waitIdle()
             XCTAssertGreaterThan(stats(sky).mean[0], before[0] + 0.01, "redder sky: \(before) → \(stats(sky).mean)")
             pick(app.buttons["selective.colors"], "Reds")
@@ -146,7 +154,7 @@ final class ColorScreensTests: SettingsScreensTests {
             XCTAssert(element("threshold.graph").exists)
             XCTAssertLessThan(spread(stats(sand).mean), 0.01, "black and white as it opens")
             let before = lum(stats(area).mean)
-            app.sliders["threshold.level"].adjust(toNormalizedSliderPosition: 0.8)
+            app.sliders["threshold.level"].slide(to: 0.8)
             waitIdle()
             XCTAssertLessThan(lum(stats(area).mean), before - 0.05, "a higher level: more black")
             ok("Threshold")
@@ -155,7 +163,7 @@ final class ColorScreensTests: SettingsScreensTests {
         step("Photo Filter: more density, warmer") {
             let before = stats(area).mean
             open("Image", "Adjustments", "Photo Filter…", title: "Photo Filter")
-            app.sliders["photoFilter.density"].adjust(toNormalizedSliderPosition: 1)
+            app.sliders["photoFilter.density"].slide(to: 1)
             waitIdle()
             let after = stats(area).mean
             XCTAssertGreaterThan(after[0] - after[2], before[0] - before[2] + 0.05)
@@ -191,7 +199,7 @@ final class ColorScreensTests: SettingsScreensTests {
         }
         step("Hue/Saturation from the Image menu: no saturation, gray") {
             open("Image", "Adjustments", "Hue/Saturation…", title: "Hue/Saturation")
-            app.sliders["hs.saturation"].adjust(toNormalizedSliderPosition: 0)
+            app.sliders["hs.saturation"].slide(to: 0)
             waitIdle()
             XCTAssertLessThan(spread(stats(area).mean), 0.02)
             ok("Hue/Saturation")
@@ -202,7 +210,7 @@ final class ColorScreensTests: SettingsScreensTests {
             open("Image", "Adjustments", "Replace Color…", title: "Replace Color")
             app.buttons["replace.pick"].tap()
             app.otherElements["preview"].coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.1)).tap()
-            app.sliders["replace.hue"].adjust(toNormalizedSliderPosition: 1)
+            app.sliders["replace.hue"].slide(to: 1)
             waitIdle()
             let after = stats(sky).mean
             XCTAssertLessThan(after[2], before[2] - 0.1, "the sky isn't blue now: \(before) → \(after)")

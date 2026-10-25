@@ -40,7 +40,7 @@ final class LivePreviewTests: WalkthroughTestCase {
 
         step("Let go of the slider: a stronger blur") {
             let before = stats([200, 300, 1200, 600]).stddev[0]
-            app.sliders["settings.radius.slider"].adjust(toNormalizedSliderPosition: 0.6)
+            app.sliders["settings.radius.slider"].slide(to: 0.6)
             waitIdle()
             XCTAssertLessThan(stats([200, 300, 1200, 600]).stddev[0], before - 0.005, "blurrier")
             XCTAssertEqual((inspect["history"] as? [String])?.last, "Gaussian Blur", "one step, not one per try")

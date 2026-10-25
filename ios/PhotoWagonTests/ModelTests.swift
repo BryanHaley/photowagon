@@ -52,4 +52,13 @@ final class ModelTests: XCTestCase {
         XCTAssertEqual(mask[20 * w + 1], 0, "the other person, far away, isn't")
         XCTAssertEqual(mask[20 * w + 20], 255)
     }
+
+    /// Toasts stay listed after they go, for the UI tests; the list keeps the last 50.
+    func testToastsAreKept() {
+        let model = makeModel()
+        for i in 0..<55 { model.toast = "t\(i)" }
+        model.toast = nil
+        XCTAssertEqual(model.toasts.count, 50)
+        XCTAssertEqual(model.toasts.last, "t54")
+    }
 }
