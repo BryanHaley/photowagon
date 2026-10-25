@@ -60,13 +60,13 @@ const LIBRARIES: &[Library] = &[
     Library {
         name: "skcms",
         license: "BSD-3-Clause",
-        note: "Colour management inside libjxl.",
+        note: "Color management inside libjxl.",
         texts: &[Text::File("submodules/libjxl/third_party/skcms/LICENSE")],
     },
     Library {
-        name: "X.Org colour names",
+        name: "X.Org color names",
         license: "MIT",
-        note: "The X11 colour names XPM images use. Copyright 1985, 1989, 1998 The Open Group; Copyright (c) 1994, 2008, Oracle and/or its affiliates.",
+        note: "The X11 color names XPM images use. Copyright 1985, 1989, 1998 The Open Group; Copyright (c) 1994, 2008, Oracle and/or its affiliates.",
         texts: &[Text::File("crates/codecs/src/codecs/xpm/LICENSE-x11-rgb.txt")],
     },
     Library {

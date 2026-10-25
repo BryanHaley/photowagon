@@ -1457,10 +1457,10 @@ fn effect_cases() -> Vec<(&'static str, Vec<Effect>)> {
         ("bevel contour own light", vec![Effect::BevelEmboss(bevel_contour)]),
         ("satin", vec![Effect::Satin(satin)]),
         ("satin inverted contour", vec![Effect::Satin(satin_inv)]),
-        ("stroke outside colour", vec![Effect::Stroke(stroke(4.0, StrokePosition::Outside, FxPaint::Color(Color::rgb(0.95, 0.85, 0.1))))]),
+        ("stroke outside color", vec![Effect::Stroke(stroke(4.0, StrokePosition::Outside, FxPaint::Color(Color::rgb(0.95, 0.85, 0.1))))]),
         ("stroke inside gradient", vec![Effect::Stroke(stroke(3.0, StrokePosition::Inside, FxPaint::Gradient(gradient())))]),
         ("stroke centre pattern", vec![Effect::Stroke(stroke(5.0, StrokePosition::Center, pat_paint.clone()))]),
-        ("colour overlay", vec![Effect::ColorOverlay { common: FxCommon::new(BlendMode::Multiply, 0.7), color: Color::rgb(0.2, 0.7, 0.9) }]),
+        ("color overlay", vec![Effect::ColorOverlay { common: FxCommon::new(BlendMode::Multiply, 0.7), color: Color::rgb(0.2, 0.7, 0.9) }]),
         (
             "gradient overlay",
             vec![Effect::GradientOverlay {
@@ -2321,7 +2321,7 @@ fn pattern_cache_tracks_source_format_and_cow_tiles() {
         let cpu = photocraft_compose::flatten(&d);
         if fmt.mode == ColorMode::Lab {
             let old: Vec<[f32; 4]> = previous.take().unwrap();
-            assert!(worst_diff(&old, &cpu.px).0 > 0.1, "same default bits have different source-format colours");
+            assert!(worst_diff(&old, &cpu.px).0 > 0.1, "same default bits have different source-format colors");
         }
         previous = Some(cpu.px.clone());
         let mut fresh = Compositor::new(&g.device);

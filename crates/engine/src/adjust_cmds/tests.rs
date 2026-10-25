@@ -580,7 +580,7 @@ fn curves_apply_to_non_colour_targets_at_every_depth() {
             s.execute("image.adjustments.curves", p).unwrap();
             let (pixels_after, after) = read(&s);
             let case = format!("{target} at {depth}");
-            assert_eq!(pixels_after, pixels, "{case}: colour pixels stay put");
+            assert_eq!(pixels_after, pixels, "{case}: color pixels stay put");
             assert!(after > before + 0.1, "{case}: the curve lifted the midtone ({before} → {after})");
             assert_eq!(s.active().unwrap().history.past_len(), past + 1, "{case}");
             s.undo();
@@ -631,7 +631,7 @@ fn curves_on_grey_targets_ignore_the_document_colour_mode() {
                 let case = format!("{mode} {depth}-bit {target}");
                 assert!((before - 0.25).abs() < 0.01, "{case}: filled with 25% grey ({before})");
                 assert!((after - 0.75).abs() < 0.02, "{case}: inverting 25% grey gives 75% grey ({after})");
-                assert_eq!(rgba(&s, 8, 8), pixels, "{case}: colour pixels stay put");
+                assert_eq!(rgba(&s, 8, 8), pixels, "{case}: color pixels stay put");
             }
         }
     }
@@ -657,7 +657,7 @@ fn replace_color_localized_clusters_only_change_the_colour_near_the_sample() {
     local["range"] = json!(50);
     s.execute("image.adjustments.replaceColor", local.clone()).unwrap();
     assert!(changed(rgba(&s, 3, 16), left) > 0.05, "near the sample");
-    assert_eq!(rgba(&s, 44, 16), right, "the same colour far from the sample");
+    assert_eq!(rgba(&s, 44, 16), right, "the same color far from the sample");
     assert_eq!(rgba(&s, 20, 16), grey);
     s.execute("edit.undo", json!({})).unwrap();
     // Inside a selection that doesn't start at the origin the sample stays where it was picked.

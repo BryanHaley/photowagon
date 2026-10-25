@@ -356,7 +356,7 @@ fn replace_color(s: &mut Session, p: &Value) -> Result<Value> {
     let points = sample_points(p).map_err(|m| bad(CMD, m))?;
     let localized = if p.get("localized").and_then(Value::as_bool).unwrap_or(false) {
         if points.is_empty() {
-            return Err(bad(CMD, "localized clusters need eyedropper `points` (where the colour was picked)"));
+            return Err(bad(CMD, "localized clusters need eyedropper `points` (where the color was picked)"));
         }
         let canvas = s.active().ok_or(EngineError::NoDocument)?.doc.bounds();
         Some(num(p, "range", 100.0).clamp(0.0, 100.0) / 100.0 * canvas.width().max(canvas.height()) as f32)
@@ -507,7 +507,7 @@ pub fn specs() -> Vec<CommandSpec> {
             "image.adjustments.replaceColor",
             "Replace Color…",
             ["Image", "Adjustments"],
-            r##"{"localized":bool=false,"color":color,"fuzziness":0..200=40,"range":0..100=100,"hue":-180..180=0,"saturation":-100..100=0,"lightness":-100..100=0,"points":[[x,y],…]?} (color: "#rrggbb", default the foreground colour; Localized Color Clusters: "points" where the colour was picked, "range" % of the longer side)"##,
+            r##"{"localized":bool=false,"color":color,"fuzziness":0..200=40,"range":0..100=100,"hue":-180..180=0,"saturation":-100..100=0,"lightness":-100..100=0,"points":[[x,y],…]?} (color: "#rrggbb", default the foreground color; Localized Color Clusters: "points" where the color was picked, "range" % of the longer side)"##,
             has_pixels,
             replace_color
         ),

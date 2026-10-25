@@ -263,7 +263,7 @@ impl Builder {
                         if c.alpha <= 0.0 { ArtboardBackground::Transparent } else { ArtboardBackground::Custom(c) }
                     }
                     Some(_) => {
-                        self.warn("artboard backgrounds other than a solid colour import as transparent");
+                        self.warn("artboard backgrounds other than a solid color import as transparent");
                         ArtboardBackground::Transparent
                     }
                     None => ArtboardBackground::Transparent,

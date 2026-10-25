@@ -82,7 +82,7 @@ fn selected_gray_exr_part_exports_like_ordinary_import() {
                 let output = codecs::decode(&output.bytes).unwrap();
                 let control = codecs::decode(&control.bytes).unwrap();
                 assert_eq!(output.layout(), control.layout());
-                assert_eq!(output.to_normalized(), control.to_normalized(), "{layout:?} {depth:?} {ext}: same colours as File > Open");
+                assert_eq!(output.to_normalized(), control.to_normalized(), "{layout:?} {depth:?} {ext}: same colors as File > Open");
                 let output = output.convert(ChannelLayout::GrayA, CodecSample::F32).to_f32_samples().unwrap();
                 let original = samples(&selected);
                 if ext == "exr" {

@@ -837,9 +837,9 @@ pub const GUIDE_COLORS: [(&str, [u8; 3]); 9] = [
 /// (the guide uses Preferences › Guides, Grid & Slices › Guide colour).
 fn guide_color(p: &Value) -> Result<Option<[u8; 3]>> {
     let Some(v) = p.get("color") else { return Ok(None) };
-    let text = v.as_str().ok_or(EngineError::Other("`color` must be a colour name or \"#rrggbb\"".into()))?;
+    let text = v.as_str().ok_or(EngineError::Other("`color` must be a color name or \"#rrggbb\"".into()))?;
     GUIDE_COLORS.iter().find(|(name, ..)| name.eq_ignore_ascii_case(text)).map(|(.., rgb)| *rgb).or_else(|| crate::prefs::parse_hex(text)).map(Some).ok_or_else(
-        || EngineError::Other(format!("`color` {text:?} is not a guide colour: use \"#rrggbb\" or one of {}", GUIDE_COLORS.map(|c| c.0).join(", "))),
+        || EngineError::Other(format!("`color` {text:?} is not a guide color: use \"#rrggbb\" or one of {}", GUIDE_COLORS.map(|c| c.0).join(", "))),
     )
 }
 
@@ -963,7 +963,7 @@ pub fn specs() -> Vec<CommandSpec> {
         };
     }
     vec![
-        spec!("edit.cut", "Cut", &["Edit"], Some("Cmd+X"), "{} (a targeted colour channel cuts that channel only)", has_pixels, |s, p| {
+        spec!("edit.cut", "Cut", &["Edit"], Some("Cmd+X"), "{} (a targeted color channel cuts that channel only)", has_pixels, |s, p| {
             // Refuse a locked layer before copying, so a refused Cut leaves the clipboard alone.
             let id = active_id(s)?;
             crate::commands::check_pixels_unlocked(&s.active().ok_or(EngineError::NoDocument)?.doc, id)?;
@@ -981,7 +981,7 @@ pub fn specs() -> Vec<CommandSpec> {
             "Copy",
             &["Edit"],
             Some("Cmd+C"),
-            r##"{"target":"mask"? = the targeted mask, copied as grayscale (#2928)} (a targeted colour or alpha channel copies that channel, as grayscale)"##,
+            r##"{"target":"mask"? = the targeted mask, copied as grayscale (#2928)} (a targeted color or alpha channel copies that channel, as grayscale)"##,
             can_copy,
             |s, p| {
                 if crate::commands::is_mask_target(p) {
@@ -1047,7 +1047,7 @@ pub fn specs() -> Vec<CommandSpec> {
             "New Guide…",
             &["View"],
             None,
-            r##"{"orientation":"horizontal|vertical","position":px=0 (or "<number><unit>"),"color":"lightBlue|lightRed|green|mediumBlue|yellow|magenta|cyan|lightGray|black" or "#rrggbb"?} (units px, in, cm, mm, pt, pc or %; % is of the width for a vertical guide, the height for a horizontal one; without a color the guide uses the guide colour in Preferences)"##,
+            r##"{"orientation":"horizontal|vertical","position":px=0 (or "<number><unit>"),"color":"lightBlue|lightRed|green|mediumBlue|yellow|magenta|cyan|lightGray|black" or "#rrggbb"?} (units px, in, cm, mm, pt, pc or %; % is of the width for a vertical guide, the height for a horizontal one; without a color the guide uses the guide color in Preferences)"##,
             has_doc,
             |s, p| guide_cmd(s, p, "new")
         ),
@@ -1065,7 +1065,7 @@ pub fn specs() -> Vec<CommandSpec> {
             "Edit Guide",
             &[],
             None,
-            r##"{"orientation":"horizontal|vertical","index":n,"newOrientation":"horizontal|vertical"?,"position":px=0 (or "<number><unit>")?,"color":name or "#rrggbb"?} (Edit Selected Guides: units and colours as for view.newGuide; % is of the new orientation's extent; whatever is left out stays as it was)"##,
+            r##"{"orientation":"horizontal|vertical","index":n,"newOrientation":"horizontal|vertical"?,"position":px=0 (or "<number><unit>")?,"color":name or "#rrggbb"?} (Edit Selected Guides: units and colors as for view.newGuide; % is of the new orientation's extent; whatever is left out stays as it was)"##,
             has_doc,
             edit_guide
         ),
@@ -1604,7 +1604,7 @@ mod tests {
             s.execute(cmd, json!({})).unwrap();
             let d = &s.active().unwrap().doc;
             assert!(d.is_background(d.layers[0].id), "{cmd}: still the Background");
-            assert_eq!(px(&s, 0, 8, 8), vec![1.0, 0.0, 0.0, 1.0], "{cmd}: cut area is the background colour");
+            assert_eq!(px(&s, 0, 8, 8), vec![1.0, 0.0, 0.0, 1.0], "{cmd}: cut area is the background color");
             assert_eq!(px(&s, 0, 30, 20), vec![1.0, 1.0, 1.0, 1.0], "{cmd}: outside untouched");
         }
         // Layer via Cut still lifts the original pixels onto the new layer.

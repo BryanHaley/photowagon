@@ -175,9 +175,9 @@ fn decode_lines(lines: &[Vec<u8>], limits: &Limits) -> Result<Image, CodecError>
     let mut palette = HashMap::<Vec<u8>, [u8; 4]>::with_capacity(colours);
     for line in &lines[1..1 + colours] {
         if line.len() < cpp {
-            return Err(bad("truncated colour key"));
+            return Err(bad("truncated color key"));
         }
-        let fields = std::str::from_utf8(&line[cpp..]).map_err(|_| bad("invalid colour name"))?;
+        let fields = std::str::from_utf8(&line[cpp..]).map_err(|_| bad("invalid color name"))?;
         // XPM priority is colour, gray, four-level gray, then monochrome,
         // regardless of the order of keys in the palette entry.
         let terms: Vec<&str> = fields.split_ascii_whitespace().collect();
@@ -200,7 +200,7 @@ fn decode_lines(lines: &[Vec<u8>], limits: &Limits) -> Result<Image, CodecError>
                 picked = Some((priority, terms[start..i].join(" ")));
             }
         }
-        let value = picked.as_ref().and_then(|(_, name)| color(name)).ok_or_else(|| bad("unsupported or missing XPM colour"))?;
+        let value = picked.as_ref().and_then(|(_, name)| color(name)).ok_or_else(|| bad("unsupported or missing XPM color"))?;
         if palette.insert(line[..cpp].to_vec(), value).is_some() {
             return Err(bad("duplicate XPM palette key"));
         }

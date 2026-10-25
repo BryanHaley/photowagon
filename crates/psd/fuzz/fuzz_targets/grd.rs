@@ -25,7 +25,7 @@ fuzz_target!(|data: &[u8]| {
             // CMYK and Gray to 0..=1, Hue to 0..=360, L* to 0..=100 and a*/b* to the CIELAB gamut.
             let unit = |c: &[f32]| {
                 for v in c {
-                    assert!(v.is_finite() && (0.0..=1.0).contains(v), "colour component {v} outside 0..=1");
+                    assert!(v.is_finite() && (0.0..=1.0).contains(v), "color component {v} outside 0..=1");
                 }
             };
             match s.color {

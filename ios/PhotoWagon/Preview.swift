@@ -15,12 +15,19 @@ struct PreviewPane: View {
     /// The finger, while an eyedropper is held on the preview.
     @State private var loupe: CGPoint?
     @State private var loupeShows = 0
+    @State private var fullScreen = false
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
             Color.black
             if let image {
                 Image(uiImage: image).resizable().scaledToFit().frame(maxWidth: .infinity, maxHeight: .infinity)
+                    // Tap to see it full screen (unless a tap picks a colour here).
+                    .contentShape(Rectangle())
+                    .onTapGesture { if model.previewTap == nil { fullScreen = true } }
+                    .accessibilityAddTraits(.isButton)
+                    .accessibilityLabel("Full Screen Preview")
+                    .accessibilityIdentifier("preview.expand")
                 GeometryReader { g in
                     let fit = Self.fitted(image.size, in: g.size)
                     if model.previewClipping, let clipping {
@@ -56,6 +63,7 @@ struct PreviewPane: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("preview")
         .task(id: "\(model.doc?.revision ?? 0)\(selection)") { await render() }
+        .fullScreenCover(isPresented: $fullScreen) { FullScreenPreview(model: model, selection: selection) }
     }
 
     /// The magnifier stays a moment after the finger lifts, to show where it picked.
@@ -95,6 +103,40 @@ struct PreviewPane: View {
             clipping = mask ? nil : ui.cgImage.flatMap { ClipOutline($0) }
         }
         rendering = false
+    }
+}
+
+/// The preview at the screen's size; a tap closes it.
+struct FullScreenPreview: View {
+    @ObservedObject var model: EditorModel
+    let selection: Bool
+    @Environment(\.dismiss) private var dismiss
+    @State private var image: UIImage?
+
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+            if let image {
+                Image(uiImage: image).resizable().scaledToFit().padding(.vertical)
+            } else {
+                ProgressView().tint(.white)
+            }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture { dismiss() }
+        .accessibilityElement()
+        .accessibilityAddTraits(.isButton)
+        .accessibilityLabel("Close Full Screen Preview")
+        .accessibilityIdentifier("preview.full")
+        .task(id: "\(model.doc?.revision ?? 0)") {
+            let (editor, mask) = (model.editor, selection)
+            let png = await Task.detached(priority: .userInitiated) { () -> Data? in
+                if mask, let m = (try? editor.selectionImage(maxSide: 2400)) ?? nil { return m }
+                return try? editor.previewImage(maxSide: 2400)
+            }.value
+            guard !Task.isCancelled, let png, let ui = UIImage(data: png) else { return }
+            image = ui
+        }
     }
 }
 

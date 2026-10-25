@@ -473,7 +473,7 @@ pub fn read_file(bytes: &[u8], format: Format, group: &str) -> std::result::Resu
             let books = f.swatches.iter().filter(|s| matches!(s.color, AcoColor::Other { .. })).count();
             if books > 0 {
                 warnings.push(format!(
-                    "{books} swatches use a colour book or colour space PhotoCraft can't show; they are kept (shown gray) and saved back unchanged"
+                    "{books} swatches use a color book or color space PhotoCraft can't show; they are kept (shown gray) and saved back unchanged"
                 ));
             }
             let items = f
@@ -513,7 +513,7 @@ pub fn read_file(bytes: &[u8], format: Format, group: &str) -> std::result::Resu
                 out.insert(0, Group::new(group, loose));
             }
             if skipped > 0 {
-                warnings.push(format!("{skipped} swatches in an unknown colour model were skipped"));
+                warnings.push(format!("{skipped} swatches in an unknown color model were skipped"));
             }
         }
     }
@@ -535,7 +535,7 @@ pub fn write_file(groups: &[Group<Swatch>], format: Format) -> std::result::Resu
                 warnings.push(".aco files have no groups; the swatches were saved as one list".into());
             }
             if groups.iter().flat_map(|g| g.items.iter()).any(|s| s.kind != SwatchKind::Process) {
-                warnings.push(".aco files don't mark spot or global colours; save as .ase to keep them".into());
+                warnings.push(".aco files don't mark spot or global colors; save as .ase to keep them".into());
             }
             let n = swatches.len();
             let bytes = photocraft_psd::aco::write(&swatches).map_err(|e| e.to_string())?;
@@ -561,7 +561,7 @@ pub fn write_file(groups: &[Group<Swatch>], format: Format) -> std::result::Resu
                 entries.push(AseEntry::Group { name: g.name.clone(), swatches });
             }
             if books > 0 {
-                warnings.push(format!("{books} colour-book swatches can't be stored in an .ase file and were left out (save as .aco to keep them)"));
+                warnings.push(format!("{books} color-book swatches can't be stored in an .ase file and were left out (save as .aco to keep them)"));
             }
             let bytes = photocraft_psd::ase::write(&AseFile { entries }).map_err(|e| e.to_string())?;
             Ok((bytes, n, warnings))
@@ -686,7 +686,7 @@ pub fn specs() -> Vec<CommandSpec> {
             label: "Swatches",
             menu: &[],
             shortcut: None,
-            params: r##"{} → {groups:[{name,swatches:[{name,model,values,hex,kind?}]}],count}. values are in Color Picker units; hex is the colour in the RGB working space."##,
+            params: r##"{} → {groups:[{name,swatches:[{name,model,values,hex,kind?}]}],count}. values are in Color Picker units; hex is the color in the RGB working space."##,
             enabled: always,
             run: list,
             journal: false,
@@ -769,7 +769,7 @@ pub fn specs() -> Vec<CommandSpec> {
             menu: &[],
             shortcut: None,
             params: leak(format!(
-                r##"{{{target},"target":"foreground|background"="foreground"}} → {{swatch,target,hex}}. CMYK, Lab and gray swatches are converted to the RGB working space with colour management."##
+                r##"{{{target},"target":"foreground|background"="foreground"}} → {{swatch,target,hex}}. CMYK, Lab and gray swatches are converted to the RGB working space with color management."##
             )),
             enabled: has_swatches,
             run: use_swatch,
@@ -790,7 +790,7 @@ pub fn specs() -> Vec<CommandSpec> {
             label: "Import Swatches…",
             menu: &[],
             shortcut: None,
-            params: r##"{"path":".aco or .ase file"?,"data":base64 bytes?,"format":"aco|ase"? (detected),"mode":"append|replace"="append","group":str?=file name (the group for ungrouped colours)} → {format,mode,groups,count,warnings}"##,
+            params: r##"{"path":".aco or .ase file"?,"data":base64 bytes?,"format":"aco|ase"? (detected),"mode":"append|replace"="append","group":str?=file name (the group for ungrouped colors)} → {format,mode,groups,count,warnings}"##,
             enabled: always,
             run: import,
             journal: true,

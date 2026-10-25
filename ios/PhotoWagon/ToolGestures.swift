@@ -369,7 +369,7 @@ extension CanvasUIView {
         let (r, g, b) = (px[0], px[1], px[2])
         let (mx, mn) = (max(r, g, b), min(r, g, b))
         guard mx - mn > 0.02 else {
-            model.toast = "No colour there to adjust"
+            model.toast = "No color there to adjust"
             return
         }
         var hue = mx == r ? (g - b) / (mx - mn) : mx == g ? 2 + (b - r) / (mx - mn) : 4 + (r - g) / (mx - mn)

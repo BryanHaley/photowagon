@@ -129,12 +129,14 @@ struct CameraRawView: View {
 
     @ToolbarContentBuilder
     private var toolbar: some ToolbarContent {
-        ToolbarItem(placement: .cancellationAction) {
+        // Cancel first, each button its own bubble.
+        ToolbarItem(placement: .topBarLeading) {
             Button("Cancel") {
                 if opening { model.developCancel() } else { cancel?() }
                 dismiss()
             }
         }
+        SeparateBubbles(placement: .topBarLeading)
         ToolbarItem(placement: .topBarLeading) {
             // Before and after, as P toggles in Photoshop.
             Button { model.setLivePreview(!model.livePreview) } label: {
@@ -144,7 +146,7 @@ struct CameraRawView: View {
             .accessibilityValue(model.livePreview ? "on" : "off")
             .accessibilityIdentifier("raw.preview")
         }
-        ToolbarItem(placement: .primaryAction) {
+        ToolbarItem(placement: .topBarTrailing) {
             Menu {
                 Button { step(back: true) } label: { Label("Undo", systemImage: "arrow.uturn.backward") }
                     .disabled(undo.isEmpty).accessibilityIdentifier("raw.undo")
@@ -167,8 +169,9 @@ struct CameraRawView: View {
                 .accessibilityLabel("More")
                 .accessibilityIdentifier("raw.more")
         }
+        SeparateBubbles(placement: .topBarTrailing)
         if opening {
-            ToolbarItem(placement: .confirmationAction) {
+            ToolbarItem(placement: .topBarTrailing) {
                 // Tap to open; hold for Open as Object.
                 Menu {
                     Button("Open as Object") { open(asObject: true) }
@@ -180,7 +183,7 @@ struct CameraRawView: View {
                 .accessibilityIdentifier("raw.open")
             }
         } else {
-            ToolbarItem(placement: .confirmationAction) {
+            ToolbarItem(placement: .topBarTrailing) {
                 Button("OK") {
                     done(settings.params())
                     dismiss()
@@ -380,5 +383,16 @@ struct CameraRawView: View {
         loaded = true
         // Settings kept from the last time this file opened show at once.
         if opening, !initial.isEmpty { change?(settings.params()) }
+    }
+}
+
+/// On iOS 26 and later, toolbar items side by side share one bubble: this splits them.
+struct SeparateBubbles: ToolbarContent {
+    let placement: ToolbarItemPlacement
+
+    var body: some ToolbarContent {
+        if #available(iOS 26.0, *) {
+            ToolbarSpacer(.fixed, placement: placement)
+        }
     }
 }

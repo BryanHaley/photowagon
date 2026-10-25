@@ -25,7 +25,7 @@ fn bucket_keeps_alpha() {
     s.execute("paint.bucket", json!({"x": 30, "y": 25, "color": "#0000ff", "antiAlias": false})).unwrap();
     assert_eq!(px(&s, 30, 25)[3], 0.0, "transparent pixel became opaque");
     s.execute("paint.bucket", json!({"x": 12, "y": 10, "color": "#0000ff", "antiAlias": false})).unwrap();
-    assert_eq!(px(&s, 12, 10), [0.0, 0.0, 1.0, 1.0], "the opaque stroke is still recoloured");
+    assert_eq!(px(&s, 12, 10), [0.0, 0.0, 1.0, 1.0], "the opaque stroke is still recolored");
 }
 
 #[test]

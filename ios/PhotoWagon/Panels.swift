@@ -349,7 +349,7 @@ struct ContextBar: View {
                 toggle("Remove After Each Stroke", "checkmark.circle", $model.removeEachStroke)
             }
             if model.tool == .aiRemove {
-                toggle("Match Colour", "paintpalette", $model.aiMatchColor)
+                toggle("Match Color", "paintpalette", $model.aiMatchColor)
                 if model.doc?.hasSelection == true {
                     chip("Remove Selection", Tool.aiRemove.symbol) { model.aiRemove(.selection) }
                 }
@@ -779,7 +779,7 @@ struct ContextBar: View {
         case .count: "Tap to count"
         case .redEye: "Tap a red eye"
         case .patch, .contentAwareMove: "Select an area, then drag where to take it from"
-        case .eyedropper: "Tap or drag to pick a colour"
+        case .eyedropper: "Tap or drag to pick a color"
         case .ruler: "Drag to measure"
         case _ where model.tool.typeTool: "Tap for a line of text, drag for a text box"
         case _ where model.tool.shapeTool: "Drag to draw the shape"
@@ -928,7 +928,7 @@ struct PropertiesPanel: View {
                         if let d = model.doc { Text("Document: \(d.width) × \(d.height) px").foregroundStyle(.secondary) }
                     }
                     Section("Quick Actions") {
-                        Button { model.removeBackground() } label: { Label("Remove Background", systemImage: "person.crop.rectangle.badge.xmark") }
+                        Button { model.removeBackground() } label: { Label("Remove Background", systemImage: "person.crop.rectangle") }
                             .accessibilityIdentifier("properties.removeBackground")
                         Button { model.selectSubject(mode: "replace") } label: { Label("Select Subject", systemImage: "person.crop.rectangle") }
                     }
@@ -1211,7 +1211,7 @@ struct CommandSettings: View {
     @ViewBuilder
     private func colorRow(_ name: String, _ options: [String]) -> some View {
         let value = texts[name] ?? ""
-        let swatch = ColorRow(title: options.isEmpty ? Self.title(name) : "Custom Colour", hex: value.hasPrefix("#") ? value : nil, id: "settings.\(name)") {
+        let swatch = ColorRow(title: options.isEmpty ? Self.title(name) : "Custom Color", hex: value.hasPrefix("#") ? value : nil, id: "settings.\(name)") {
             texts[name] = $0
             committed()
         }

@@ -8,6 +8,8 @@ Surroundings for Content-Aware Fill, Develop for Camera Raw, Embedded Layers for
 Keep Photoshop's exact word only when there's no other way to say it (Layers, Brush, Crop), and
 never use one of Adobe's trademarks as our name: `docs/trademark-guardrails.md` lists them, our
 replacements, and how to name Photoshop when we mean its file format. Lay things out for touch.
+A button that shows only an icon must say its name when touched and held: use `namedButton(_:model:_:)`
+(the name shows in the hint bubble; a full-screen view shows `HintBubble` itself).
 Never use a method covered by a patent still in force: the README's Patents section lists what was
 removed and why.
 Our plan and roadmap are local, not checked in: read `plan/ios-port.md` and `plan/ios-roadmap.md` first if you have them.

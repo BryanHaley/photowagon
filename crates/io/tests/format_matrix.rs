@@ -162,7 +162,7 @@ const KNOWN: &[(&str, &str)] = &[
     ("tiff/bilevel-g4", "1-bit opens as Grayscale; Photoshop opens it as Bitmap"),
     ("pnm/pbm-ascii", "1-bit opens as Grayscale; Photoshop opens it as Bitmap"),
     ("pnm/pbm", "1-bit opens as Grayscale; Photoshop opens it as Bitmap"),
-    ("heif/apple", "heic-rs 0.1.4 drops the colour of Apple's 10-bit 4:2:0 HEIC (the app doesn't build it: iOS opens HEIC with Apple's decoder)"),
+    ("heif/apple", "heic-rs 0.1.4 drops the color of Apple's 10-bit 4:2:0 HEIC (the app doesn't build it: iOS opens HEIC with Apple's decoder)"),
     ("heif/apple-alpha", "as heif/apple"),
     ("avif/8bit-420", "AVIF decoding isn't built (#463; iOS: Apple's decoder)"),
     ("avif/8bit-444", "AVIF decoding isn't built (#463)"),

@@ -68,7 +68,7 @@ fn clear_and_cut_fill_the_flattened_background_without_transparency() {
             let history = history_len(&s);
 
             s.execute(command, json!({})).unwrap();
-            assert_eq!(pixel(&s, 8, 6), [0.0, 1.0, 0.0, 1.0], "{depth}/{command}: background colour, still opaque");
+            assert_eq!(pixel(&s, 8, 6), [0.0, 1.0, 0.0, 1.0], "{depth}/{command}: background color, still opaque");
             assert_eq!(pixel(&s, 1, 1), [1.0, 0.0, 0.0, 1.0], "{depth}/{command}: outside the selection is untouched");
             assert!(s.is_enabled("layer.new.layerFromBackground"));
             assert_eq!(history_len(&s), history + 1);

@@ -178,15 +178,15 @@ fn color_at(r: &mut Reader, id: ObjId, depth: usize) -> Option<Color> {
         }
         b"Pant" => {
             if depth >= MAX_SPOT_DEPTH {
-                r.warn("spot colours nested deeper than 4 levels (left empty)");
+                r.warn("spot colors nested deeper than 4 levels (left empty)");
                 return None;
             }
-            r.warn("spot colours (imported as their RGB equivalent)");
+            r.warn("spot colors (imported as their RGB equivalent)");
             return s.obj(id, b"srgb").and_then(|c| color_at(r, c, depth + 1)).or_else(|| s.obj(id, b"base").and_then(|c| color_at(r, c, depth + 1)));
         }
         b"RegC" => Color::Cmyk { c: 1.0, m: 1.0, y: 1.0, k: 1.0, a: 1.0 },
         _ => {
-            r.warn("colours in an unknown model");
+            r.warn("colors in an unknown model");
             return None;
         }
     })

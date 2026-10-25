@@ -1792,7 +1792,7 @@ mod parallel_tests {
                 for levels in [1usize, 2, 3, 5, 7] {
                     let got = multiband(w, h, &imgs, &wts, levels);
                     let want = ref_multiband(w, h, &imgs, &wts, levels);
-                    assert_eq!(bits(&got.0), bits(&want.0), "colours {w}x{h}x{ch} levels {levels}");
+                    assert_eq!(bits(&got.0), bits(&want.0), "colors {w}x{h}x{ch} levels {levels}");
                     assert_eq!(bits(&got.1), bits(&want.1), "coverage {w}x{h}x{ch} levels {levels}");
                 }
             }

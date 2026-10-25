@@ -69,7 +69,7 @@ pub(crate) fn decode(b: &[u8], limits: &Limits) -> Result<Image, CodecError> {
     // The last 769 bytes are the optional VGA palette for 8-bit indexed images.
     let vga = bits == 8 && planes == 1 && b.len() >= HEADER + 769 && b[b.len() - 769] == 0x0c;
     if bits == 8 && planes == 1 && !vga && le16(b, 68) != 2 {
-        return Err(bad("8-bit indexed PCX has no 256-colour palette"));
+        return Err(bad("8-bit indexed PCX has no 256-color palette"));
     }
     let image_end = if vga { b.len() - 769 } else { b.len() };
     // Monochrome files often leave the header palette zeroed (Pillow does): 0 is black, 1 white.

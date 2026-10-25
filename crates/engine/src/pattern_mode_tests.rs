@@ -57,7 +57,7 @@ fn pattern_fills_paint_like_edit_fill_in_every_mode() {
             let want = painted(&mut s, mode, depth, &pat);
             s.execute("file.new", json!({"width": 32, "height": 16, "mode": mode, "depth": depth, "background": "white"})).unwrap();
             s.execute("layer.newFillLayer.pattern", json!({"pattern": pat})).unwrap();
-            assert_eq!(pattern_mode(&s), ColorMode::Rgb, "{mode}/{depth}: the pattern keeps its own colours");
+            assert_eq!(pattern_mode(&s), ColorMode::Rgb, "{mode}/{depth}: the pattern keeps its own colors");
             for (x, w) in XS.iter().zip(&want) {
                 let got = pixel(&mut s, *x, 3);
                 // Lab: Edit › Fill quantizes Lab at 8/16 bits; the fill layer draws the RGB pattern.
@@ -85,11 +85,11 @@ fn a_grayscale_round_trip_keeps_the_pattern_colours() {
             let p = pixel(&mut s, x, 3);
             assert!(neutral(p), "depth {depth} x {x}: grey in Grayscale, {p:?}");
         }
-        assert_eq!(pattern_mode(&s), ColorMode::Rgb, "the document's pattern keeps its colours");
+        assert_eq!(pattern_mode(&s), ColorMode::Rgb, "the document's pattern keeps its colors");
         s.execute("image.mode.rgb", json!({})).unwrap();
         for (x, want) in XS.iter().zip(&rgb) {
             let p = pixel(&mut s, *x, 3);
-            assert!(close(p, *want, 1e-6), "depth {depth} x {x}: colour back in RGB, {p:?} vs {want:?}");
+            assert!(close(p, *want, 1e-6), "depth {depth} x {x}: color back in RGB, {p:?} vs {want:?}");
         }
     }
 }

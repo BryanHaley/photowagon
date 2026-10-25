@@ -127,7 +127,7 @@ final class LayersPanelTests: LayersTests {
             XCTAssertEqual(lum(stats([0, 0, 300, 200]).mean), lum(before), accuracy: 0.01, "and it changes nothing yet")
         }
 
-        step("Rectangle tool: a shape layer; double-tap it to change its colour and round its corners") {
+        step("Rectangle tool: a shape layer; double-tap it to change its color and round its corners") {
             tool(group: "Rectangle", pick: "Rectangle")
             drag(doc: (200, 600), to: (700, 850))
             let name = topName

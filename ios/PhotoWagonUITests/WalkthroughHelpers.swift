@@ -592,7 +592,7 @@ class WalkthroughTestCase: XCTestCase {
     /// Pick a swatch in the system colour picker from the colour well.
     func pickColor(containing name: String) {
         let well = app.buttons["Foreground"].firstMatch.exists ? app.buttons["Foreground"].firstMatch : app.colorWells.firstMatch
-        XCTAssert(well.waitForExistence(timeout: 5), "colour well")
+        XCTAssert(well.waitForExistence(timeout: 5), "color well")
         well.tap()
         // A tap while something animates is lost: open the picker again if no swatch shows.
         let swatch = app.otherElements.matching(NSPredicate(format: "label BEGINSWITH %@", name)).firstMatch

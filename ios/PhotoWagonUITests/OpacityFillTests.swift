@@ -80,7 +80,7 @@ final class FillAndBlendIfTests: OpacityFillTests {
             XCTAssert(c[0] > c[2] + 0.3, "orange: \(c)")
         }
 
-        step("Hard Mix: Fill isn't Opacity; Fill 20% gives a colour grade") {
+        step("Hard Mix: Fill isn't Opacity; Fill 20% gives a color grade") {
             pick(app.buttons["layers.blend"], "Hard Mix")
             let full = stats(sand)
             slide("layers.opacity", to: 50)
@@ -170,9 +170,9 @@ final class FakeSunTests: OpacityFillTests {
             app.buttons["layers"].tap()
             addAdjustment("Gradient")
             XCTAssert(app.navigationBars["Gradient Fill"].waitForExistence(timeout: 5))
-            show(app.buttons["fill.stop.0"].firstMatch, "the left colour stop").tap()
+            show(app.buttons["fill.stop.0"].firstMatch, "the left color stop").tap()
             chooseColor(containing: "yellow")
-            show(app.buttons["fill.stop.1"].firstMatch, "the right colour stop").tap()
+            show(app.buttons["fill.stop.1"].firstMatch, "the right color stop").tap()
             chooseColor(containing: "red")
             replace(show(app.descendants(matching: .any)["fill.opacity.1.value"].firstMatch, "the right opacity stop"), with: "0\n")
             replace(show(app.descendants(matching: .any)["fill.opacityAt.0.value"].firstMatch, "the left opacity stop's location"), with: "26\n")
@@ -223,7 +223,7 @@ final class LayerStylesTests: OpacityFillTests {
             XCTAssertGreaterThan(t[0], t[2] + 0.15, "orange text: \(t)")
         }
 
-        step("Layers › fx › Drop Shadow: farther, softer, another colour") {
+        step("Layers › fx › Drop Shadow: farther, softer, another color") {
             let plain = stats(shadowRect).mean
             app.buttons["layers"].tap()
             pick(menu: "layers.fx", "Drop Shadow…")
@@ -233,7 +233,7 @@ final class LayerStylesTests: OpacityFillTests {
             setStyle("distance", 40)
             setStyle("size", 12)
             XCTAssertLessThan(lum(stats(shadowRect).mean), lum(plain) - 0.03, "a shadow below and to the right")
-            show(app.buttons["style.color"], "colour").tap()
+            show(app.buttons["style.color"], "color").tap()
             chooseColor(containing: "blue")
             XCTAssertNotEqual(effect(0)["color"] as? String, "#000000")
         }

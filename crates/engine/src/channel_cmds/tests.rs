@@ -872,11 +872,11 @@ fn thumbnail_selection_shape_without_pixel_cache_uses_its_transparency() {
 #[test]
 fn isolated_curve_channel_matches_the_channels_panel() {
     let mut s = session();
-    assert!(isolated_curve_channel(s.active().unwrap()).is_none(), "composite lists every colour channel");
+    assert!(isolated_curve_channel(s.active().unwrap()).is_none(), "composite lists every color channel");
     s.execute("channel.target", json!({"channel": {"color": 1}})).unwrap();
     let green = isolated_curve_channel(s.active().unwrap()).expect("green");
     assert_eq!((green.name.as_str(), green.key, green.tint), ("Green", "green", true));
-    assert!(green.translate && green.gray.is_none(), "built-in colour labels follow the language");
+    assert!(green.translate && green.gray.is_none(), "built-in color labels follow the language");
 
     s.execute("layer.layerMask.revealAll", json!({})).unwrap();
     s.execute("channel.target", json!({"channel": "mask"})).unwrap();

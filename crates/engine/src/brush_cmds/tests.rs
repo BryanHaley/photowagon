@@ -190,7 +190,7 @@ fn live_color_replacement_matches_the_commit() {
                     worst = (0..4).map(|c| (got[c] - want[c]).abs()).fold(worst, f32::max);
                 }
             }
-            assert!(b.rgba(10, 20)[1] > 0.5 || sampling == "backgroundSwatch", "{depth}-bit {sampling}: recoloured");
+            assert!(b.rgba(10, 20)[1] > 0.5 || sampling == "backgroundSwatch", "{depth}-bit {sampling}: recolored");
             assert!(worst <= 2.0 / 255.0 + 1e-6, "{depth}-bit {sampling}: live and commit differ by {worst}");
         }
     }

@@ -22,7 +22,7 @@ fn set_label(s: &mut Session, p: &Value) -> Result<Value> {
     let p = p.as_object().ok_or_else(|| bad("expected an object"))?;
     let color =
         p.get("color").and_then(Value::as_str).and_then(LabelColor::from_id).ok_or_else(|| {
-            bad("`color` must be a layer colour id (none, red, orange, yellow, green, seafoam, blue, indigo, magenta, fuchsia, violet, gray)")
+            bad("`color` must be a layer color id (none, red, orange, yellow, green, seafoam, blue, indigo, magenta, fuchsia, violet, gray)")
         })?;
     let st = s.active().ok_or(EngineError::NoDocument)?;
     let roots = match p.get("layer") {

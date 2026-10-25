@@ -13,7 +13,7 @@ final class HelperTests: XCTestCase {
         XCTAssertTrue(libRaw.note.contains("submodules/LibRaw"))
         XCTAssertTrue(ack.texts(of: libRaw).contains { $0.contains("COMMON DEVELOPMENT AND DISTRIBUTION LICENSE") })
         XCTAssertTrue(ack.texts(of: libRaw).contains { $0.contains("Roland Karlsson") }, "X3F's BSD terms")
-        for name in ["PhotoCraft", "libjxl", "MI-GAN", "X.Org colour names", "Rust standard library"] {
+        for name in ["PhotoCraft", "libjxl", "MI-GAN", "X.Org color names", "Rust standard library"] {
             XCTAssertNotNil(entries.first { $0.name == name }, name)
         }
         XCTAssertNotNil(entries.first { $0.name.hasPrefix("uniffi ") })

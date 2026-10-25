@@ -431,7 +431,7 @@ fn ref_planes(doc: &Document, layer: Option<LayerId>, active: Option<LayerId>, r
             let (px, n) = native_pixels(doc, layer)?;
             let planes: Vec<Vec<f32>> = (0..colors).map(|c| px.chunks_exact(n).map(|p| p[c]).collect()).collect();
             match r {
-                ChanRef::Color(k) => vec![planes.get(k).cloned().ok_or_else(|| EngineError::Other(format!("no colour channel {k}")))?],
+                ChanRef::Color(k) => vec![planes.get(k).cloned().ok_or_else(|| EngineError::Other(format!("no color channel {k}")))?],
                 _ => planes,
             }
         }
@@ -819,7 +819,7 @@ pub(crate) fn clear_color_channel(doc: &mut Document, id: LayerId, k: usize, bac
     let n = fmt.channels();
     // The background colour in the layer's colour model, so `k` picks the right component.
     let Some(v) = from_rgba(&fmt, [background[0], background[1], background[2], 1.0]).get(k).copied().filter(|_| k < n) else {
-        return Err(EngineError::Other(format!("no colour channel {k} in this layer")));
+        return Err(EngineError::Other(format!("no color channel {k} in this layer")));
     };
     if area.is_empty() {
         return Ok(());
@@ -1361,7 +1361,7 @@ fn parse_target(s: &Session, p: &Value, cmd: &str) -> Result<ChannelTarget> {
             }
             Ok(ChannelTarget::VectorMask)
         }
-        _ => Err(bad(cmd, "`channel` must be \"composite\", \"mask\", \"vectorMask\", a colour channel name or an alpha channel")),
+        _ => Err(bad(cmd, "`channel` must be \"composite\", \"mask\", \"vectorMask\", a color channel name or an alpha channel")),
     }
 }
 

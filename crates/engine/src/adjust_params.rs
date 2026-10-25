@@ -1062,7 +1062,7 @@ fn levels_obj(c: &LevelsChannel) -> Value {
 
 /// `[[location 0..1, colour], …]` (colour as for `color`), sorted by location.
 fn gradient_stops(cmd: &str, v: &Value) -> Result<Vec<(f32, [f32; 3])>> {
-    let err = || bad(cmd, "`stops` must be an array of 2..=64 [location 0..1, colour] pairs");
+    let err = || bad(cmd, "`stops` must be an array of 2..=64 [location 0..1, color] pairs");
     let a = v.as_array().filter(|a| (2..=64).contains(&a.len())).ok_or_else(err)?;
     let mut out = Vec::with_capacity(a.len());
     for s in a {
@@ -1462,7 +1462,7 @@ mod tests {
         assert!(px.iter().take(3).all(|v| *v > 0.99), "the sample becomes white: {px:?}");
         s.execute("image.adjustments.curves", json!({"eyedropper": {"point": "black", "color": [1.0, 1.0, 1.0]}})).unwrap();
         let px: Vec<f32> = serde_json::from_value(s.execute("document.pixel", json!({"x": 2, "y": 2})).unwrap()).unwrap();
-        assert!(px.iter().take(3).all(|v| *v < 0.01), "the given colour becomes black: {px:?}");
+        assert!(px.iter().take(3).all(|v| *v < 0.01), "the given color becomes black: {px:?}");
         for bad in [
             json!("black"),
             json!({"point": "nope", "at": [1, 1]}),

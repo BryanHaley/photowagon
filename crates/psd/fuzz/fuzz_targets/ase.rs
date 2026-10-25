@@ -21,7 +21,7 @@ fuzz_target!(|data: &[u8]| {
             // Rgb/Lab carry three components, Cmyk four, Gray one.
             let check = |c: &[f32]| {
                 for v in c {
-                    assert!(v.is_finite(), "colour component {v} is not finite");
+                    assert!(v.is_finite(), "color component {v} is not finite");
                 }
             };
             match &s.color {

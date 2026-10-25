@@ -223,6 +223,6 @@ fn clear_fills_the_targeted_mask_of_a_pixel_layer() {
     let st = s.active().unwrap();
     let l = st.doc.layer(st.active_layer.unwrap()).unwrap();
     // A targeted mask has its own colours (white in front, black behind): swapped here.
-    assert_eq!(l.mask.as_ref().unwrap().surface.pixel(5, 5)[0], 1.0, "white, the background colour once swapped");
+    assert_eq!(l.mask.as_ref().unwrap().surface.pixel(5, 5)[0], 1.0, "white, the background color once swapped");
     assert!(l.surface().unwrap().rgba(5, 5)[3] > 0.99, "the pixels stay");
 }

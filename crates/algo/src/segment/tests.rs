@@ -978,6 +978,6 @@ fn hole_fill_without_specks_fills_object_coloured_holes_only() {
     let fit = |v: Vec<(&[f32; 3], &bool)>| Gmm::fit(&v.iter().map(|(p, _)| **p).collect::<Vec<_>>(), 3, gmm::DEFAULT_REG).unwrap();
     let (fg, bg) = (fit(fs), fit(bs));
     let out = fill_holes_by_model(&mask, &img, &fg, &bg, 0.0, 0.05);
-    assert!(out[25 * w + 25], "a speck of the object's colour fills");
-    assert!(!out[10 * w + 10], "a speck of the background's colour stays open");
+    assert!(out[25 * w + 25], "a speck of the object's color fills");
+    assert!(!out[10 * w + 10], "a speck of the background's color stays open");
 }

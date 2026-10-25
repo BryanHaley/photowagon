@@ -199,7 +199,7 @@ fn locked_layers_refuse_plugin_filters() {
     for (a, b) in after.as_chunks::<4>().0.iter().zip(before.as_chunks::<4>().0) {
         assert_eq!(a[3], b[3], "alpha kept");
         if b[3] > 0.0 {
-            assert!((a[0] - 0.5).abs() < 1e-3, "colour changed: {a:?}");
+            assert!((a[0] - 0.5).abs() < 1e-3, "color changed: {a:?}");
         }
     }
     Session::new().execute("plugin.remove", json!({"id": id})).unwrap();

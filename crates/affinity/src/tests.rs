@@ -667,14 +667,14 @@ mod spot_colours {
     fn a_spot_colour_that_is_its_own_rgb_equivalent_is_refused() {
         let doc = read(vec![filled(10, spot(20, vec![(tag(b"srgb"), F::Ref(20))]))]);
         assert!(fills(&doc).is_empty(), "{:?}", fills(&doc));
-        assert!(warned(&doc, "spot colours nested deeper than 4 levels"), "{:?}", doc.warnings);
+        assert!(warned(&doc, "spot colors nested deeper than 4 levels"), "{:?}", doc.warnings);
     }
 
     #[test]
     fn spot_colours_that_are_each_others_base_and_rgb_equivalent_are_refused() {
         let doc = read(vec![filled(10, spot(20, vec![(tag(b"base"), spot(21, vec![(tag(b"srgb"), F::Ref(20))]))]))]);
         assert!(fills(&doc).is_empty(), "{:?}", fills(&doc));
-        assert!(warned(&doc, "spot colours nested deeper than 4 levels"), "{:?}", doc.warnings);
+        assert!(warned(&doc, "spot colors nested deeper than 4 levels"), "{:?}", doc.warnings);
     }
 
     #[test]
@@ -706,6 +706,6 @@ mod spot_colours {
         assert_eq!(fills(&doc), [Paint::Solid(Color::Rgb { r: 1.0, g: 0.5, b: 0.25, a: 1.0 })]);
         let doc = read(vec![filled(10, spots(100, 5))]);
         assert!(fills(&doc).is_empty(), "{:?}", fills(&doc));
-        assert!(warned(&doc, "spot colours nested deeper than 4 levels"), "{:?}", doc.warnings);
+        assert!(warned(&doc, "spot colors nested deeper than 4 levels"), "{:?}", doc.warnings);
     }
 }

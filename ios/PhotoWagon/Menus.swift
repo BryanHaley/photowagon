@@ -8,7 +8,8 @@ struct MainMenu: UIViewRepresentable {
     @ObservedObject var model: EditorModel
 
     func makeUIView(context: Context) -> UIButton {
-        let b = UIButton(type: .system)
+        let b = MenuButton(type: .system)
+        b.closed = { [model] in model.menuClosed() }
         b.setImage(UIImage(systemName: "line.3.horizontal", withConfiguration: UIImage.SymbolConfiguration(pointSize: 18, weight: .medium)), for: .normal)
         b.tintColor = .white
         b.showsMenuAsPrimaryAction = true
@@ -16,13 +17,38 @@ struct MainMenu: UIViewRepresentable {
         b.accessibilityIdentifier = "menu"
         let share = UIAction(title: "Quick Share as PNG…", image: UIImage(systemName: "square.and.arrow.up")) { [model] _ in model.request = .share("png") }
         share.accessibilityIdentifier = "menu.share"
-        b.menu = UIMenu(children: [UIMenu(options: .displayInline, children: [share])] + MenuTree.order.map { name in
+        b.menu = UIMenu(children: [UIMenu(options: .displayInline, children: [share]),
+                                   UIMenu(options: .displayInline, children: [UIDeferredMenuElement.uncached { done in done(quickActions()) }])]
+            + MenuTree.order.map { name in
             UIMenu(title: name, children: [UIDeferredMenuElement.uncached { done in done(items(name)) }])
         })
         return b
     }
 
     func updateUIView(_ b: UIButton, context: Context) {}
+
+    /// Quick actions under Quick Share: the things done most, without going through the menus.
+    @MainActor
+    func quickActions() -> [UIMenuElement] {
+        let open = model.doc != nil
+        let commands = Dictionary(model.editor.commands().map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        let command = { (title: String, symbol: String, id: String) -> UIMenuElement in
+            let c = commands[id]
+            return action(title, symbol, enabled: open && c?.enabled == true) { if let c { run(c) } }
+        }
+        return [
+            action("Crop and Rotate", "crop.rotate", enabled: open) { model.request = .cropRotate },
+            action("Auto Enhance", "wand.and.stars", enabled: open) { model.autoEnhance() },
+            command("Develop", "camera.aperture", "filter.cameraRaw"),
+            command("Curves", "point.topleft.down.to.point.bottomright.curvepath", "image.adjustments.curves"),
+            command("Levels", "chart.bar.xaxis", "image.adjustments.levels"),
+            command("Select All", "rectangle.dashed", "select.all"),
+            command("Select None", "rectangle.slash", "select.deselect"),
+            command("Copy", "doc.on.doc", "edit.copy"),
+            command("Copy Merged", "square.stack.3d.down.right", "edit.copyMerged"),
+            command("Paste", "doc.on.clipboard", "edit.paste"),
+        ]
+    }
 
     func sizeThatFits(_ proposal: ProposedViewSize, uiView: UIButton, context: Context) -> CGSize? {
         CGSize(width: 42, height: 38)
@@ -125,7 +151,7 @@ struct MainMenu: UIViewRepresentable {
                 action("Fit Layer(s) on Screen", "arrow.up.left.and.arrow.down.right", enabled: open) { model.fitLayers() },
                 { let a = action("Snap", "square.and.line.vertical.and.square") { model.snap.toggle() }; a.state = model.snap ? .on : .off; return a }(),
             ] + model.viewActions.map { a in action(a.title, a.symbol, a.run) }
-              + [UIMenu(title: "Canvas Colour", image: UIImage(systemName: "paintpalette"), children: colours)])]
+              + [UIMenu(title: "Canvas Color", image: UIImage(systemName: "paintpalette"), children: colours)])]
         case "Window":
             return [section([
                 action("Layers", "square.3.layers.3d") { model.request = .panel(.layers) },
@@ -157,6 +183,16 @@ struct MainMenu: UIViewRepresentable {
             + [UIAction(title: "Layer Transparency") { _ in model.loadSelection("transparency") }]
             + (model.activeLayer?.hasMask == true ? [UIAction(title: "Layer Mask") { _ in model.loadSelection("mask") }] : [])
         return UIMenu(title: "Load Selection", image: UIImage(systemName: "square.and.arrow.down.on.square"), children: items)
+    }
+}
+
+/// The ☰ button: says when its menu closes (the tour waits for that).
+final class MenuButton: UIButton {
+    var closed: (() -> Void)?
+
+    override func contextMenuInteraction(_ interaction: UIContextMenuInteraction, willEndFor configuration: UIContextMenuConfiguration, animator: (any UIContextMenuInteractionAnimating)?) {
+        super.contextMenuInteraction(interaction, willEndFor: configuration, animator: animator)
+        closed?()
     }
 }
 

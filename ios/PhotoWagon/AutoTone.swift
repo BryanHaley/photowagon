@@ -208,3 +208,26 @@ struct AutoOptionsSheet: View {
         }
     }
 }
+
+extension EditorModel {
+    /// The ☰ menu's Auto Enhance: Develop's Auto (light and white balance) from the image's own
+    /// statistics, applied to the active layer in one step.
+    func autoEnhance() {
+        guard doc != nil else { return }
+        let params = Self.autoEnhanceParams(AutoPixels.load(self, layer: nil).rgb)
+        guard !params.isEmpty else { return }
+        runInBackground("filter.cameraRaw", params)
+    }
+
+    /// Develop's settings for Auto Enhance; empty when there are no pixels to go by.
+    nonisolated static func autoEnhanceParams(_ rgb: [SIMD3<Float>]) -> [String: Any] {
+        guard !rgb.isEmpty else { return [:] }
+        var s = DevelopSettings()
+        for (k, v) in DevelopSettings.auto(rgb) { s[k] = v }
+        if let wb = DevelopSettings.autoWhiteBalance(rgb) {
+            s["temperature"] = wb.temperature
+            s["tint"] = wb.tint
+        }
+        return s.params()
+    }
+}

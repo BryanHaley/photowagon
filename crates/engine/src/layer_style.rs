@@ -1243,7 +1243,7 @@ pub fn specs() -> Vec<CommandSpec> {
             label: "Layer Style Settings",
             menu: &[],
             shortcut: None,
-            params: r##"{"layer":id?} → {"layer","globalLight","blending":{"blend","opacity","fillOpacity","transparencyShapesLayer","blendIf":{"channel":"gray","thisLayer":[4],"underlying":[4],"channels":[{"channel","thisLayer","underlying"},…] (Gray, then each colour channel)}},"effects":[{"kind","enabled","params":{…layer.layerStyle.<kind> params…},"fx":snapshot}]} (for layer.layerStyle.blendingOptions and layer.layerStyle.replace)"##,
+            params: r##"{"layer":id?} → {"layer","globalLight","blending":{"blend","opacity","fillOpacity","transparencyShapesLayer","blendIf":{"channel":"gray","thisLayer":[4],"underlying":[4],"channels":[{"channel","thisLayer","underlying"},…] (Gray, then each color channel)}},"effects":[{"kind","enabled","params":{…layer.layerStyle.<kind> params…},"fx":snapshot}]} (for layer.layerStyle.blendingOptions and layer.layerStyle.replace)"##,
             enabled: has_layer,
             run: get_style,
             journal: false,

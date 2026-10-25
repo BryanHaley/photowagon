@@ -129,7 +129,7 @@ fn preset_stop_edits_the_current_gradient() {
     let v = s.execute("gradient.presets.stop", json!({"action": "add", "location": 0.5})).unwrap();
     let stops = v["current"]["stops"].as_array().unwrap();
     assert_eq!(stops.len(), 3, "{v}");
-    assert_eq!(stops[1], json!([0.5, "#808080"]), "sorted by location, the ramp colour at 0.5");
+    assert_eq!(stops[1], json!([0.5, "#808080"]), "sorted by location, the ramp color at 0.5");
     // Recolour it and repaint: the tool gradient changed (mid of the stroke is the new colour).
     s.execute("gradient.presets.stop", json!({"action": "color", "index": 1, "color": "#ff0000"})).unwrap();
     s.execute("paint.gradient", json!({"from": [0, 0], "to": [63, 0]})).unwrap();
@@ -154,7 +154,7 @@ fn preset_stop_edits_the_current_gradient() {
     assert!(s.execute("gradient.presets.stop", json!({"action": "move", "index": 99, "location": 0.5})).is_err());
     assert!(s.execute("gradient.presets.stop", json!({"action": "explode"})).is_err());
     assert!(s.execute("gradient.presets.stop", json!({"action": "delete", "index": 0})).is_ok());
-    assert!(s.execute("gradient.presets.stop", json!({"action": "delete", "index": 0})).is_err(), "a gradient keeps at least 2 colour stops");
+    assert!(s.execute("gradient.presets.stop", json!({"action": "delete", "index": 0})).is_err(), "a gradient keeps at least 2 color stops");
     assert!(s.execute("gradient.presets.stop", json!({"action": "midpoint", "index": 0, "location": 0.4})).is_err());
 }
 

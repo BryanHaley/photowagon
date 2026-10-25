@@ -393,7 +393,7 @@ pub(crate) fn document_to_image_for(doc: &Document, warnings: &mut Vec<String>, 
         let gray = fmt.mode == ColorMode::Grayscale;
         if (fmt.mode == ColorMode::Cmyk && !cmyk) || fmt.mode == ColorMode::Lab {
             // RGB-only targets use the sRGB composite directly, without reseparating CMYK.
-            warnings.push(format!("{:?} composite written as sRGB RGB (colour-managed conversion)", fmt.mode));
+            warnings.push(format!("{:?} composite written as sRGB RGB (color-managed conversion)", fmt.mode));
             icc = Some(photocraft_cms::Builtin::Srgb.profile().to_bytes().to_vec());
         }
         let cs = csample(fmt.sample);
@@ -554,7 +554,7 @@ pub(crate) fn export_flat_with(doc: &Document, format: Format, opts: &ExportOpti
     }
     if img.layout().is_cmyk() && !format.caps().layouts.iter().any(|l| l.is_cmyk()) {
         img = cmyk_image_to_srgb(&img)?;
-        warnings.push(format!("CMYK converted to sRGB for {format:?} through the document's colour profile"));
+        warnings.push(format!("CMYK converted to sRGB for {format:?} through the document's color profile"));
     }
     if matches!(format, Format::OpenExr | Format::Hdr) {
         // OpenEXR and Radiance HDR store linear light (read back as linear sRGB or linear gray,
@@ -570,10 +570,10 @@ pub(crate) fn export_flat_with(doc: &Document, format: Format, opts: &ExportOpti
         // rather than write values that only mean something under the dropped profile.
         if let Some(srgb) = convert_rgb(&img, Builtin::Srgb.profile(), Intent::Perceptual, true, img.sample_type())? {
             img = srgb;
-            warnings.push(format!("colours converted to sRGB; {format:?} can't embed the document's colour profile"));
+            warnings.push(format!("colors converted to sRGB; {format:?} can't embed the document's color profile"));
         } else if let Some(gray) = convert_gray(&img, Builtin::SGray.profile(), img.sample_type())? {
             img = gray;
-            warnings.push(format!("colours converted to sGray; {format:?} can't embed the document's colour profile"));
+            warnings.push(format!("colors converted to sGray; {format:?} can't embed the document's color profile"));
         }
     }
     if format == Format::Tga {
@@ -827,7 +827,7 @@ fn export_mode_specific(doc: &Document, format: Format, opts: &ExportOptions) ->
                         Some(t) if p[3] < 0.5 => t,
                         _ => *opaque_indices
                             .get(opaque.nearest([p[0], p[1], p[2]]))
-                            .ok_or_else(|| IoError::Unsupported("Indexed PNG palette has no opaque entry; add an opaque colour or convert to RGB".into()))?,
+                            .ok_or_else(|| IoError::Unsupported("Indexed PNG palette has no opaque entry; add an opaque color or convert to RGB".into()))?,
                     };
                     idx.push(i);
                 }
@@ -836,7 +836,7 @@ fn export_mode_specific(doc: &Document, format: Format, opts: &ExportOptions) ->
             // Same rule as the ordinary PNG encoder: the resolution goes into `pHYs` with the metadata.
             let dpi = opts.encode.embed_metadata.then_some((doc.resolution_dpi, doc.resolution_dpi));
             let bytes = codecs::encode_png_indexed(doc.size.width, doc.size.height, &idx, &table.colors, table.transparent, dpi)?;
-            let mut warnings = vec![format!("written as an 8-bit palette PNG ({} colours)", table.colors.len())];
+            let mut warnings = vec![format!("written as an 8-bit palette PNG ({} colors)", table.colors.len())];
             if opts.encode.embed_metadata && opts.xmp == XmpEmbed::All && !doc.metadata.text.is_empty() {
                 warnings.push("text metadata is not supported by the palette PNG exporter; it will be dropped".into());
             }

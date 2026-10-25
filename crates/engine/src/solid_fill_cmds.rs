@@ -111,7 +111,7 @@ mod tests {
             assert_eq!(s.active().unwrap().doc.layer(photocraft_doc::LayerId(id)).unwrap().content, LayerContent::Fill(Fill::Solid(color)));
             let count = s.active().unwrap().history.entries().len();
             s.execute(SET, json!({"color": color})).unwrap();
-            assert_eq!(s.active().unwrap().history.entries().len(), count, "unchanged colour is not a history step");
+            assert_eq!(s.active().unwrap().history.entries().len(), count, "unchanged color is not a history step");
             s.execute(SET, json!({"color": "#abcdef"})).unwrap();
             let LayerContent::Fill(Fill::Solid(changed)) = s.active().unwrap().doc.layer(photocraft_doc::LayerId(id)).unwrap().content else { panic!() };
             assert_eq!(changed.alpha, color.alpha);

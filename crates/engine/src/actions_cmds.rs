@@ -675,7 +675,7 @@ pub fn specs() -> Vec<CommandSpec> {
             label: "Set Action Color",
             menu: &[],
             shortcut: None,
-            params: r##"{"action":name|index, "color":""|"red"|"orange"|"yellow"|"green"|"blue"|"violet"|"gray"} → {action, color}. The Button Mode colour. Empty clears it."##,
+            params: r##"{"action":name|index, "color":""|"red"|"orange"|"yellow"|"green"|"blue"|"violet"|"gray"} → {action, color}. The Button Mode color. Empty clears it."##,
             enabled: always,
             run: set_color,
             journal: false,
@@ -1460,10 +1460,10 @@ mod tests {
         assert!(saved.contains("blue"));
         s.execute("actions.setColor", json!({"action": 0, "color": ""})).unwrap();
         assert!(s.actions.list[0].color.is_empty());
-        assert!(!serde_json::to_string(&s.actions.list).unwrap().contains("color"), "an empty colour is omitted");
+        assert!(!serde_json::to_string(&s.actions.list).unwrap().contains("color"), "an empty color is omitted");
         for bad in [json!({"action": 0, "color": "pink"}), json!({"action": 0}), json!({"action": 4, "color": "red"}), json!({"color": "red"})] {
             assert!(s.execute("actions.setColor", bad).is_err());
         }
-        assert!(s.actions.list[0].color.is_empty(), "rejected colours change nothing");
+        assert!(s.actions.list[0].color.is_empty(), "rejected colors change nothing");
     }
 }

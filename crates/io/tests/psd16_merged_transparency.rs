@@ -37,7 +37,7 @@ fn resave_keeps_a_name_marked_merged_transparency() {
             let fmt = doc.pixel_format();
             doc.layers.push(raster("shape", fmt, Rect::new(1, 1, 5, 4), 3, true));
             let ours = PsdFile::from_bytes(&export(&doc, path, &ExportOptions::default()).expect("export").bytes).expect("parse");
-            assert_eq!(ours.header.channels, 4, "{case}: colour + merged transparency");
+            assert_eq!(ours.header.channels, 4, "{case}: color + merged transparency");
 
             // Photoshop's form: a positive layer count, no `Mt16`/`Mt32` marker, and the merged
             // transparency named in the alpha channel names.

@@ -109,7 +109,7 @@ final class MaskTests: XCTestCase {
         // A selected mask has its own colours, white in front and black behind: swap for white.
         model.swapColors()
         model.run("edit.clear")
-        XCTAssertEqual(mask(model, "paint", [10, 10, 90, 90]), 1, accuracy: 0.01, "white, the background colour")
+        XCTAssertEqual(mask(model, "paint", [10, 10, 90, 90]), 1, accuracy: 0.01, "white, the background color")
         XCTAssertEqual((model.query("document.stats", ["of": "pixels", "layer": "paint"]) as? [String: Any]).flatMap { ($0["mean"] as? [Double])?.last } ?? 0, 1, accuracy: 0.01, "the pixels stay")
     }
 

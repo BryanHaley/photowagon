@@ -273,7 +273,7 @@ fn gradient_maps_with_cmyk_lab_gray_stops_import_and_keep_their_space() {
             let flipped_file = export(&back, "x.psd", &ExportOptions::default()).unwrap().bytes;
             let flipped = saved_grdm(&flipped_file);
             assert_eq!(&flipped[2..4], &[1, 1]);
-            assert_eq!(flipped[4..], block[4..], "{mode:?} {depth:?}: stops keep their colour space");
+            assert_eq!(flipped[4..], block[4..], "{mode:?} {depth:?}: stops keep their color space");
             let reopened = import("x.psd", &flipped_file).unwrap().document;
             assert_eq!(reopened.layers[1].content, back.layers[1].content);
         }

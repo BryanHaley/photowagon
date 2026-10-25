@@ -110,7 +110,7 @@ impl Reader<'_, '_> {
         let Some(bytes) = self.file(name)? else { return Ok(None) };
         let file = TileFile::parse(&bytes)?;
         if file.pixel_size != space.pixel_size() {
-            return Err(invalid(format!("{name}: pixel size {} does not match its colour space", file.pixel_size)));
+            return Err(invalid(format!("{name}: pixel size {} does not match its color space", file.pixel_size)));
         }
         let cost = file.decoded_bytes(fmt.bytes_per_pixel())?;
         self.budget = self.budget.checked_sub(cost).ok_or_else(|| invalid("decoded layers exceed the 1 GiB limit"))?;
@@ -217,7 +217,7 @@ impl Reader<'_, '_> {
                         },
                         (None, _) => {
                             let cs = attr(child, "colorspacename").unwrap_or("?");
-                            self.warnings.layer(&layer.name, &format!("layers in Krita's {cs} colour space are not supported and were left out"));
+                            self.warnings.layer(&layer.name, &format!("layers in Krita's {cs} color space are not supported and were left out"));
                             continue;
                         }
                         (_, None) => self.warnings.layer(&layer.name, "the layer names no pixel file; it opens empty"),
@@ -301,7 +301,7 @@ pub(crate) fn import(name: &str, bytes: &[u8], ctl: &Interrupt<'_>) -> Result<Im
     }
     let cs = attr(image, "colorspacename").unwrap_or("");
     let Some(space) = Space::from_name(cs) else {
-        return preview(name, &zip, format!("Krita's {cs} colour space is not supported yet"));
+        return preview(name, &zip, format!("Krita's {cs} color space is not supported yet"));
     };
     let (mode, depth) = space.model();
     let image_name = attr(image, "name").unwrap_or("");

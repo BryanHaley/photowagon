@@ -12,7 +12,7 @@ fn wand_after_irregular_layer_copy_ignores_hidden_rgb() {
         let mut s = Session::new();
         s.execute("file.new", json!({"width": 32, "height": 24, "depth": depth, "background": "#ff0000"})).unwrap();
         let original = s.active().unwrap().active_layer.unwrap();
-        s.edit("Two-colour source", |doc, _| {
+        s.edit("Two-color source", |doc, _| {
             doc.layer_mut(original).unwrap().surface_mut().unwrap().fill_rect(Rect::new(16, 0, 32, 24), &[0.0, 0.0, 1.0, 1.0]);
             Ok(())
         })

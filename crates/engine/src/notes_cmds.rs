@@ -230,7 +230,7 @@ pub fn specs() -> Vec<CommandSpec> {
             label: "Notes",
             menu: &[],
             shortcut: None,
-            params: r##"{} → notes (index, author, text, colour, position, open, modified)"##,
+            params: r##"{} → notes (index, author, text, color, position, open, modified)"##,
             enabled: has_doc,
             run: list,
             journal: false,

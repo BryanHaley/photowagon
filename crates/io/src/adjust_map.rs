@@ -422,7 +422,7 @@ fn read_lookup(d: &[u8]) -> Result<Adjustment, String> {
     let bytes = match desc.get("LUT3DFileData") {
         Some(Value::RawData(b)) if !b.is_empty() => b,
         Some(_) => return Err("its LUT data is empty".into()),
-        None => return Err("it uses a colour profile (abstract or device link), not a LUT file, which isn't supported yet".into()),
+        None => return Err("it uses a color profile (abstract or device link), not a LUT file, which isn't supported yet".into()),
     };
     let (ext, format) = match desc_enum(&desc, "LUTFormat") {
         Some(b"LUTFormat3DL") => ("x.3dl", "3DL"),
@@ -927,7 +927,7 @@ mod tests {
         let target = Adjustment::GradientMap { stops: stops.clone(), reverse: true, dither: true };
         assert!(retarget_gradient_map(&mut data, &target, Channels::Cmyk));
         assert_eq!(&data[2..4], &[1, 1]);
-        assert_eq!(data[4..], original[4..], "the stops keep their colour spaces");
+        assert_eq!(data[4..], original[4..], "the stops keep their color spaces");
         assert_eq!(parse(b"grdm", &data, None, Channels::Cmyk), target);
         // Edited stops are not patched in.
         let mut edited = stops;
@@ -1056,7 +1056,7 @@ mod tests {
         assert!(matches!(parse(b"clrL", &p, None, Channels::Rgb), Adjustment::Unsupported { .. }));
         // Each way a lookup can't be read has a reason for the import warning (#1763).
         assert_eq!(unreadable_reason(b"clrL", &d), None);
-        assert!(unreadable_reason(b"clrL", &p).unwrap().contains("colour profile"));
+        assert!(unreadable_reason(b"clrL", &p).unwrap().contains("color profile"));
         assert!(unreadable_reason(b"clrL", &[0]).unwrap().contains("truncated"));
         assert!(unreadable_reason(b"clrL", &[0, 2, 0, 0]).unwrap().contains("version 2"));
         assert!(unreadable_reason(b"clrL", &[0, 1, 9]).unwrap().contains("unreadable settings"));

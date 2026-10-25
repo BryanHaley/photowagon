@@ -14,6 +14,7 @@ struct ContentView: View {
     @State private var panel: EditorModel.Panel?
     @State private var showSearch = false
     @State private var showCameraRaw = false
+    @State private var showCropRotate = false
     /// Layer Style's first page; beside the canvas, so its shadow can be dragged there.
     @State private var layerStyle: String?
     @State private var showNewLayer = false
@@ -190,6 +191,7 @@ struct ContentView: View {
                     .panelDetents(canvas: true)
             }
         }
+        .fullScreenCover(isPresented: $showCropRotate) { CropRotateView(model: model) }
         .sheet(isPresented: $showCameraRaw) {
             CameraRawView(model: model, change: { model.live("filter.cameraRaw", $0) }, cancel: { model.liveCancel() }) { p in
                 model.liveFinish("filter.cameraRaw", p)
@@ -349,10 +351,19 @@ struct ContentView: View {
         if panel == .properties { panel = nil }
     }
 
-    /// Filters and adjustments apply as you change their settings (the last try undone first).
+    /// Settings that change the image apply as you change them (the last try undone first): a
+    /// preview on a phone, the image itself on an iPad.
     static func isLive(_ c: CommandInfo) -> Bool {
-        c.menu.hasPrefix("Filter") || c.menu.hasPrefix("Image > Adjustments") || c.id == "select.colorRange"
+        c.menu.hasPrefix("Filter") || c.menu.hasPrefix("Image > Adjustments") || liveCommands.contains(c.id)
     }
+
+    static let liveCommands: Set<String> = [
+        "select.colorRange",
+        "image.rotation.arbitrary", "image.canvasSize", "image.trim", "image.applyImage",
+        "image.mode.bitmap", "image.mode.indexedColor", "image.mode.duotone", "image.mode.colorTable",
+        "edit.fill", "edit.stroke", "edit.fade", "edit.contentAwareFill", "edit.assignProfile", "edit.convertToProfile",
+        "layer.matting.defringe", "layer.matting.colorDecontaminate", "type.warpText",
+    ]
 
     private func settings(_ c: CommandInfo) -> some View {
         let live = Self.isLive(c)
@@ -385,13 +396,14 @@ struct ContentView: View {
                 }
             }
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
+                ToolbarItem(placement: .topBarLeading) {
                     Button("Cancel") {
                         if live { model.liveCancel() }
                         model.commandSettings = nil
                     }
                 }
                 if live {
+                    SeparateBubbles(placement: .topBarLeading)
                     ToolbarItem(placement: .topBarLeading) {
                         Button { model.setLivePreview(!model.livePreview) } label: {
                             Image(systemName: model.livePreview ? "eye" : "eye.slash")
@@ -466,11 +478,12 @@ struct ContentView: View {
         case .saveToPhotos: saveToPhotos()
         case .print: model.run("file.print", ["scaleToFit": true])
         case .canvasColor:
-            SystemColorPicker.present(title: "Canvas Colour", rgb: CanvasColor.customRGB) { [model] in model.setCustomCanvas($0) }
+            SystemColorPicker.present(title: "Canvas Color", rgb: CanvasColor.customRGB) { [model] in model.setCustomCanvas($0) }
         case .importBrushTips: browserFor = .brushTips
         case let .panel(p): panel = panel == p ? nil : p
         case .closePanels: panel = nil
         case .cameraRaw: showCameraRaw = true
+        case .cropRotate: afterPanel { showCropRotate = true }
         case .newLayer: showNewLayer = true
         case .exportAs: showExport = true
         case .saveForWeb: showSaveForWeb = true

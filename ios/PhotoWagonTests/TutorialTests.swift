@@ -34,4 +34,17 @@ final class TutorialTests: XCTestCase {
         model.showTutorial(.toolGroups)
         XCTAssertEqual(model.tutorialStep, .toolGroups, "Help › Tutorial still shows it")
     }
+
+    /// The Menus tip lets you open the menu, and closing it moves the tour on.
+    func testClosingTheMenuMovesTheMenusTipOn() {
+        let model = makeModel(width: 100, height: 100)
+        XCTAssertTrue(TutorialStep.menu.touchesTarget)
+        XCTAssertFalse(TutorialStep.undo.touchesTarget)
+        model.showTutorial(.home)
+        model.menuClosed()
+        XCTAssertEqual(model.tutorialStep, .home, "only on the Menus tip")
+        model.showTutorial(.menu)
+        model.menuClosed()
+        XCTAssertEqual(model.tutorialStep, .undo)
+    }
 }

@@ -543,6 +543,8 @@ final class EditorModel: ObservableObject {
         /// Close the open panel (to show a document that just opened).
         case closePanels
         case cameraRaw, newLayer, exportAs, saveForWeb, generalPreferences, defineBrush
+        /// The ☰ menu's Crop and Rotate screen.
+        case cropRotate
         /// Layer Style, at Blending Options or an effect kind.
         case layerStyle(String)
     }

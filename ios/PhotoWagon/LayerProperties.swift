@@ -181,7 +181,7 @@ struct FillProperties: View {
                 }
             } else {
                 Section {
-                    Button("Pick Colour…") {
+                    Button("Pick Color…") {
                         SystemColorPicker.present(title: "Color Fill", rgb: []) { rgb in
                             model.run("layer.fill.solidColor.set", ["layer": layer, "color": rgb + [1], "coalesce": key])
                         }
@@ -189,7 +189,7 @@ struct FillProperties: View {
                     .accessibilityIdentifier("fill.color")
                     Button {
                         // Over the Layers sheet the preview takes the pick; beside the iPad canvas, the canvas.
-                        model.beginPick(inPanel && width == .regular ? .canvas : .preview, prompt: "Tap the colour to fill with") { model.setFillColor(layer, from: $0) }
+                        model.beginPick(inPanel && width == .regular ? .canvas : .preview, prompt: "Tap the color to fill with") { model.setFillColor(layer, from: $0) }
                     } label: { Label("Pick from Image", systemImage: "eyedropper") }
                     .accessibilityIdentifier("fill.pick")
                 } header: {
@@ -250,7 +250,7 @@ struct ShapeProperties: View {
     var body: some View {
         Form {
             Section("Fill") {
-                Button("Pick Colour…") {
+                Button("Pick Color…") {
                     SystemColorPicker.present(title: "Shape Fill", rgb: []) { rgb in
                         model.run("shape.edit", ["layer": layer, "fill": rgb + [1], "coalesce": key])
                     }

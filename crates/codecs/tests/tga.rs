@@ -68,7 +68,7 @@ fn the_file_is_bottom_up_rle_with_its_alpha_bits_and_the_tga2_footer() {
         *px = if i < 2 { [255, 0, 0, 255] } else { [0, 0, 255, 255] };
     }
     let file = encode(&Image::from_u8(2, 2, ChannelLayout::Rgba, data).unwrap(), Format::Tga, &EncodeOptions::default()).unwrap();
-    assert_eq!(file[2], 10, "run-length true colour");
+    assert_eq!(file[2], 10, "run-length true color");
     assert_eq!((file[16], file[17]), (32, 8), "32 bits per pixel, 8 alpha bits, bottom-left origin");
     // The first stored row is the bottom one: a run of two blue pixels, in BGRA.
     assert_eq!(&file[18..23], &[0x81, 255, 0, 0, 255]);

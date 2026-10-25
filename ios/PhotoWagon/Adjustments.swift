@@ -577,7 +577,7 @@ struct GradientStopsSections: View {
     let set: ([[Any]]) -> Void
 
     var body: some View {
-        Section("Colour Stops") {
+        Section("Color Stops") {
             ForEach(Array(stops.enumerated()), id: \.offset) { i, s in
                 HStack {
                     Button { pick(i) } label: {
@@ -618,7 +618,7 @@ struct GradientStopsSections: View {
     }
 
     private func pick(_ i: Int) {
-        SystemColorPicker.present(title: "Stop Colour", rgb: EffectPage.rgb(stops.indices.contains(i) ? stops[i].last as? String ?? "" : "")) { rgb in
+        SystemColorPicker.present(title: "Stop Color", rgb: EffectPage.rgb(stops.indices.contains(i) ? stops[i].last as? String ?? "" : "")) { rgb in
             var s = stops
             guard s.indices.contains(i), let t = s[i].first else { return }
             s[i] = [t, ColorRow.hex(rgb)]
@@ -654,15 +654,15 @@ struct ReplaceColorEditor: View {
         EditorForm(title: "Replace Color", runTitle: runTitle, run: { run(p) }) {
             Section {
                 HStack(spacing: 12) {
-                    pickButton("pick", "eyedropper", "Pick the Colour")
-                    pickButton("add", "eyedropper.full", "Add to the Colour")
+                    pickButton("pick", "eyedropper", "Pick the Color")
+                    pickButton("add", "eyedropper.full", "Add to the Color")
                     Spacer()
                     RoundedRectangle(cornerRadius: 6).fill(Color(hex: color)).frame(width: 44, height: 28)
                         .overlay(RoundedRectangle(cornerRadius: 6).stroke(.secondary))
                         .accessibilityIdentifier("replace.sample")
                 }
                 if picking != nil, surface == .preview {
-                    Text("Hold on the image, then let go on the colour.").font(.caption).foregroundStyle(.secondary)
+                    Text("Hold on the image, then let go on the color.").font(.caption).foregroundStyle(.secondary)
                 }
                 Toggle("Localized Color Clusters", isOn: Binding(get: { p["localized"] as? Bool ?? false }, set: { set(["localized": $0]) }))
                     .accessibilityIdentifier("replace.localized")
@@ -700,7 +700,7 @@ struct ReplaceColorEditor: View {
             if picking == nil {
                 model.endPick()
             } else {
-                model.beginPick(surface, prompt: "Tap the colour to replace") { pick(mode, $0) }
+                model.beginPick(surface, prompt: "Tap the color to replace") { pick(mode, $0) }
             }
         } label: {
             Image(systemName: symbol).font(.title3).frame(width: 44, height: 44)

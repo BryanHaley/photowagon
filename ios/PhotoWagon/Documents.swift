@@ -295,9 +295,9 @@ struct NewDocumentSheet: View {
     /// Colour profiles for each mode, as the engine names them.
     static let profiles: [String: [(String, String)]] = [
         "rgb": [("srgb", "sRGB IEC61966-2.1"), ("display-p3", "Display P3"), ("adobe-rgb-compat", "Adobe RGB (1998) compatible"),
-                ("prophoto-compat", "ProPhoto RGB compatible"), ("rec2020", "Rec. 2020"), ("linear-srgb", "Linear sRGB"), ("none", "Don't Colour Manage")],
-        "gray": [("gray-gamma-2.2", "Gray Gamma 2.2"), ("sgray", "sGray"), ("dot-gain-20-compat", "Dot Gain 20% compatible"), ("none", "Don't Colour Manage")],
-        "cmyk": [("coated-cmyk", "Coated CMYK"), ("none", "Don't Colour Manage")],
+                ("prophoto-compat", "ProPhoto RGB compatible"), ("rec2020", "Rec. 2020"), ("linear-srgb", "Linear sRGB"), ("none", "Don't Color Manage")],
+        "gray": [("gray-gamma-2.2", "Gray Gamma 2.2"), ("sgray", "sGray"), ("dot-gain-20-compat", "Dot Gain 20% compatible"), ("none", "Don't Color Manage")],
+        "cmyk": [("coated-cmyk", "Coated CMYK"), ("none", "Don't Color Manage")],
         "lab": [("lab-d50", "Lab D50")],
     ]
 
@@ -348,12 +348,12 @@ struct NewDocumentSheet: View {
                     number("Height", $height, id: "new.height")
                     number("Resolution (pixels/inch)", $resolution, id: "new.resolution")
                 }
-                Section("Colour") {
-                    Picker("Colour Mode", selection: $mode) {
+                Section("Color") {
+                    Picker("Color Mode", selection: $mode) {
                         Text("RGB Color").tag("rgb"); Text("Grayscale").tag("gray"); Text("CMYK Color").tag("cmyk"); Text("Lab Color").tag("lab")
                     }
                     .onChange(of: mode) { _, m in profile = Self.profiles[m]?.first?.0 ?? "none" }
-                    Picker("Colour Profile", selection: $profile) {
+                    Picker("Color Profile", selection: $profile) {
                         ForEach(Self.profiles[mode] ?? [], id: \.0) { Text($0.1).tag($0.0) }
                     }
                     .accessibilityIdentifier("new.profile")
@@ -799,11 +799,11 @@ struct SaveForWebSheet: View {
                         Text(estimate ?? " ").accessibilityIdentifier("web.estimate")
                     }
                     if indexed {
-                        Section("Colours") {
-                            Picker("Colour Reduction", selection: $palette) {
+                        Section("Colors") {
+                            Picker("Color Reduction", selection: $palette) {
                                 ForEach(["perceptual", "selective", "adaptive", "restrictive"], id: \.self) { Text($0.capitalized).tag($0) }
                             }
-                            Picker("Colours", selection: $colors) {
+                            Picker("Colors", selection: $colors) {
                                 ForEach([2, 4, 8, 16, 32, 64, 128, 256], id: \.self) { Text("\($0)").tag($0) }
                             }
                             .accessibilityIdentifier("web.colors")

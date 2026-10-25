@@ -788,7 +788,7 @@ fn tga_writes_the_alpha_channel_as_32_bit_alpha() {
         let (sa, sb) = (want.layers[0].surface().unwrap(), back.layers[0].surface().unwrap());
         let (va, vb) = (sa.read_region(want.bounds()), sb.read_region(back.bounds()));
         for (i, (a, b)) in va.as_chunks::<4>().0.iter().zip(vb.as_chunks::<4>().0.iter()).enumerate() {
-            assert!(a[..3].iter().zip(&b[..3]).all(|(p, q)| (p - q).abs() <= 1.0 / 255.0), "{depth:?} colour {i}: {a:?} {b:?}");
+            assert!(a[..3].iter().zip(&b[..3]).all(|(p, q)| (p - q).abs() <= 1.0 / 255.0), "{depth:?} color {i}: {a:?} {b:?}");
             assert_eq!(b[3], 1.0, "{depth:?} the Background stays opaque");
         }
         // Round trip, as in Photoshop: the alpha opens back as the "Alpha 1" channel (#2225).
@@ -852,7 +852,7 @@ fn tga_transparency_reopens_as_alpha_1() {
     let got = back.layers[0].surface().unwrap().read_region(back.bounds());
     let alpha = back.channels.first().expect("Alpha 1").surface.read_region(back.bounds());
     for (i, ((s, g), a)) in src.as_chunks::<4>().0.iter().zip(got.as_chunks::<4>().0.iter()).zip(&alpha).enumerate() {
-        assert_eq!(&g[..3], &s[..3], "colour {i}");
+        assert_eq!(&g[..3], &s[..3], "color {i}");
         assert_eq!((g[3], *a), (1.0, s[3]), "alpha {i}");
     }
 }
@@ -974,10 +974,10 @@ fn tga_32_bit_round_trip_keeps_rgb_and_alpha_channel_byte_identical() {
     let (bpp, alpha_bits, img) = tga(&r.bytes);
     assert_eq!((bpp, alpha_bits), (32, 8));
     let (file_rgb, file_alpha) = rgb_and_alpha(&img);
-    assert!(file_rgb == rgb, "the file's colours are the document's");
+    assert!(file_rgb == rgb, "the file's colors are the document's");
     assert!(file_alpha == alpha, "the file's alpha is the alpha channel");
     let (back_rgb, back_alpha) = reopened(&r.bytes);
-    assert!(back_rgb == rgb, "the reopened colours are the document's");
+    assert!(back_rgb == rgb, "the reopened colors are the document's");
     assert!(back_alpha.as_deref() == Some(alpha.as_slice()), "the reopened Alpha 1 is the alpha channel");
 }
 
@@ -994,9 +994,9 @@ fn tga_32_bit_all_black_alpha_channel_keeps_every_colour() {
         assert_eq!((bpp, alpha_bits), (32, 8), "{:?}", opts.tga_bits);
         let (file_rgb, file_alpha) = rgb_and_alpha(&img);
         assert!(file_alpha.iter().all(|&a| a == 0), "alpha 0 everywhere");
-        assert!(file_rgb == rgb, "{:?}: the colours under alpha 0 are unchanged", opts.tga_bits);
+        assert!(file_rgb == rgb, "{:?}: the colors under alpha 0 are unchanged", opts.tga_bits);
         let (back_rgb, back_alpha) = reopened(&r.bytes);
-        assert!(back_rgb == rgb, "the reopened colours are unchanged");
+        assert!(back_rgb == rgb, "the reopened colors are unchanged");
         assert!(back_alpha.as_deref() == Some(black.as_slice()), "Alpha 1 reopens black");
     }
 }
@@ -1011,7 +1011,7 @@ fn tga_24_bit_writes_no_alpha() {
     let (bpp, alpha_bits, img) = tga(&r.bytes);
     assert_eq!((bpp, alpha_bits), (24, 0));
     assert_eq!(img.layout(), photocraft_codecs::ChannelLayout::Rgb);
-    assert!(img.data() == rgb.as_slice(), "the colours are the document's");
+    assert!(img.data() == rgb.as_slice(), "the colors are the document's");
     assert!(r.warnings.iter().any(|w| w.contains("24-bit") && w.contains("\"Alpha 1\"")), "{:?}", r.warnings);
     let (back_rgb, back_alpha) = reopened(&r.bytes);
     assert!(back_rgb == rgb);

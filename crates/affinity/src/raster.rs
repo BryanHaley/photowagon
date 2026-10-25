@@ -109,7 +109,7 @@ fn decode(r: &mut Reader, bitmap: ObjId, crop: (u32, u32, u32, u32), world: Affi
         Some(6) => (1, 1),
         Some(7) => (1, 2),
         Some(4) => {
-            r.warn("CMYK pixel layers (converted to RGB without the document's colour profile)");
+            r.warn("CMYK pixel layers (converted to RGB without the document's color profile)");
             (5, 1)
         }
         _ => {

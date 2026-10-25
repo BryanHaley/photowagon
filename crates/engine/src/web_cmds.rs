@@ -208,11 +208,11 @@ impl WebSettings {
             };
         }
         if let Some(table) = p.get("colorTable") {
-            let table = table.as_array().filter(|a| (1..=256).contains(&a.len())).ok_or_else(|| bad(cmd, "colorTable must contain 1–256 #rrggbb colours"))?;
+            let table = table.as_array().filter(|a| (1..=256).contains(&a.len())).ok_or_else(|| bad(cmd, "colorTable must contain 1–256 #rrggbb colors"))?;
             st.color_table = Some(
                 table
                     .iter()
-                    .map(|v| v.as_str().and_then(hex3).map(|c| c.map(to8)).ok_or_else(|| bad(cmd, "colorTable entries must be #rrggbb colours")))
+                    .map(|v| v.as_str().and_then(hex3).map(|c| c.map(to8)).ok_or_else(|| bad(cmd, "colorTable entries must be #rrggbb colors")))
                     .collect::<Result<Vec<_>>>()?,
             );
         }
@@ -220,11 +220,11 @@ impl WebSettings {
             let edits = edits
                 .as_object()
                 .filter(|m| m.len() <= 256)
-                .ok_or_else(|| bad(cmd, "colorTableEdits must be an object of palette indices to #rrggbb colours"))?;
+                .ok_or_else(|| bad(cmd, "colorTableEdits must be an object of palette indices to #rrggbb colors"))?;
             let table = st.color_table.as_ref().ok_or_else(|| bad(cmd, "colorTableEdits requires colorTable"))?;
             for (index, value) in edits {
                 let index = index.parse::<usize>().ok().filter(|i| *i < table.len()).ok_or_else(|| bad(cmd, "colorTableEdits index is outside colorTable"))?;
-                let color = value.as_str().and_then(hex3).map(|c| c.map(to8)).ok_or_else(|| bad(cmd, "colorTableEdits values must be #rrggbb colours"))?;
+                let color = value.as_str().and_then(hex3).map(|c| c.map(to8)).ok_or_else(|| bad(cmd, "colorTableEdits values must be #rrggbb colors"))?;
                 st.color_table_edits.insert(index, color);
             }
         }
@@ -575,7 +575,7 @@ pub fn optimize(px: &[[f32; 4]], bw: usize, rect: Rect, st: &WebSettings, icc: O
             if transparent {
                 pal.truncate(255);
             }
-            let first = pal.first().copied().ok_or_else(|| other("empty colour table"))?;
+            let first = pal.first().copied().ok_or_else(|| other("empty color table"))?;
             color_table = pal.clone();
             let t = transparent.then(|| {
                 pal.push(first);
@@ -584,7 +584,7 @@ pub fn optimize(px: &[[f32; 4]], bw: usize, rect: Rect, st: &WebSettings, icc: O
             transparent_index = t;
             let idx = quantize_rows(&mut work, w, &pal, st.dither, st.dither_amount, t);
             for (index, color) in &st.color_table_edits {
-                let slot = pal.get_mut(*index).filter(|_| Some(*index) != t).ok_or_else(|| other("colour edit is outside the opaque palette"))?;
+                let slot = pal.get_mut(*index).filter(|_| Some(*index) != t).ok_or_else(|| other("color edit is outside the opaque palette"))?;
                 *slot = *color;
             }
             if preview {

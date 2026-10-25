@@ -330,7 +330,7 @@ pub fn parse_stroke(v: &Value, base: Option<ShapeStroke>, fg: Color) -> std::res
         s.width = w as f32;
     }
     if let Some(c) = v.get("color").or_else(|| v.get("fill")) {
-        s.paint = parse_fill(c)?.ok_or("stroke colour cannot be null")?;
+        s.paint = parse_fill(c)?.ok_or("stroke color cannot be null")?;
     }
     if let Some(o) = f64p(v, "opacity") {
         s.opacity = (o / 100.0) as f32;

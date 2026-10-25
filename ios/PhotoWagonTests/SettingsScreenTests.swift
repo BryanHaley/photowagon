@@ -57,7 +57,7 @@ final class SettingsScreenTests: XCTestCase {
         o.method = .darkLight
         o.shadows = 1
         let dl = px.auto(o, color: true)
-        XCTAssertLessThan(dl.channels["red"]?.black ?? 255, dl.channels["blue"]?.black ?? 0, "the darkest colour, not each channel's darkest")
+        XCTAssertLessThan(dl.channels["red"]?.black ?? 255, dl.channels["blue"]?.black ?? 0, "the darkest color, not each channel's darkest")
         o = AutoOptions(method: .perChannel, snapNeutral: true)
         // Green lifted in the midtones only: stretching alone leaves the cast.
         let cast = (0..<512).map { i -> SIMD3<Float> in let v = Float(i % 256); return SIMD3(v, 255 * pow(v / 255, 0.8), v) }

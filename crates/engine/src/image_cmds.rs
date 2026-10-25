@@ -978,7 +978,7 @@ mod tests {
             let surf = st.doc.layers[0].surface().unwrap();
             for x in 0..8 {
                 let px = surf.pixel(x, 0);
-                assert!(px[..3] == [1.0, 0.0, 0.0] || px[..3] == [0.0, 0.0, 1.0], "{resample}: no blended colour at x {x}: {px:?}");
+                assert!(px[..3] == [1.0, 0.0, 0.0] || px[..3] == [0.0, 0.0, 1.0], "{resample}: no blended color at x {x}: {px:?}");
             }
             s.execute("history.undo", json!({})).unwrap();
         }
@@ -1193,7 +1193,7 @@ mod tests {
         let layer = &doc(&s).layers[0];
         assert_eq!(layer.name, "Background", "an extending crop keeps the Background (#3081)");
         assert!(layer.locks.transparency && layer.locks.position);
-        assert_eq!(layer.surface().unwrap().rgba(1, 8), [0.0, 1.0, 0.0, 1.0], "the added border takes the background colour");
+        assert_eq!(layer.surface().unwrap().rgba(1, 8), [0.0, 1.0, 0.0, 1.0], "the added border takes the background color");
         assert_eq!(layer.surface().unwrap().rgba(8, 8), [1.0, 0.0, 0.0, 1.0], "the original pixels stay");
 
         s.execute("edit.fill", json!({"color": "#0000ff"})).unwrap();

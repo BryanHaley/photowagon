@@ -216,7 +216,7 @@ mod tests {
             assert_eq!(c.mode, mode);
             let back = c.in_mode(ColorMode::Rgb);
             assert_eq!(back.mode, ColorMode::Rgb);
-            assert_eq!(back.to_rgb(), c.to_rgb(), "{mode:?}: back to RGB shows the same colour");
+            assert_eq!(back.to_rgb(), c.to_rgb(), "{mode:?}: back to RGB shows the same color");
         }
     }
 

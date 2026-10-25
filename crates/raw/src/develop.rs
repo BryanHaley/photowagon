@@ -248,7 +248,7 @@ pub fn develop_sensor(s: &Sensor, opts: &DevelopOptions) -> Result<Developed> {
         (None, Some(m)) => m,
         (None, None) => {
             if s.format != RawFormat::Dng && !mono {
-                warnings.push("no colour calibration for this camera; camera colours are treated as sRGB primaries".into());
+                warnings.push("no color calibration for this camera; camera colors are treated as sRGB primaries".into());
             }
             color::srgb_to_xyz_d50()
         }

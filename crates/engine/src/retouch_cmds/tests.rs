@@ -465,7 +465,7 @@ fn smudge_moves_colour_along_the_stroke() {
         assert!(rgba(&s, 36, 2)[1] > 0.99, "off-stroke untouched");
         s.execute("tools.setColors", json!({"foreground": "#0000ff"})).unwrap();
         s.execute("paint.smudge", json!({"points": [[80, 25], [95, 25]], "size": 6, "hardness": 100, "fingerPainting": true})).unwrap();
-        assert!(rgba(&s, 81, 25)[0] < 0.7, "finger painting lays down the foreground colour");
+        assert!(rgba(&s, 81, 25)[0] < 0.7, "finger painting lays down the foreground color");
     }
 }
 
@@ -923,7 +923,7 @@ fn smudge_across_a_transparent_edge_has_no_dark_fringe() {
                 assert!(p[0] > 0.97 && (p[1] - 0.8).abs() < 0.03, "depth {depth} x {x}: {p:?}");
             }
         }
-        assert!(n > 5, "depth {depth}: colour dragged into the transparent area");
+        assert!(n > 5, "depth {depth}: color dragged into the transparent area");
     }
 }
 
@@ -1252,7 +1252,7 @@ fn content_aware_move_structure_and_color_shape_the_result() {
         (98..106).map(|x| rgba(&s, x, 32)[0]).sum::<f32>() / 8.0
     };
     let (kept, some, fitted) = (mean(0), mean(3), mean(10));
-    assert!((kept - 0.8).abs() < 1e-3, "color 0 keeps the colour: {kept}");
+    assert!((kept - 0.8).abs() < 1e-3, "color 0 keeps the color: {kept}");
     // Photoshop shifts by up to about 0.04 per step of Color.
     assert!((some - 0.68).abs() < 0.03, "color 3 adapts part of the way: {some}");
     assert!((fitted - 0.4).abs() < 0.03, "color 10 adapts most of the way: {fitted}");
@@ -2145,7 +2145,7 @@ fn ai_remove_hands_out_a_full_size_square_and_pastes_back_only_the_hole() {
         apply["ai"]["fill"] = json!(b64_encode(&striped_and_too_bright(&image, &mask)));
         s.execute("paint.remove", apply).unwrap();
         let (a, b) = (rgba(&s, 46, 30)[0], rgba(&s, 47, 30)[0]);
-        assert!(((a + b) / 2.0 - 0.5).abs() < 0.03, "{mode}: the colour round the hole, not the model's tint: {a} {b}");
+        assert!(((a + b) / 2.0 - 0.5).abs() < 0.03, "{mode}: the color round the hole, not the model's tint: {a} {b}");
         assert!((a - b).abs() > 0.1, "{mode}: and the model's texture: {a} {b}");
         assert_eq!(mask[18 * 400 + 46], 0);
         assert!(near(rgba(&s, 46, 18), [0.5, 0.5, 0.5, 1.0], 0.01), "{mode}: next to the hole stays");

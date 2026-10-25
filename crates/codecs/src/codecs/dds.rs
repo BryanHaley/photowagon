@@ -92,7 +92,7 @@ impl Encoding {
         }
         let colour = if gray { fields[0].is_some() } else { fields[..3].iter().any(Option::is_some) };
         if !colour {
-            return Err(bad("the pixel format has no colour channel masks"));
+            return Err(bad("the pixel format has no color channel masks"));
         }
         Ok(Encoding::Masks { bytes: bits as usize / 8, gray, fields })
     }

@@ -241,7 +241,7 @@ pub fn specs() -> Vec<CommandSpec> {
             label: "Float Selection",
             menu: &[],
             shortcut: None,
-            params: r##"{"dx":px=0,"dy":px=0,"copy":bool=false,"target":"pixels"|"mask"="pixels" (mask: float the selected part of the layer's mask, the hole takes the background colour)} → {layer, offset} (cuts the selected pixels of the active layer into a floating piece the first time, or with copy leaves them and floats a duplicate; on the Background the hole takes the background colour; then moves it by whole pixels; dropped by select.drop or any other command, put back by edit.undo)"##,
+            params: r##"{"dx":px=0,"dy":px=0,"copy":bool=false,"target":"pixels"|"mask"="pixels" (mask: float the selected part of the layer's mask, the hole takes the background color)} → {layer, offset} (cuts the selected pixels of the active layer into a floating piece the first time, or with copy leaves them and floats a duplicate; on the Background the hole takes the background color; then moves it by whole pixels; dropped by select.drop or any other command, put back by edit.undo)"##,
             enabled: can_float,
             journal: true,
             run: float,

@@ -109,7 +109,7 @@ final class BlendLayersTests: BlendModesTests {
             XCTAssertLessThan(spread(stats(top).mean, before), 0.02, "black hides")
         }
 
-        step("◑ › Hue/Saturation, the clip button, Colorize: coloured smoke; Reset under Properties: grey again") {
+        step("◑ › Hue/Saturation, the clip button, Colorize: colored smoke; Reset under Properties: grey again") {
             let grey = stats(low).mean
             addAdjustment("Hue/Saturation")
             app.buttons["properties.clip"].tap()
@@ -119,7 +119,7 @@ final class BlendLayersTests: BlendModesTests {
             flip("hs.colorize")
             waitIdle()
             XCTAssertEqual(hueSat("Hue/Saturation 2")["colorize"] as? Bool, true)
-            XCTAssertGreaterThan(spread(stats(low).mean, grey), 0.01, "the smoke takes a colour")
+            XCTAssertGreaterThan(spread(stats(low).mean, grey), 0.01, "the smoke takes a color")
             app.buttons["properties.reset"].tap()
             waitIdle()
             XCTAssertEqual(hueSat("Hue/Saturation 2")["colorize"] as? Bool, false)
@@ -192,7 +192,7 @@ final class ColorModeTests: BlendModesTests {
             XCTAssert(app.buttons["option.sampleLayers"].label.contains("Current & Below"))
         }
 
-        step("A new layer in Color mode; Brush, touch and hold on good skin to take its colour; paint the green patch") {
+        step("A new layer in Color mode; Brush, touch and hold on good skin to take its color; paint the green patch") {
             app.buttons["layers"].tap()
             app.buttons["layers.new"].tap()
             waitIdle()
@@ -205,7 +205,7 @@ final class ColorModeTests: BlendModesTests {
             at(w * 0.6, h * 0.82).press(forDuration: 1.0)
             waitIdle()
             let skin = colors.fg
-            XCTAssertGreaterThan(skin[0], skin[1] + 0.05, "a skin colour in front: \(skin)")
+            XCTAssertGreaterThan(skin[0], skin[1] + 0.05, "a skin color in front: \(skin)")
             let before = stats(patch).mean
             for x in stride(from: w * 0.55, through: w * 0.62, by: 25) { drag(doc: (x, h * 0.58), to: (x, h * 0.72)) }
             waitIdle()

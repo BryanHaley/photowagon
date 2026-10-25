@@ -166,12 +166,12 @@ fn grd_stop_counts_are_capped() {
     let capped_opacity = over.opacity[..grd::MAX_STOPS].to_vec();
     let colour_only_over = GrdGradient { opacity: Vec::new(), ..over.clone() };
     let colour_only_capped = GrdGradient { stops: capped_stops, opacity: Vec::new(), ..over.clone() };
-    assert!(grd::write(&[colour_only_over]).len() > grd::write(&[colour_only_capped]).len(), "colour stops over the cap are not larger than at the cap");
+    assert!(grd::write(&[colour_only_over]).len() > grd::write(&[colour_only_capped]).len(), "color stops over the cap are not larger than at the cap");
     let trans_only_over = GrdGradient { stops: Vec::new(), ..over.clone() };
     let trans_only_capped = GrdGradient { stops: Vec::new(), opacity: capped_opacity, ..over };
     assert!(grd::write(&[trans_only_over]).len() > grd::write(&[trans_only_capped]).len(), "transparency stops over the cap are not larger than at the cap");
     let f = grd::parse(&bytes).expect("a file over the stop cap still parses");
-    assert_eq!(f[0].stops.len(), grd::MAX_STOPS, "colour stops must be capped at MAX_STOPS");
+    assert_eq!(f[0].stops.len(), grd::MAX_STOPS, "color stops must be capped at MAX_STOPS");
     assert_eq!(f[0].opacity.len(), grd::MAX_STOPS, "transparency stops must be capped at MAX_STOPS");
 }
 
@@ -673,10 +673,10 @@ fn ase_structurally_hostile_blocks() {
     f.extend_from_slice(&group_start("inner"));
     f.extend_from_slice(&colour(b"Gray", &1f32.to_be_bytes()));
     let parsed = ase::parse(&f).expect("a nested group start must parse");
-    assert_eq!(parsed.swatch_count(), 1, "the colour must land in exactly one group");
+    assert_eq!(parsed.swatch_count(), 1, "the color must land in exactly one group");
     // The message above is only true if the colour is in the *inner* group; check it.
     let inner_holds_it = parsed.entries.iter().any(|e| matches!(e, AseEntry::Group { name, swatches } if name == "inner" && swatches.len() == 1));
-    assert!(inner_holds_it, "the colour must land in the inner group, not the outer one");
+    assert!(inner_holds_it, "the color must land in the inner group, not the outer one");
     let names: Vec<&str> = parsed
         .entries
         .iter()
@@ -700,8 +700,8 @@ fn ase_structurally_hostile_blocks() {
     b.extend_from_slice(&short);
     f.extend_from_slice(&b);
     let r = catch_unwind(|| ase::parse(&f));
-    assert!(r.is_ok(), "a truncated colour component must not panic");
-    assert!(r.unwrap().is_err(), "a colour component cut short must be refused, not guessed at");
+    assert!(r.is_ok(), "a truncated color component must not panic");
+    assert!(r.unwrap().is_err(), "a color component cut short must be refused, not guessed at");
 
     // A block that ends after the components, with no colour type at all, is *accepted*: some
     // writers omit it and the reader defaults it to process. Pinning that, because it is the one
@@ -711,7 +711,7 @@ fn ase_structurally_hostile_blocks() {
     b.extend_from_slice(&(short.len().saturating_sub(2) as u32).to_be_bytes());
     b.extend_from_slice(&short[..short.len() - 2]);
     f.extend_from_slice(&b);
-    let parsed = ase::parse(&f).expect("a colour block with no colour type is accepted by design");
+    let parsed = ase::parse(&f).expect("a color block with no color type is accepted by design");
     assert_eq!(parsed.swatch_count(), 1, "it must still yield exactly one swatch");
 
     // An unknown colour model keeps whatever bytes follow it verbatim.
@@ -720,7 +720,7 @@ fn ase_structurally_hostile_blocks() {
     let mut f = header(1);
     let payload = [1u8, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
     f.extend_from_slice(&colour(b"XYZ ", &payload));
-    let parsed = ase::parse(&f).expect("an unknown colour model is kept verbatim");
+    let parsed = ase::parse(&f).expect("an unknown color model is kept verbatim");
     assert_eq!(parsed.swatch_count(), 1, "an unknown model still yields one swatch");
     let AseEntry::Swatch(sw) = &parsed.entries[0] else { panic!("expected a loose swatch") };
     let AseColor::Other { model, data } = &sw.color else { panic!("an unknown model must be kept as Other, got {:?}", sw.color) };
@@ -751,7 +751,7 @@ fn aco_mismatched_section_counts_do_not_panic() {
     let parsed = r.unwrap().expect("the version 2 section is the one with names");
     assert_eq!(parsed.swatches.len(), 5, "the named section is authoritative when present");
     for sw in &parsed.swatches {
-        assert_eq!(sw.name, "N", "each version 2 record must keep its name beside its own colour");
+        assert_eq!(sw.name, "N", "each version 2 record must keep its name beside its own color");
     }
 }
 

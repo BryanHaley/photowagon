@@ -165,5 +165,5 @@ fn compositor_flatten_separates_through_the_documents_profile() {
     let mean = diffs.iter().sum::<f32>() / diffs.len() as f32;
     // The synthetic profile's small tables don't round-trip exactly; the built-in profile's
     // separation lands about 0.08 off on average.
-    assert!(mean < 0.03, "flattening shifted the printed colour by {mean} on average");
+    assert!(mean < 0.03, "flattening shifted the printed color by {mean} on average");
 }

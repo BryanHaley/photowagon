@@ -60,19 +60,32 @@ pub fn cmd(root: &Path, args: &[&str]) -> Result<(), String> {
     copy(&swift.join("photocraft_ffiFFI.modulemap"), &headers.join("module.modulemap"))?;
 
     let framework = root.join("ios/Frameworks/PhotoWagonCore.xcframework");
-    let _ = std::fs::remove_dir_all(&framework);
+    // Built next to it, then swapped in: Xcode reads the XCFramework while this runs (from the
+    // RustCore step), and a missing one fails the build.
+    let fresh = root.join("ios/Frameworks/PhotoWagonCore.new.xcframework");
+    let old = root.join("ios/Frameworks/PhotoWagonCore.old.xcframework");
+    let _ = std::fs::remove_dir_all(&fresh);
     let mut c = Command::new("xcodebuild");
     c.arg("-create-xcframework");
     // Keep the other platform's library from an earlier build, so a device build doesn't drop the
-    // simulator's (or the other way round).
+    // simulator's (or the other way round): from the other profile if this one has none (a Release
+    // device build and Debug simulator builds share the XCFramework).
     for t in [DEVICE, SIMULATOR] {
-        let lib = target_dir.join(t).join(profile).join("libphotocraft_ffi.a");
-        if targets.contains(&t) || lib.exists() {
+        let lib = |p: &str| target_dir.join(t).join(p).join("libphotocraft_ffi.a");
+        let other = if release { "debug" } else { "release" };
+        let found = if targets.contains(&t) || lib(profile).exists() { Some(lib(profile)) } else { Some(lib(other)).filter(|l| l.exists()) };
+        if let Some(lib) = found {
             c.arg("-library").arg(lib).arg("-headers").arg(&headers);
         }
     }
-    c.arg("-output").arg(&framework);
+    c.arg("-output").arg(&fresh);
     run(c, "xcodebuild -create-xcframework")?;
+    let _ = std::fs::remove_dir_all(&old);
+    if framework.exists() {
+        std::fs::rename(&framework, &old).map_err(|e| format!("{}: {e}", framework.display()))?;
+    }
+    std::fs::rename(&fresh, &framework).map_err(|e| format!("{}: {e}", framework.display()))?;
+    let _ = std::fs::remove_dir_all(&old);
     copy(&swift.join("photocraft_ffi.swift"), &root.join("ios/PhotoWagon/Core/photocraft_ffi.swift"))?;
     crate::licenses::write(root, DEVICE, &out.join("Acknowledgements.json"))?;
     eprintln!("ios: {} and ios/PhotoWagon/Core/photocraft_ffi.swift are up to date", framework.display());

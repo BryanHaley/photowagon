@@ -32,7 +32,7 @@ enum TutorialStep: Int, CaseIterable {
         case .history: "History"
         case .view: "View"
         case .layers: "Layers"
-        case .colors: "Colours"
+        case .colors: "Colors"
         }
     }
 
@@ -42,15 +42,20 @@ enum TutorialStep: Int, CaseIterable {
         case .groupTools: "Tap a tool to pick it. Touch and hold for its name."
         case .toolOptions: "Once a tool is selected, its options appear here."
         case .home: "Your files, new images and settings."
-        case .menu: "File, Edit, Image, Layer, Select, Filter and more."
+        case .menu: "Tap ☰ to open it. Quick actions are at the top; File, Edit, Image, Layer, Select, Filter and the rest are below them. Scroll down to reach them."
         case .undo: "Step back, or forward again."
         case .search: "Find any command by name."
         case .history: "Go back to any earlier step."
         case .view: "Fit to Screen, and reset the zoom, position or tilt."
         case .layers: "Layers, masks and blend modes."
-        case .colors: "Foreground and background colours. Tap to pick one."
+        case .colors: "Foreground and background colors. Tap to pick one."
         }
     }
+}
+
+extension TutorialStep {
+    /// Its target still takes touches (the menu can be opened during its tip).
+    var touchesTarget: Bool { self == .menu }
 }
 
 /// What a tip points at.
@@ -106,6 +111,11 @@ extension EditorModel {
         }
     }
 
+    /// The ☰ menu closed: on the Menus tip, the tour goes on.
+    func menuClosed() {
+        if tutorialStep == .menu { nextTutorialStep() }
+    }
+
     func endTutorial() {
         tutorialStep = nil
         pickingGroup = nil
@@ -127,14 +137,15 @@ struct TutorialOverlay: View {
                 let room: CGFloat = 200
                 let (top, inside): (Bool, Bool) = g.size.height - r.maxY >= room ? (true, false) : r.minY >= room ? (false, false) : (false, true)
                 ZStack(alignment: .topLeading) {
-                    // Every touch goes to the tip, not what's under it.
-                    Path { p in
+                    // Every touch goes to the tip, not what's under it (but the target, on a tip that
+                    // lets you use it).
+                    let dim = Path { p in
                         p.addRect(CGRect(origin: .zero, size: g.size))
                         p.addRoundedRect(in: r, cornerSize: CGSize(width: 10, height: 10))
                     }
-                    .fill(Color.black.opacity(0.6), style: FillStyle(eoFill: true))
-                    .contentShape(Rectangle())
-                    .onTapGesture {}
+                    dim.fill(Color.black.opacity(0.6), style: FillStyle(eoFill: true))
+                        .contentShape(step.touchesTarget ? dim : Path(CGRect(origin: .zero, size: g.size)), eoFill: step.touchesTarget)
+                        .onTapGesture {}
                     RoundedRectangle(cornerRadius: 10).stroke(.white, lineWidth: 2)
                         .frame(width: r.width, height: r.height)
                         .offset(x: r.minX, y: r.minY)
@@ -163,6 +174,7 @@ struct TutorialOverlay: View {
                 Text("\(step.rawValue + 1) of \(TutorialStep.allCases.count)").font(.caption).foregroundStyle(.secondary)
             }
             Text(step.text).font(.subheadline)
+            if step == .menu { MenuScrollPicture().frame(height: 120) }
             HStack {
                 Button("Skip Tutorial") { model.endTutorial() }
                     .accessibilityIdentifier("tutorial.skip")
@@ -178,5 +190,35 @@ struct TutorialOverlay: View {
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("tutorial.\(step.title)")
+    }
+}
+
+/// The Menus tip's picture of the ☰ menu: quick actions, then the menus below, scrolling.
+private struct MenuScrollPicture: View {
+    @State private var down = false
+    private let quick = ["Quick Share as PNG", "Crop and Rotate", "Auto Enhance", "Develop", "Curves"]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(quick, id: \.self) { row($0, chevron: false) }
+            Divider().padding(.vertical, 4)
+            ForEach(MenuTree.order, id: \.self) { row($0, chevron: true) }
+        }
+        .padding(.horizontal, 10)
+        .offset(y: down ? -210 : 0)
+        .frame(height: 120, alignment: .top)
+        .clipped()
+        .background(Color.black.opacity(0.25), in: RoundedRectangle(cornerRadius: 10))
+        .accessibilityHidden(true)
+        .onAppear { withAnimation(.easeInOut(duration: 2.5).delay(0.8).repeatForever(autoreverses: true)) { down = true } }
+    }
+
+    private func row(_ title: String, chevron: Bool) -> some View {
+        HStack {
+            Text(title).font(.caption)
+            Spacer()
+            if chevron { Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.secondary) }
+        }
+        .frame(height: 22)
     }
 }

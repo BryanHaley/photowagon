@@ -386,10 +386,10 @@ struct ColorRangeEditor: View {
                         .pickerStyle(.segmented)
                         .accessibilityIdentifier("range.picker")
                         if surface == .canvas {
-                            Button("Pick in the Image") { model.beginPick(.canvas, prompt: "Tap a colour to select") { tap($0) } }
+                            Button("Pick in the Image") { model.beginPick(.canvas, prompt: "Tap a color to select") { tap($0) } }
                                 .accessibilityIdentifier("range.pickCanvas")
                         } else {
-                            Text("Hold on the image, then let go on a colour.").font(.caption).foregroundStyle(.secondary)
+                            Text("Hold on the image, then let go on a color.").font(.caption).foregroundStyle(.secondary)
                         }
                     }
                     StyleSlider(title: "Fuzziness", value: number(p["fuzziness"]) ?? (tones ? 20 : 40), range: tones ? 0...100 : 0...200,
@@ -474,7 +474,7 @@ struct DuotoneEditor: View {
             ForEach(0..<min(count, inks.count), id: \.self) { i in
                 Section("Ink \(i + 1)") {
                     TextField("Name", text: $inks[i].name).accessibilityIdentifier("duotone.name.\(i)")
-                    ColorRow(title: "Colour", hex: inks[i].color, id: "duotone.color.\(i)") { inks[i].color = $0 }
+                    ColorRow(title: "Color", hex: inks[i].color, id: "duotone.color.\(i)") { inks[i].color = $0 }
                     DisclosureGroup("Curve") {
                         CurveGraph(bins: [], tint: Color(hex: inks[i].color), points: Binding(
                             get: { inks[i].curve.map { CGPoint(x: $0.x * 2.55, y: $0.y * 2.55) } },
@@ -524,14 +524,14 @@ struct ColorTableEditor: View {
                     ForEach(Array(colors.enumerated()), id: \.offset) { i, c in
                         Rectangle().fill(Color(hex: entries["\(i)"] ?? c)).aspectRatio(1, contentMode: .fit)
                             .onTapGesture {
-                                SystemColorPicker.present(title: "Colour \(i)", rgb: EffectPage.rgb(entries["\(i)"] ?? c)) { entries["\(i)"] = ColorRow.hex($0) }
+                                SystemColorPicker.present(title: "Color \(i)", rgb: EffectPage.rgb(entries["\(i)"] ?? c)) { entries["\(i)"] = ColorRow.hex($0) }
                             }
                             .accessibilityIdentifier("colorTable.\(i)")
                     }
                 }
                 .opacity(table == "custom" ? 1 : 0.4)
             } footer: {
-                Text(table == "custom" ? "Tap a colour to change it; the pixels that use it follow." : "The table is replaced when you tap OK.")
+                Text(table == "custom" ? "Tap a color to change it; the pixels that use it follow." : "The table is replaced when you tap OK.")
             }
         }
         .onAppear {

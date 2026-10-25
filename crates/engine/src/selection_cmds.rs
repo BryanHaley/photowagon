@@ -177,7 +177,7 @@ fn lab_transform(s: &Session) -> Result<std::sync::Arc<photocraft_cms::Transform
     let d = s.active().ok_or(EngineError::NoDocument)?;
     let src = crate::color_cmds::composite_profile(&d.doc);
     photocraft_cms::cached(&src, photocraft_cms::Builtin::LabD50.profile(), photocraft_cms::TransformOptions::default())
-        .map_err(|e| EngineError::Other(format!("colour management: {e}")))
+        .map_err(|e| EngineError::Other(format!("color management: {e}")))
 }
 
 /// The Lab profile's normalised encoding (ICC v4) → L 0–100, a and b −128–127.
@@ -283,7 +283,7 @@ impl ColorRangeSamples {
         };
         let mut fixed: Vec<[f32; 3]> = Vec::new();
         if let Some(cs) = p.get("colors") {
-            let cs = cs.as_array().ok_or_else(|| bad("`colors` must be a list of colours".into()))?;
+            let cs = cs.as_array().ok_or_else(|| bad("`colors` must be a list of colors".into()))?;
             fixed.extend(cs.iter().map(|c| parse_color(&json!({ "color": c }))));
         }
         if p.get("color").is_some() {
@@ -862,7 +862,7 @@ mod tests {
         s.execute("select.colorRange", outside).unwrap();
         assert_eq!(coverage(&s, 10, 10), 1.0, "the red inside the selection is selected");
         assert_eq!(coverage(&s, 30, 10), 0.0, "the sampled red outside it stays out");
-        assert_eq!(coverage(&s, 2, 2), 0.0, "white is not the sampled colour");
+        assert_eq!(coverage(&s, 2, 2), 0.0, "white is not the sampled color");
     }
 
     #[test]

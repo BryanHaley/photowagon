@@ -56,8 +56,8 @@ fn mode_name(mode: &str) -> &'static str {
 
 fn assert_in_mode(s: &Session, mode: &str, what: &str) {
     let modes = effect_colour_modes(s);
-    assert!(!modes.is_empty(), "{what}: no colours found");
-    assert!(modes.iter().all(|m| m == mode_name(mode)), "{what}: colours {modes:?} in a {mode} document");
+    assert!(!modes.is_empty(), "{what}: no colors found");
+    assert!(modes.iter().all(|m| m == mode_name(mode)), "{what}: colors {modes:?} in a {mode} document");
 }
 
 #[test]

@@ -227,7 +227,7 @@ impl fmt::Display for DecodeWarning {
             DecodeWarning::MoreElements { total } => write!(f, "only the first of {total} image elements was imported"),
             DecodeWarning::DpxEncoding { transfer, colorimetric } => write!(
                 f,
-                "DPX transfer characteristic: {} ({transfer}), colorimetric: {} ({colorimetric}); the code values were imported as stored, without a colour transform",
+                "DPX transfer characteristic: {} ({transfer}), colorimetric: {} ({colorimetric}); the code values were imported as stored, without a color transform",
                 dpx_code_name(*transfer),
                 dpx_code_name(*colorimetric)
             ),

@@ -71,7 +71,7 @@ pub(crate) fn validate_new_params(s: &Session, p: &Value) -> Result<()> {
                     matches!(v, "white" | "black" | "transparent" | "backgroundColor")
                         || (v.strip_prefix('#').unwrap_or(v).bytes().all(|b| b.is_ascii_hexdigit()) && crate::commands::parse_hex(v).is_some())
                 }),
-                "white, black, transparent, backgroundColor or a valid hex colour".into(),
+                "white, black, transparent, backgroundColor or a valid hex color".into(),
             ),
             "backgroundColor" => {
                 background_color(p, s.tools.background, cmd)?;
@@ -119,13 +119,13 @@ impl DocumentSettings {
         }
         if !matches!(self.background.as_str(), "white" | "black" | "transparent" | "backgroundColor") && crate::commands::parse_hex(&self.background).is_none()
         {
-            return Err("Unknown background choice or invalid colour".into());
+            return Err("Unknown background choice or invalid color".into());
         }
         if self.background == "backgroundColor" && self.background_color.is_none() {
-            return Err("A saved Background Color needs its colour value".into());
+            return Err("A saved Background Color needs its color value".into());
         }
         if self.background_color.is_some_and(|c| !c.iter().all(|v| v.is_finite() && (0.0..=1.0).contains(v))) {
-            return Err("Background colour components must be within 0..1".into());
+            return Err("Background color components must be within 0..1".into());
         }
         if !matches!(self.unit.as_str(), "px" | "in" | "cm" | "mm" | "pt" | "pica") || !matches!(self.resolution_unit.as_str(), "in" | "cm") {
             return Err("Unknown dimension or resolution display unit".into());

@@ -155,16 +155,16 @@ impl SwatchColor {
         if let Some(s) = v.as_str() {
             let h = s.trim().trim_start_matches('#');
             if h.len() != 6 || !h.chars().all(|c| c.is_ascii_hexdigit()) {
-                return Err(format!("bad colour `{s}` (\"#rrggbb\" or {{\"model\",\"values\"}})"));
+                return Err(format!("bad color `{s}` (\"#rrggbb\" or {{\"model\",\"values\"}})"));
             }
             let b = |i: usize| h.get(i..i + 2).and_then(|x| u8::from_str_radix(x, 16).ok()).map_or(0.0, |x| f32::from(x) / 255.0);
             return Ok(SwatchColor::Rgb([b(0), b(2), b(4)]));
         }
-        let model = v.get("model").and_then(Value::as_str).ok_or("a colour needs `model` (rgb|hsb|cmyk|lab|gray) and `values`")?;
+        let model = v.get("model").and_then(Value::as_str).ok_or("a color needs `model` (rgb|hsb|cmyk|lab|gray) and `values`")?;
         let vals: Vec<f32> = v
             .get("values")
             .and_then(Value::as_array)
-            .ok_or("a colour needs `values`")?
+            .ok_or("a color needs `values`")?
             .iter()
             // Beyond f32 range a value turns into inf as f32 (an HSB hue then wraps to NaN, which
             // the prefs file can't store), so reject it here.
@@ -172,10 +172,10 @@ impl SwatchColor {
                 x.as_f64()
                     .filter(|f| f.is_finite() && f.abs() <= f64::from(f32::MAX))
                     .map(|f| f as f32)
-                    .ok_or("colour values must be finite numbers within f32 range")
+                    .ok_or("color values must be finite numbers within f32 range")
             })
             .collect::<Result<_, _>>()?;
-        let need = |n: usize| if vals.len() == n { Ok(()) } else { Err(format!("a {model} colour has {n} values, got {}", vals.len())) };
+        let need = |n: usize| if vals.len() == n { Ok(()) } else { Err(format!("a {model} color has {n} values, got {}", vals.len())) };
         let pct = |v: f32| (v / 100.0).clamp(0.0, 1.0);
         Ok(match model {
             "rgb" => {
@@ -198,7 +198,7 @@ impl SwatchColor {
                 need(1)?;
                 SwatchColor::Gray(pct(vals[0]))
             }
-            m => return Err(format!("unknown colour model `{m}` (rgb|hsb|cmyk|lab|gray)")),
+            m => return Err(format!("unknown color model `{m}` (rgb|hsb|cmyk|lab|gray)")),
         })
     }
 

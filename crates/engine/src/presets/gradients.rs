@@ -155,12 +155,12 @@ impl GradientPreset {
                 "foreground" => StopColor::Foreground,
                 "background" => StopColor::Background,
                 h if h.trim_start_matches('#').len() == 6 && h.trim_start_matches('#').chars().all(|c| c.is_ascii_hexdigit()) => StopColor::Rgb(hex(h)),
-                o => return Err(bad(cmd, format!("bad stop colour `{o}`"))),
+                o => return Err(bad(cmd, format!("bad stop color `{o}`"))),
             };
             stops.push((t.clamp(0.0, 1.0), c));
         }
         if stops.len() < 2 {
-            return Err(bad(cmd, "a gradient needs at least 2 colour stops"));
+            return Err(bad(cmd, "a gradient needs at least 2 color stops"));
         }
         stops.sort_by(|a, b| a.0.total_cmp(&b.0));
         GradientPreset { name: name.into(), stops, opacity: Vec::new() }.with_transparency(p, cmd)
@@ -469,12 +469,12 @@ fn select(s: &mut Session, p: &Value) -> Result<Value> {
 
 /// A preset stop colour: `"#rrggbb"`, `"foreground"` or `"background"`.
 fn stop_color_param(v: &Value, cmd: &str) -> Result<StopColor> {
-    let s = v.as_str().ok_or_else(|| bad(cmd, "a stop colour is \"#rrggbb\", \"foreground\" or \"background\""))?;
+    let s = v.as_str().ok_or_else(|| bad(cmd, "a stop color is \"#rrggbb\", \"foreground\" or \"background\""))?;
     match s {
         "foreground" => Ok(StopColor::Foreground),
         "background" => Ok(StopColor::Background),
         h if h.trim_start_matches('#').len() == 6 && h.trim_start_matches('#').chars().all(|c| c.is_ascii_hexdigit()) => Ok(StopColor::Rgb(hex(h))),
-        o => Err(bad(cmd, format!("bad stop colour `{o}`"))),
+        o => Err(bad(cmd, format!("bad stop color `{o}`"))),
     }
 }
 
@@ -564,26 +564,26 @@ pub fn apply_preset_stop(g: &GradientPreset, p: &Value, fg: [f32; 4], bg: [f32; 
             };
             stops.push((t, c));
             if stops.len() > 1024 {
-                return Err(bad(cmd, "too many colour stops (max 1024)"));
+                return Err(bad(cmd, "too many color stops (max 1024)"));
             }
         }
         "move" => {
             let (i, t) = (index()?, location()?);
-            stops.get_mut(i).ok_or_else(|| bad(cmd, format!("no colour stop {i}")))?.0 = t;
+            stops.get_mut(i).ok_or_else(|| bad(cmd, format!("no color stop {i}")))?.0 = t;
         }
         "delete" => {
             let i = index()?;
             if i >= stops.len() {
-                return Err(bad(cmd, format!("no colour stop {i}")));
+                return Err(bad(cmd, format!("no color stop {i}")));
             }
             if stops.len() <= 2 {
-                return Err(bad(cmd, "a gradient keeps at least 2 colour stops"));
+                return Err(bad(cmd, "a gradient keeps at least 2 color stops"));
             }
             stops.remove(i);
         }
         "color" => {
             let (i, c) = (index()?, p.get("color").ok_or_else(|| bad(cmd, "missing `color`")).and_then(|v| stop_color_param(v, cmd))?);
-            stops.get_mut(i).ok_or_else(|| bad(cmd, format!("no colour stop {i}")))?.1 = c;
+            stops.get_mut(i).ok_or_else(|| bad(cmd, format!("no color stop {i}")))?.1 = c;
         }
         o => return Err(bad(cmd, format!("unknown action `{o}` (add|move|delete|color)"))),
     }
@@ -674,7 +674,7 @@ pub fn specs() -> Vec<CommandSpec> {
             menu: &[],
             shortcut: None,
             params: leak(format!(
-                r##"{{"preset":name|{stops},"group":name?,"applyToLayer":bool=true (also recolours a selected Gradient Fill layer)}} → {{current,layer?}}. The Gradient tool paints with it."##
+                r##"{{"preset":name|{stops},"group":name?,"applyToLayer":bool=true (also recolors a selected Gradient Fill layer)}} → {{current,layer?}}. The Gradient tool paints with it."##
             )),
             enabled: always,
             run: select,
@@ -685,7 +685,7 @@ pub fn specs() -> Vec<CommandSpec> {
             label: "Edit Gradient Stop",
             menu: &[],
             shortcut: None,
-            params: r##"{"action":"add|move|delete|color|opacity","kind":"color|opacity"="color","index":stop number,"location":0..1,"color":"#rrggbb"|"foreground"|"background" (add: default the colour there),"opacity":0..100} → {"current"}. Edits the Gradient tool's current gradient (no layer, midpoints stay centred)."##,
+            params: r##"{"action":"add|move|delete|color|opacity","kind":"color|opacity"="color","index":stop number,"location":0..1,"color":"#rrggbb"|"foreground"|"background" (add: default the color there),"opacity":0..100} → {"current"}. Edits the Gradient tool's current gradient (no layer, midpoints stay centred)."##,
             enabled: always,
             run: stop,
             journal: true,

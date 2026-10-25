@@ -51,7 +51,7 @@ pub(crate) fn copy(s: &mut Session) -> Result<Option<Value>> {
     };
     let n = src.format().channels();
     if k >= n {
-        return Err(EngineError::Other(format!("no colour channel {k} in this layer")));
+        return Err(EngineError::Other(format!("no color channel {k} in this layer")));
     }
     let sel = doc.selection.as_ref();
     let area = sel.map_or(canvas, |m| m.content_bounds().intersect(&canvas));
@@ -93,7 +93,7 @@ pub(crate) fn paste(s: &mut Session, p: &Value, k: usize, in_place: bool, limit:
         let surf = crate::commands::paint_surface(doc, id, &Value::Null)?;
         let n = surf.format().channels();
         if k >= n {
-            return Err(EngineError::Other(format!("no colour channel {k} in this layer")));
+            return Err(EngineError::Other(format!("no color channel {k} in this layer")));
         }
         if !area.is_empty() {
             let len = (area.width() as usize).checked_mul(area.height() as usize).ok_or_else(|| EngineError::Other("the channel paste is too large".into()))?;
@@ -124,7 +124,7 @@ pub(crate) fn paste(s: &mut Session, p: &Value, k: usize, in_place: bool, limit:
 /// value for it, as Photoshop does. The other channels and the layer's transparency stay as they
 /// are. One history step.
 pub(crate) fn cut(s: &mut Session, id: LayerId, k: usize) -> Result<Value> {
-    let r = copy(s)?.ok_or_else(|| EngineError::Other("no colour channel is targeted".into()))?;
+    let r = copy(s)?.ok_or_else(|| EngineError::Other("no color channel is targeted".into()))?;
     let bg = s.tools.background;
     s.edit("Cut Pixels", |doc, _| crate::channel_cmds::clear_color_channel(doc, id, k, bg))?;
     Ok(r)

@@ -367,13 +367,13 @@ fn sampled_tip_paints_the_brush_colour_never_black() {
             let p = s.rgba(x, y);
             if p[3] > 0.5 {
                 painted += 1;
-                assert!((p[0] - 0.8).abs() < 0.05 && (p[1] - 0.1).abs() < 0.05, "not the brush colour at ({x},{y}): {p:?}");
+                assert!((p[0] - 0.8).abs() < 0.05 && (p[1] - 0.1).abs() < 0.05, "not the brush color at ({x},{y}): {p:?}");
             }
         }
     }
     // The helper writes an alternating 255/0 tip, so both painted and unpainted pixels exist.
     assert!(painted > 0, "the imported tip painted nothing");
-    assert!(painted < 64 * 64, "the tip covered everything - coverage was treated as solid colour");
+    assert!(painted < 64 * 64, "the tip covered everything - coverage was treated as solid color");
 }
 
 /// #3340: Photoshop's texture Contrast runs -50..100; the model maps -50..0 and 0..100 onto

@@ -100,7 +100,7 @@ struct XybOutput {
 
 #[cfg(not(target_arch = "wasm32"))]
 fn xyb_output(encoding: &ColourEncoding) -> Result<XybOutput> {
-    let unsupported = || RawError::unsupported("lossy JPEG XL raw data in this colour encoding");
+    let unsupported = || RawError::unsupported("lossy JPEG XL raw data in this color encoding");
     let ColourEncoding::Enum(e) = encoding else { return Err(unsupported()) };
     if e.colour_space != ColourSpace::Rgb && e.colour_space != ColourSpace::Grey || e.white_point != WhitePoint::D65 {
         return Err(unsupported());

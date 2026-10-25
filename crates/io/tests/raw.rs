@@ -31,7 +31,7 @@ fn monochrome_dng_opens() {
     let r = import("S261009_90_67.dng", &DngSpec::monochrome(w, h, data).build()).unwrap();
     let d = &r.document;
     assert_eq!((d.size.width, d.size.height, d.mode, d.depth), (40, 24, ColorMode::Rgb, SampleType::U16));
-    assert!(r.warnings.iter().all(|w| !w.contains("colour matrix") && !w.contains("preview")), "{:?}", r.warnings);
+    assert!(r.warnings.iter().all(|w| !w.contains("color matrix") && !w.contains("preview")), "{:?}", r.warnings);
 }
 
 #[test]

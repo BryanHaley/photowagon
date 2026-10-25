@@ -133,7 +133,7 @@ final class ColorScreensTests: SettingsScreensTests {
             ok("Channel Mixer")
             app.buttons["undo"].tap()
         }
-        step("Selective Color: Blues lose their cyan; switching colours keeps it") {
+        step("Selective Color: Blues lose their cyan; switching colors keeps it") {
             let before = stats(sky).mean
             open("Image", "Adjustments", "Selective Color…", title: "Selective Color")
             pick(app.buttons["selective.colors"], "Blues")
@@ -287,18 +287,18 @@ final class SelectAndFilterScreensTests: SettingsScreensTests {
             open("Image", "Canvas Size…", title: "Canvas Size")
             app.buttons["anchor.topLeft"].tap()
             replace(app.textFields["settings.width"], with: "1600\n")
-            XCTAssert(app.buttons["settings.extensionColor.choice"].exists, "the extension colour")
+            XCTAssert(app.buttons["settings.extensionColor.choice"].exists, "the extension color")
             app.buttons["settings.run"].tap()
             waitIdle()
             XCTAssertEqual(inspect["width"] as? Int, 1600)
             XCTAssertGreaterThan(lum(stats([1450, 400, 1550, 500]).mean), 0.95, "white on the right")
         }
-        step("Edit › Fill: a colour to pick") {
+        step("Edit › Fill: a color to pick") {
             open("Edit", "Fill…", title: "Fill")
             XCTAssert(app.buttons["settings.color"].exists)
             app.buttons["Cancel"].firstMatch.tap()
         }
-        step("Image › Mode › Duotone: inks with names, colours and curves") {
+        step("Image › Mode › Duotone: inks with names, colors and curves") {
             menu("Image", "Mode", "Grayscale")
             waitIdle()
             open("Image", "Mode", "Duotone…", title: "Duotone")
@@ -309,7 +309,7 @@ final class SelectAndFilterScreensTests: SettingsScreensTests {
             waitIdle()
             XCTAssertEqual(inspect["mode"] as? String, "Duotone")
         }
-        step("Image › Mode › Color Table: the indexed image's colours") {
+        step("Image › Mode › Color Table: the indexed image's colors") {
             menu("Image", "Mode", "Grayscale")
             menu("Image", "Mode", "RGB Color")
             waitIdle()

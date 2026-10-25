@@ -261,7 +261,7 @@ fn read_pattern(r: &mut Rd, budget: &mut PatternBudget) -> Result<PsdPattern> {
     }
     let nc = mode_channels(mode);
     if channels.len() < nc {
-        return Err(PsdError::invalid("pattern has fewer channels than its colour mode"));
+        return Err(PsdError::invalid("pattern has fewer channels than its color mode"));
     }
     let mut planes = Vec::new();
     for channel in channels {

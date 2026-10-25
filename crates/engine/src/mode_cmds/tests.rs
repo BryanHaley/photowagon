@@ -87,7 +87,7 @@ fn rotate_arbitrary_keeps_the_background_opaque_with_a_translucent_background_co
     s.execute("tools.setColors", json!({"background": "#00ff0080"})).unwrap();
     s.execute("image.rotation.arbitrary", json!({"angle": 30})).unwrap();
     let corner = doc(&s).layers[0].surface().unwrap().rgba(0, 0);
-    assert_eq!(corner, [0.0, 1.0, 0.0, 1.0], "the uncovered corner is opaque background colour");
+    assert_eq!(corner, [0.0, 1.0, 0.0, 1.0], "the uncovered corner is opaque background color");
 }
 
 #[test]

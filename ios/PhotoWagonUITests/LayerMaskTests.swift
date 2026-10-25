@@ -59,7 +59,7 @@ final class MaskBasicsTests: LayerMaskTests {
             XCTAssert(app.buttons["option.sampleLayers"].label.contains("All Layers"), app.buttons["option.sampleLayers"].label)
         }
 
-        step("A box around the man, ◑ › Solid Color › Pick from Image: the sky's colour, masked to the box") {
+        step("A box around the man, ◑ › Solid Color › Pick from Image: the sky's color, masked to the box") {
             tool(group: "Rectangular Marquee", pick: "Rectangular Marquee")
             drag(doc: (Double(box[0]), Double(box[1])), to: (Double(box[2]), Double(box[3])))
             waitIdle()
@@ -98,7 +98,7 @@ final class MaskBasicsTests: LayerMaskTests {
             done.tap()
             XCTAssertNil(inspect["layerMaskView"] as? [String: Any], "the image again")
             Thread.sleep(forTimeInterval: 0.5)
-            XCTAssertLessThan(lum(screenColor(at(w * 0.45, h * 0.65))), 0.9, "the colour shows")
+            XCTAssertLessThan(lum(screenColor(at(w * 0.45, h * 0.65))), 0.9, "the color shows")
         }
 
         step("Double-tap the mask: Mask Properties, Density 50%, Feather 20 px") {

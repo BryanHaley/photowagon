@@ -94,7 +94,7 @@ pub fn specs() -> Vec<CommandSpec> {
         label: "Background From Layer",
         menu: &["Layer", "New"],
         shortcut: None,
-        params: r##"{"layer":id?} (the active layer by default; transparent pixels take the background colour and the layer drops to the bottom as the locked Background)"##,
+        params: r##"{"layer":id?} (the active layer by default; transparent pixels take the background color and the layer drops to the bottom as the locked Background)"##,
         enabled: can_convert,
         journal: true,
         run: background_from_layer,

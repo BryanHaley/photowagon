@@ -378,7 +378,7 @@ fn colour_rgb(v: &J) -> Option<[f64; 3]> {
 /// A `[r, g, b(, a)]` (0–1) or `#rrggbb` colour param as an `RGBC` descriptor (0–255).
 fn colour_rgbc(v: Option<&J>, default: f64) -> Result<Value, String> {
     let Some(v) = v else { return Ok(rgbc(default)) };
-    let rgb = colour_rgb(v).filter(|c| c.iter().all(|v| v.is_finite())).ok_or("a colour is not [r, g, b] or #rrggbb")?;
+    let rgb = colour_rgb(v).filter(|c| c.iter().all(|v| v.is_finite())).ok_or("a color is not [r, g, b] or #rrggbb")?;
     let c = |v: f64| Value::Double(v.clamp(0.0, 1.0) * 255.0);
     Ok(Value::Descriptor(Descriptor::new("RGBC").with("Rd  ", c(rgb[0])).with("Grn ", c(rgb[1])).with("Bl  ", c(rgb[2]))))
 }

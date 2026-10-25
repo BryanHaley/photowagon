@@ -47,7 +47,11 @@ final class MenuTests: XCTestCase {
         XCTAssertNil(EditorModel.request(for: "filter.blur.gaussianBlur"))
         XCTAssertTrue(ContentView.isLive(command("filter.blur.gaussianBlur", menu: "Filter > Blur")))
         XCTAssertTrue(ContentView.isLive(command("image.adjustments.levels", menu: "Image > Adjustments")))
+        // Image Size looks the same fitted in a preview, and resamples slowly on every change.
         XCTAssertFalse(ContentView.isLive(command("image.imageSize", menu: "Image")))
+        XCTAssertTrue(ContentView.isLive(command("image.rotation.arbitrary", menu: "Image > Image Rotation")))
+        XCTAssertTrue(ContentView.isLive(command("edit.fill", menu: "Edit")))
+        XCTAssertFalse(ContentView.isLive(command("image.duplicate", menu: "Image")), "makes a new document")
     }
 
     func testTheAppsOwnItemsAndWhatTheyOpen() throws {
@@ -69,7 +73,7 @@ final class MenuTests: XCTestCase {
         let filter = menu.items("Filter")
         XCTAssertEqual((filter.first as? UIMenu)?.options.contains(.displayInline), true, "Filter's own filters first")
         XCTAssertTrue(titles(flat(menu.items("Edit"))).contains("Free Transform"))
-        XCTAssertTrue(titles(flat(menu.items("View"))).contains("Canvas Colour"))
+        XCTAssertTrue(titles(flat(menu.items("View"))).contains("Canvas Color"))
         XCTAssertEqual(titles(menu.items("Window")).count, 1)
         XCTAssertTrue(menu.items("Nothing").isEmpty)
 

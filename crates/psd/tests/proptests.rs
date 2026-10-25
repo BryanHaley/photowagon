@@ -193,7 +193,7 @@ proptest! {
             // The colour was written, so it must come back: a parser that zeroed every colour
             // would pass a property that only looked at positions.
             let GrdColor::Rgb([r, g, bl]) = a.color else {
-                prop_assert!(false, "colour must survive the round trip");
+                prop_assert!(false, "color must survive the round trip");
                 return Ok(());
             };
             prop_assert!((r - b.2 as f32 / 255.0).abs() < 1.0 / 255.0, "red channel {r} lost");

@@ -118,7 +118,7 @@ fn monochrome_linear_raw_develops_to_neutral_grey() {
         let d = develop_sensor(&s, &DevelopOptions::default()).unwrap_or_else(|e| panic!("{name}: {e}"));
         assert_eq!((d.width, d.height, d.rgb.len()), (37, 23, 37 * 23 * 3), "{name}");
         assert!(d.info.cfa.is_none() && d.info.wb_multipliers == [1.0; 3], "{name}: {:?}", d.info);
-        assert!(d.warnings.iter().all(|w| !w.contains("colour") && !w.contains("white balance")), "{name}: {:?}", d.warnings);
+        assert!(d.warnings.iter().all(|w| !w.contains("color") && !w.contains("white balance")), "{name}: {:?}", d.warnings);
         let row = assert_neutral_ramp(&d, name);
         if !lossy {
             assert_eq!((row[0], row[row.len() - 1]), (0, 65535), "{name}");

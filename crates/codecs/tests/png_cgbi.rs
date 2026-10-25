@@ -43,7 +43,7 @@ fn cgbi_opens_as_straight_rgba() {
     let img = decode(&file).unwrap().convert(ChannelLayout::Rgba, photocraft_codecs::SampleType::U8);
     let px = img.data();
     assert_eq!(&px[..4], &[255, 0, 0, 255], "red, not blue");
-    assert_eq!(&px[4..8], &[0, 0, 255, 128], "half-transparent blue, its colour full again");
+    assert_eq!(&px[4..8], &[0, 0, 255, 128], "half-transparent blue, its color full again");
     assert_eq!(px[11], 0);
     for (got, want) in px[12..15].iter().zip([200u8, 100, 50]) {
         assert!(got.abs_diff(want) <= 4, "{:?}", &px[12..16]);

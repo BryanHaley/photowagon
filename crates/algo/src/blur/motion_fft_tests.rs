@@ -198,7 +198,7 @@ fn motion_fft_premultiplied_alpha_hidden_colour_hdr_and_cutoff_are_preserved() {
     }
     let actual = fft(&src, out, true, 38.0, 67.75);
     assert_ideal(&actual, &ideal(&src, out, true, 38.0, 67.75), "HDR premultiplied image");
-    assert_ideal(&fft(&hidden, out, true, 38.0, 67.75), &actual.iter().map(|&v| f64::from(v)).collect::<Vec<_>>(), "hidden transparent colours do not bleed");
+    assert_ideal(&fft(&hidden, out, true, 38.0, 67.75), &actual.iter().map(|&v| f64::from(v)).collect::<Vec<_>>(), "hidden transparent colors do not bleed");
 
     let rect = Rect::new(-40, -40, 41, 41);
     for alpha in [0.0_f32, 1e-8, 1e-7, f32::from_bits(1e-7_f32.to_bits() + 1), 0.25, 1.0] {

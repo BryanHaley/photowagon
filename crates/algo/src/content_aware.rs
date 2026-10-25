@@ -717,7 +717,7 @@ mod tests {
         // 1121 pixels took the strings' colour.
         // The exemplar fill leaves about 2.8.
         assert!(blotch < 3.5, "ghosts and blotches: {blotch:.2} levels of 255");
-        assert_eq!(bright, 0, "filled pixels with the strings' colour");
+        assert_eq!(bright, 0, "filled pixels with the strings' color");
     }
 
     #[test]

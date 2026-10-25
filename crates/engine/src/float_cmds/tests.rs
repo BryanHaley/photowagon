@@ -186,6 +186,6 @@ fn cutting_an_untouched_part_of_the_mask_moves_it_and_leaves_the_background_colo
     s.execute("select.float", json!({"dx": 40, "dy": 0, "target": "mask"})).unwrap();
     s.execute("select.drop", json!({})).unwrap();
     assert_eq!(mask_at(&s, 55, 12), 0.0, "the untouched black moved");
-    assert!((mask_at(&s, 12, 12) - 0.5).abs() < 0.01, "the hole takes the background colour");
+    assert!((mask_at(&s, 12, 12) - 0.5).abs() < 0.01, "the hole takes the background color");
     assert_eq!(mask_at(&s, 40, 12), 0.0);
 }

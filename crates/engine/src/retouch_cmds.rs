@@ -1324,7 +1324,7 @@ pub fn specs() -> Vec<CommandSpec> {
             menu: &[],
             shortcut: None,
             params: brush_params!(
-                r#","strokes":[[[x,y,pressure?],…],…]? (several strokes removed together, as one job and one undo step; else "points"),"closeLoops":bool=true (a stroke around an object removes what it encloses),"sampleAllLayers":bool=false,"newLayer":bool=false (the fill goes to a new layer above the target, which stays as it was),"selection":bool=false (remove what's selected instead of strokes; no points),"ai":{"side":64..2048=800,"fill":base64 (side × side RGB8, from the model),"matchColor":bool=true (blend it in to take the colour round the hole)}? (AI Remove: the model's square from paint.removeAI goes back into the hole, scaled back up if it was scaled down) → {"damage","layer"?} (a background job)"#
+                r#","strokes":[[[x,y,pressure?],…],…]? (several strokes removed together, as one job and one undo step; else "points"),"closeLoops":bool=true (a stroke around an object removes what it encloses),"sampleAllLayers":bool=false,"newLayer":bool=false (the fill goes to a new layer above the target, which stays as it was),"selection":bool=false (remove what's selected instead of strokes; no points),"ai":{"side":64..2048=800,"fill":base64 (side × side RGB8, from the model),"matchColor":bool=true (blend it in to take the color round the hole)}? (AI Remove: the model's square from paint.removeAI goes back into the hole, scaled back up if it was scaled down) → {"damage","layer"?} (a background job)"#
             ),
             enabled: has_pixel_layer,
             run: remove::remove,
@@ -1397,7 +1397,7 @@ pub fn specs() -> Vec<CommandSpec> {
             label: "Smudge",
             menu: &[],
             shortcut: None,
-            params: brush_params!(r#","strength":1..100=50,"fingerPainting":bool=false (starts with the foreground colour),"sampleAllLayers":bool=false"#),
+            params: brush_params!(r#","strength":1..100=50,"fingerPainting":bool=false (starts with the foreground color),"sampleAllLayers":bool=false"#),
             enabled: has_pixel_layer,
             run: |s, p| dab_cmd(s, p, "paint.smudge"),
             journal: true,

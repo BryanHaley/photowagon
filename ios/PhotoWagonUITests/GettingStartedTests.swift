@@ -38,19 +38,19 @@ final class WorkspaceAndFilesTests: GettingStartedTests {
             XCTAssert(app.scrollViews["toolbar"].exists && app.buttons["layers"].exists && canvas.exists)
         }
 
-        step("Home › New file: a preset, then 1920 × 1080 px named colours, sRGB, white, 8-bit") {
+        step("Home › New file: a preset, then 1920 × 1080 px named colors, sRGB, white, 8-bit") {
             goHome()
             app.buttons["home.new"].tap()
             XCTAssert(app.buttons["new.create"].waitForExistence(timeout: 10), "the New Document sheet")
             pick(app.buttons["new.preset"], "Landscape 6 × 4 in — 1800 × 1200 px")
             XCTAssertEqual(app.textFields["new.width"].value as? String, "1800", "the preset fills in its size")
-            replace(app.textFields["new.name"], with: "colours")
+            replace(app.textFields["new.name"], with: "colors")
             pick(app.buttons["new.units"], "Pixels")
             replace(app.textFields["new.width"], with: "1920")
             replace(app.textFields["new.height"], with: "1080")
             pick(app.buttons["new.profile"], "sRGB IEC61966-2.1")
             app.buttons["new.create"].tap()
-            XCTAssert(docOpen("colours", timeout: 10))
+            XCTAssert(docOpen("colors", timeout: 10))
             let i = inspect
             XCTAssertEqual(i["width"] as? Int, 1920)
             XCTAssertEqual(i["height"] as? Int, 1080)
@@ -58,7 +58,7 @@ final class WorkspaceAndFilesTests: GettingStartedTests {
             XCTAssertEqual(probe("document.pixel", ["x": 10, "y": 10])["value"] as? [Double], [1, 1, 1, 1], "white background")
         }
 
-        step("Colour: pick red and paint on a new layer, then paint on another") {
+        step("Color: pick red and paint on a new layer, then paint on another") {
             newLayer()
             pickColor(containing: "red")
             XCTAssertGreaterThan(colors.fg.first ?? 0, 0.5, "red is the foreground: \(colors.fg)")
@@ -121,15 +121,15 @@ final class WorkspaceAndFilesTests: GettingStartedTests {
         step("File › Save on a new document: the save sheet offers only formats that keep layers") {
             menu("File", "Save")
             XCTAssert(app.buttons["save.save"].waitForExistence(timeout: 15), "the save sheet opens")
-            XCTAssertEqual(app.textFields["save.name"].value as? String, "colours", "named after the document")
+            XCTAssertEqual(app.textFields["save.name"].value as? String, "colors", "named after the document")
             app.buttons["save.format"].tap()
             XCTAssert(app.buttons["Photoshop® (PSD)"].waitForExistence(timeout: 5))
             XCTAssert(app.buttons["PhotoCraft (default)"].exists && app.buttons["TIFF"].exists)
             XCTAssertFalse(app.buttons["JPEG"].exists, "no JPEG with several layers")
             app.buttons["Photoshop® (PSD)"].tap()
             app.buttons["save.save"].tap()
-            XCTAssert(toast("Saved colours.psd"))
-            XCTAssert(docOpen("colours.psd", timeout: 5), "the tab shows the file name")
+            XCTAssert(toast("Saved colors.psd"))
+            XCTAssert(docOpen("colors.psd", timeout: 5), "the tab shows the file name")
         }
 
         step("Add text, double-tap the T to edit it; File › Save updates the file in place") {
@@ -147,15 +147,15 @@ final class WorkspaceAndFilesTests: GettingStartedTests {
             alert.buttons["OK"].firstMatch.tap()
             closeSheet()
             menu("File", "Save")
-            XCTAssert(toast("Saved colours.psd"))
+            XCTAssert(toast("Saved colors.psd"))
             XCTAssertFalse(app.buttons["save.save"].exists, "no save sheet the second time")
         }
 
         step("Close, Home › Recent: the layers and the edit were saved") {
-            closeDoc("colours.psd")
+            closeDoc("colors.psd")
             goHome()
-            app.buttons["recent.colours.psd"].tap()
-            XCTAssert(docOpen("colours.psd", timeout: 20))
+            app.buttons["recent.colors.psd"].tap()
+            XCTAssert(docOpen("colors.psd", timeout: 20))
             XCTAssertEqual(layers.count, 5, "Background, three painted layers and the text")
             XCTAssertEqual(typeInfo("updated link")["text"] as? String, "updated link")
         }
@@ -168,8 +168,8 @@ final class WorkspaceAndFilesTests: GettingStartedTests {
             XCTAssert(quality.waitForExistence(timeout: 5), "JPEG has a quality")
             quality.slide(to: 0.5)
             app.buttons["save.save"].tap()
-            XCTAssert(toast("Saved colours copy.jpg"))
-            XCTAssert(docOpen("colours.psd", timeout: 0), "still colours.psd")
+            XCTAssert(toast("Saved colors copy.jpg"))
+            XCTAssert(docOpen("colors.psd", timeout: 0), "still colors.psd")
         }
 
         step("Window › Actions: record a new layer and a brush stroke, then stop") {
@@ -211,7 +211,7 @@ final class WorkspaceAndFilesTests: GettingStartedTests {
             openFromHome()
             pickFile("background")
             XCTAssert(docOpen("background.jpg", timeout: 20))
-            XCTAssert(docOpen("colours.psd", timeout: 0) && docOpen("subject.jpg", timeout: 0))
+            XCTAssert(docOpen("colors.psd", timeout: 0) && docOpen("subject.jpg", timeout: 0))
         }
     }
 }
@@ -403,9 +403,9 @@ final class ToolsPanelsAndTransformTests: GettingStartedTests {
             XCTAssertEqual((inspect["history"] as? [String])?.count, steps)
         }
 
-        step("View › Canvas Colour › Light Gray") {
+        step("View › Canvas Color › Light Gray") {
             let corner = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.02, dy: 0.02))
-            menu("View", "Canvas Colour", "Light Gray")
+            menu("View", "Canvas Color", "Light Gray")
             XCTAssertEqual(screenColor(corner).first ?? 0, 0.75, accuracy: 0.05, "light gray around the image")
         }
 

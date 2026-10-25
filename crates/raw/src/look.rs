@@ -158,7 +158,7 @@ impl CameraLook {
 
     /// The note `develop` reports.
     pub(crate) fn note(&self) -> String {
-        format!("colour fitted to the camera's embedded JPEG (mean ΔE {:.1} against it; {:.1} with the neutral fallback)", self.delta_e, self.delta_e_fallback)
+        format!("color fitted to the camera's embedded JPEG (mean ΔE {:.1} against it; {:.1} with the neutral fallback)", self.delta_e, self.delta_e_fallback)
     }
 }
 
@@ -168,7 +168,7 @@ pub struct LookRejected(pub String);
 
 impl fmt::Display for LookRejected {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "colour not fitted to the camera JPEG: {}", self.0)
+        write!(f, "color not fitted to the camera JPEG: {}", self.0)
     }
 }
 
@@ -541,7 +541,7 @@ fn fit_cells(cells: &[Cell], gw: usize, baseline_exposure: f64) -> Result<Camera
         l[1].hypot(l[2]) > 4.0
     });
     if coloured.count() * 50 < usable.len() {
-        return reject("the reference is (nearly) colourless");
+        return reject("the reference is (nearly) colorless");
     }
 
     // Weakest ridge first; a stronger pull toward the fallback when the matrix comes out

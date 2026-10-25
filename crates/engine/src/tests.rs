@@ -1486,12 +1486,12 @@ fn mask_and_pixels_keep_their_own_colour_pair() {
     assert!(!s.tools.target_mask(true), "targeting it again changes nothing");
     assert_eq!(pair(&s), (white, black));
     s.tools.target_mask(false);
-    assert_eq!(pair(&s), (RED, BLUE), "the pixels get their colours back");
+    assert_eq!(pair(&s), (RED, BLUE), "the pixels get their colors back");
     s.execute("tools.setColors", json!({"foreground": "#00ff00"})).unwrap();
     s.tools.target_mask(true);
     assert_eq!(pair(&s), (white, black));
     s.tools.target_mask(false);
-    assert_eq!(pair(&s), (GREEN, BLUE), "a colour picked on the pixels is remembered");
+    assert_eq!(pair(&s), (GREEN, BLUE), "a color picked on the pixels is remembered");
     // A colour picked while the mask is targeted is remembered for masks.
     s.tools.target_mask(true);
     s.execute("tools.setColors", json!({"foreground": "#808080"})).unwrap();
