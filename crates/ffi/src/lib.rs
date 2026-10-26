@@ -159,7 +159,7 @@ pub struct KeyBinding {
 }
 
 /// The current brush and colours.
-#[derive(uniffi::Record)]
+#[derive(uniffi::Record, Default)]
 pub struct ToolSettings {
     pub size: f32,
     pub hardness: f32,
@@ -206,7 +206,8 @@ pub fn screen_to_doc(view: ViewState, x: f32, y: f32) -> Point {
 /// The thumbnail stored in a `.pcraft` file (PNG), for file lists.
 #[uniffi::export]
 pub fn pcraft_thumbnail(bytes: Vec<u8>) -> Option<Vec<u8>> {
-    photocraft_format::read_thumbnail(&bytes).ok().flatten()
+    // A damaged file on Home must not stop the app: no thumbnail instead.
+    std::panic::catch_unwind(|| photocraft_format::read_thumbnail(&bytes).ok().flatten()).ok().flatten()
 }
 
 /// Largest file [`unzip`] writes.
@@ -239,8 +240,12 @@ pub fn unzip(zip: String, dest: String) -> Result<()> {
 
 #[uniffi::export]
 pub fn add_fonts(paths: Vec<String>) -> u32 {
-    let mut eng = photocraft_text::shared().lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-    eng.fonts.load_font_files(paths.into_iter().map(std::path::PathBuf::from)) as u32
+    // Every font the device has goes through the font parser: one it can't read adds nothing.
+    std::panic::catch_unwind(|| {
+        let mut eng = photocraft_text::shared().lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        eng.fonts.load_font_files(paths.into_iter().map(std::path::PathBuf::from)) as u32
+    })
+    .unwrap_or(0)
 }
 
 #[derive(uniffi::Object)]
@@ -314,8 +319,11 @@ impl Editor {
 
     /// Keep user and imported brush presets in `dir` across launches. Returns load warnings.
     pub fn open_presets(&self, dir: String) -> Vec<String> {
-        let opened = photocraft_engine::preset_store::open_dir(dir);
-        self.lock().session.attach_preset_store(opened)
+        self.with(|inner| {
+            let opened = photocraft_engine::preset_store::open_dir(dir);
+            Ok(inner.session.attach_preset_store(opened))
+        })
+        .unwrap_or_else(|e| vec![format!("the saved presets couldn't be read: {e}")])
     }
 
     /// Run engine command `id` with JSON `params` (empty means `{}`); returns its JSON result.
@@ -651,20 +659,42 @@ impl Editor {
     }
 
     /// Draw into the `CAMetalLayer` at address `layer`, `width`×`height` pixels. The caller
-    /// keeps the layer alive until [`Editor::detach`].
+    /// keeps the layer alive until [`Editor::detach`]. The first call builds the GPU device and
+    /// every pipeline, which takes a while: call it off the main thread, then [`Editor::resize`]
+    /// on the main thread before the first frame. A later call (a new view) reuses all that.
     pub fn attach(&self, layer: u64, width: u32, height: u32) -> Result<()> {
+        // A canvas whose GPU failed is built again.
+        let reuse = self.with(|inner| {
+            if inner.canvas.as_ref().is_some_and(|c| !c.healthy()) {
+                inner.canvas = None;
+            }
+            Ok(inner.canvas.is_some())
+        })?;
+        if reuse {
+            return self.with(|inner| {
+                let canvas = inner.canvas.as_mut().ok_or_else(|| FfiError::new("the canvas went away"))?;
+                canvas.retarget(layer, width, height).map_err(FfiError::new)?;
+                inner.mark_all_dirty();
+                Ok(())
+            });
+        }
+        // Built without the editor's lock, so the app keeps going while the shaders compile.
+        let mut canvas = std::panic::catch_unwind(|| canvas::Canvas::new(layer, width, height))
+            .map_err(|_| FfiError::new("the GPU canvas couldn't start"))?
+            .map_err(FfiError::new)?;
         self.with(|inner| {
-            inner.canvas = None;
-            let mut canvas = canvas::Canvas::new(layer, width, height).map_err(FfiError::new)?;
             if let [r, g, b, ..] = inner.canvas_color.as_slice() {
                 canvas.background = wgpu::Color { r: f64::from(*r), g: f64::from(*g), b: f64::from(*b), a: 1.0 };
             }
-            inner.canvas = Some(canvas);
+            if inner.canvas.is_none() {
+                inner.canvas = Some(canvas);
+            }
             inner.mark_all_dirty();
             Ok(())
         })
     }
 
+    /// Size the canvas, and set up its layer the first time: on the main thread.
     pub fn resize(&self, width: u32, height: u32) {
         let _ = self.with(|inner| {
             if let Some(c) = &mut inner.canvas {
@@ -674,9 +704,13 @@ impl Editor {
         });
     }
 
-    pub fn detach(&self) {
+
+    /// The view with `layer` is going away. The GPU device and pipelines stay for the next view.
+    pub fn detach(&self, layer: u64) {
         let _ = self.with(|inner| {
-            inner.canvas = None;
+            if let Some(c) = &mut inner.canvas {
+                c.release(layer);
+            }
             Ok(())
         });
     }
@@ -894,7 +928,17 @@ impl Editor {
     }
 
     pub fn tool_settings(&self) -> ToolSettings {
-        let inner = self.lock();
+        self.with(|inner| Ok(Self::tool_settings_of(inner))).unwrap_or_default()
+    }
+
+    /// The selection outline as screen-pixel line segments, `[x0, y0, x1, y1, …]`.
+    pub fn selection_outline(&self, view: ViewState) -> Vec<f32> {
+        self.with(|inner| Ok(inner.outline(&view.into()))).unwrap_or_default()
+    }
+}
+
+impl Editor {
+    fn tool_settings_of(inner: &Inner) -> ToolSettings {
         let t = &inner.session.tools;
         let doc = inner.session.active();
         let sym = doc.and_then(|d| d.symmetry.as_ref());
@@ -919,13 +963,6 @@ impl Editor {
         }
     }
 
-    /// The selection outline as screen-pixel line segments, `[x0, y0, x1, y1, …]`.
-    pub fn selection_outline(&self, view: ViewState) -> Vec<f32> {
-        self.with(|inner| Ok(inner.outline(&view.into()))).unwrap_or_default()
-    }
-}
-
-impl Editor {
     fn lock(&self) -> MutexGuard<'_, Inner> {
         self.inner.lock().unwrap_or_else(PoisonError::into_inner)
     }

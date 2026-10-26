@@ -4,6 +4,7 @@
 use photocraft_doc::Document;
 use photocraft_engine::Session;
 use photocraft_geom::Rect;
+use photocraft_gpu::DeviceHealth;
 use photocraft_gpu::viewport::{View, Viewport};
 
 /// Display LUT size (per axis).
@@ -14,11 +15,19 @@ const COMPOSITOR_BUDGET: u64 = 768 << 20;
 const BACKGROUND: wgpu::Color = wgpu::Color { r: 0.09, g: 0.09, b: 0.1, a: 1.0 };
 
 pub struct Canvas {
-    surface: wgpu::Surface<'static>,
+    instance: wgpu::Instance,
+    adapter: wgpu::Adapter,
     device: wgpu::Device,
     queue: wgpu::Queue,
+    /// The view's layer (its address) and the surface on it; `None` between views.
+    surface: Option<(u64, wgpu::Surface<'static>)>,
     config: wgpu::SurfaceConfiguration,
+    /// Whether `surface` has been configured: that sets the layer's properties, so it waits for
+    /// the main thread ([`Canvas::resize`]).
+    configured: bool,
     viewport: Viewport,
+    /// GPU errors and a lost device mark this instead of panicking.
+    health: DeviceHealth,
     /// The display signature the LUT was made for.
     display: Option<u64>,
     /// Pasteboard colour around the document.
@@ -26,20 +35,15 @@ pub struct Canvas {
 }
 
 impl Canvas {
-    /// A canvas drawing into the `CAMetalLayer` at `layer`.
+    /// A canvas for the `CAMetalLayer` at `layer`: the GPU device and every pipeline, which takes
+    /// a while (each shader is compiled), so callers build it off the main thread. The surface
+    /// is configured later, on the main thread, by [`Canvas::resize`].
     ///
-    /// The caller keeps the layer alive until [`Canvas`] is dropped.
-    #[allow(unsafe_code)]
+    /// The caller keeps the layer alive until it calls [`Canvas::release`] or drops this.
     pub fn new(layer: u64, width: u32, height: u32) -> Result<Self, String> {
-        if layer == 0 {
-            return Err("no Metal layer".into());
-        }
         let instance =
             wgpu::Instance::new(wgpu::InstanceDescriptor { backends: wgpu::Backends::METAL, ..wgpu::InstanceDescriptor::new_without_display_handle() });
-        // SAFETY: `layer` is a live CAMetalLayer the Swift view owns and keeps until it detaches
-        // the canvas (which drops this surface first).
-        let surface = unsafe { instance.create_surface_unsafe(wgpu::SurfaceTargetUnsafe::CoreAnimationLayer(layer as usize as *mut std::ffi::c_void)) }
-            .map_err(|e| format!("can't draw on this view: {e}"))?;
+        let surface = Self::surface(&instance, layer)?;
         let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
             power_preference: wgpu::PowerPreference::HighPerformance,
             compatible_surface: Some(&surface),
@@ -52,6 +56,7 @@ impl Canvas {
             ..Default::default()
         }))
         .map_err(|e| format!("the GPU didn't start: {e}"))?;
+        let health = DeviceHealth::watch(&device);
         let caps = surface.get_capabilities(&adapter);
         let format = [wgpu::TextureFormat::Bgra8Unorm, wgpu::TextureFormat::Rgba8Unorm]
             .into_iter()
@@ -63,18 +68,83 @@ impl Canvas {
         config.present_mode = wgpu::PresentMode::Fifo;
         config.alpha_mode = wgpu::CompositeAlphaMode::Opaque;
         config.desired_maximum_frame_latency = 2;
-        surface.configure(&device, &config);
         let mut viewport = Viewport::new(&device, &queue, &adapter, format).map_err(|e| e.to_string())?;
         viewport.compositor_mut().set_memory_budget(COMPOSITOR_BUDGET);
-        Ok(Self { surface, device, queue, config, viewport, display: None, background: BACKGROUND })
+        viewport.compositor_mut().set_health(health.clone());
+        if let Some(fault) = health.fault() {
+            return Err(format!("the GPU reported a problem while starting: {fault:?}"));
+        }
+        Ok(Self {
+            instance,
+            adapter,
+            device,
+            queue,
+            surface: Some((layer, surface)),
+            config,
+            configured: false,
+            viewport,
+            health,
+            display: None,
+            background: BACKGROUND,
+        })
     }
 
+    #[allow(unsafe_code)]
+    fn surface(instance: &wgpu::Instance, layer: u64) -> Result<wgpu::Surface<'static>, String> {
+        if layer == 0 {
+            return Err("no Metal layer".into());
+        }
+        // SAFETY: `layer` is a live CAMetalLayer the Swift view owns and keeps until it releases
+        // the canvas (which drops this surface first). Making the surface only retains it.
+        unsafe { instance.create_surface_unsafe(wgpu::SurfaceTargetUnsafe::CoreAnimationLayer(layer as usize as *mut std::ffi::c_void)) }
+            .map_err(|e| format!("can't draw on this view: {e}"))
+    }
+
+    /// Draw on another view's layer, keeping the device and pipelines (a view rebuilt for a new
+    /// layout doesn't compile everything again).
+    pub fn retarget(&mut self, layer: u64, width: u32, height: u32) -> Result<(), String> {
+        if self.surface.as_ref().is_some_and(|(l, _)| *l == layer) {
+            return Ok(());
+        }
+        self.surface = None;
+        let surface = Self::surface(&self.instance, layer)?;
+        if !surface.get_capabilities(&self.adapter).formats.contains(&self.config.format) {
+            return Err("the view can't be drawn on with this GPU".into());
+        }
+        self.surface = Some((layer, surface));
+        (self.config.width, self.config.height) = (width.max(1), height.max(1));
+        self.configured = false;
+        Ok(())
+    }
+
+    /// The view at `layer` is going away: stop drawing on it. Another view's surface stays.
+    pub fn release(&mut self, layer: u64) {
+        if self.surface.as_ref().is_some_and(|(l, _)| *l == layer) {
+            self.surface = None;
+            self.configured = false;
+        }
+    }
+
+    /// Size the surface (and configure it the first time). On the main thread: it sets the
+    /// layer's properties.
     pub fn resize(&mut self, width: u32, height: u32) {
         let (w, h) = (width.max(1), height.max(1));
-        if (w, h) != (self.config.width, self.config.height) {
+        let Some((_, surface)) = &self.surface else { return };
+        if !self.configured || (w, h) != (self.config.width, self.config.height) {
             (self.config.width, self.config.height) = (w, h);
-            self.surface.configure(&self.device, &self.config);
+            surface.configure(&self.device, &self.config);
+            self.configured = true;
         }
+    }
+
+    /// The GPU hasn't reported a fault or been lost.
+    pub fn healthy(&self) -> bool {
+        self.health.is_ok()
+    }
+
+    /// Whether frames can be drawn: a configured surface and a GPU without faults.
+    pub fn ready(&self) -> bool {
+        self.configured && self.surface.is_some() && self.health.is_ok()
     }
 
     pub fn holds(&self, doc: &Document) -> bool {
@@ -107,10 +177,14 @@ impl Canvas {
     }
 
     pub fn draw(&mut self, view: &View) {
-        let frame = match self.surface.get_current_texture() {
+        if !self.ready() {
+            return;
+        }
+        let Some((_, surface)) = &self.surface else { return };
+        let frame = match surface.get_current_texture() {
             wgpu::CurrentSurfaceTexture::Success(f) | wgpu::CurrentSurfaceTexture::Suboptimal(f) => f,
             wgpu::CurrentSurfaceTexture::Outdated | wgpu::CurrentSurfaceTexture::Lost => {
-                self.surface.configure(&self.device, &self.config);
+                surface.configure(&self.device, &self.config);
                 return;
             }
             _ => return,

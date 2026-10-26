@@ -199,23 +199,74 @@ final class CanvasUIView: UIView, UIPointerInteractionDelegate, UIGestureRecogni
         layer.contentsScale = scale
         for l in [shade, predicted, symmetryGuide, antsLight, antsDark, toolPath, pendingLines, pendingDots, cursor, guideLines] { l.frame = bounds }
         let (w, h) = (UInt32(bounds.width * scale), UInt32(bounds.height * scale))
-        if !attached, let metal = layer as? CAMetalLayer {
-            let address = UInt64(UInt(bitPattern: Unmanaged.passUnretained(metal).toOpaque()))
-            do {
-                try model.editor.attach(layer: address, width: w, height: h)
-                attached = true
-            } catch {
-                model.show(error)
-            }
+        if attached {
+            configure(w, h)
         } else {
-            model.editor.resize(width: w, height: h)
+            attach(w, h)
         }
         model.canvasResized(width: w, height: h, scale: Float(scale))
+    }
+
+    private var layerAddress: UInt64 { UInt64(UInt(bitPattern: Unmanaged.passUnretained(layer).toOpaque())) }
+
+    /// The GPU canvas: built once per editor, off the main thread (it compiles every shader, too
+    /// slow for launch); a view made later (a new layout) reuses it. Until then nothing is drawn.
+    private func attach(_ w: UInt32, _ h: UInt32) {
+        let (editor, address) = (model.editor, layerAddress)
+        switch model.canvasBuild {
+        case .building, .failed:
+            return
+        case .built:
+            do {
+                try editor.attach(layer: address, width: w, height: h)
+                attached = true
+                configure(w, h)
+            } catch {
+                model.canvasBuild = .failed
+                model.show(error)
+            }
+        case .none:
+            model.canvasBuild = .building
+            let build = Thread { [weak self] in
+                let failure: Error? = {
+                    do { try editor.attach(layer: address, width: w, height: h); return nil } catch { return error }
+                }()
+                DispatchQueue.main.async {
+                    guard let self else { return }
+                    if let failure {
+                        self.model.canvasBuild = .failed
+                        self.model.show(failure)
+                    } else {
+                        self.model.canvasBuild = .built
+                        // A view that went away meanwhile: the next one picks the canvas up.
+                        if self.window != nil, self.layerAddress == address {
+                            self.attached = true
+                            self.setNeedsLayout()
+                        }
+                    }
+                }
+            }
+            // Shader translation recurses deeply: more than a background thread's 512 KB.
+            build.stackSize = 8 << 20
+            build.qualityOfService = .userInitiated
+            build.start()
+        }
+    }
+
+    /// Size the canvas's layer (on the main thread: it sets the layer's properties).
+    private func configure(_ w: UInt32, _ h: UInt32) {
+        model.editor.resize(width: w, height: h)
+        // The GPU library waits for a drawable without a time limit: with none free (the view
+        // not on screen yet), that would hang the app.
+        (layer as? CAMetalLayer)?.allowsNextDrawableTimeout = true
+        model.needsDraw = true
     }
 
     override func didMoveToWindow() {
         super.didMoveToWindow()
         if window != nil {
+            // A canvas that failed to start gets another try in a new window.
+            if model.canvasBuild == .failed { model.canvasBuild = .none }
             becomeFirstResponder()
             if link == nil {
                 let l = CADisplayLink(target: self, selector: #selector(tick))
@@ -227,20 +278,27 @@ final class CanvasUIView: UIView, UIPointerInteractionDelegate, UIGestureRecogni
             link?.invalidate()
             link = nil
             if attached {
-                model.editor.detach()
+                model.editor.detach(layer: layerAddress)
                 attached = false
             }
         }
     }
 
     @objc func tick() {
-        guard attached, !model.busy else { return }
+        guard attached else {
+            // The canvas finished building while another view had it: take it now.
+            if model.canvasBuild == .built, window != nil { setNeedsLayout() }
+            return
+        }
+        guard !model.busy else { return }
         let ready = pending.takeReady(now: CACurrentMediaTime())
         if !ready.isEmpty {
             do { try model.editor.strokePush(points: ready) } catch { model.show(error) }
             model.needsDraw = true
         }
-        if model.needsDraw {
+        // Nothing to draw on while Home covers the canvas or the window isn't showing: drawables
+        // only come back once a frame is on screen.
+        if model.needsDraw, !model.showHome, window?.windowScene?.activationState == .foregroundActive {
             model.needsDraw = false
             model.editor.draw(view: model.view)
             model.noteView()
@@ -514,8 +572,7 @@ final class CanvasUIView: UIView, UIPointerInteractionDelegate, UIGestureRecogni
 
     @objc func keyPressed(_ c: UIKeyCommand) {
         dropFinishedTouches()
-        guard let value = c.propertyList as? String, let colon = value.firstIndex(of: ":"), mode == .idle || mode == .pan else { return }
-        let (kind, id) = (String(value[..<colon]), String(value[value.index(after: colon)...]))
+        guard let (kind, id) = Keys.value(c), mode == .idle || mode == .pan else { return }
         switch kind {
         case "tool":
             selectTool(id, next: c.modifierFlags.contains(.shift))

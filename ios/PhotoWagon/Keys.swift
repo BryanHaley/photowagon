@@ -42,15 +42,23 @@ enum Keys {
         return (key.lowercased(), flags)
     }
 
+    /// A key command's `kind` and `id`, from its `propertyList`.
+    static func value(_ c: UIKeyCommand) -> (kind: String, id: String)? {
+        guard let value = (c.propertyList as? String)?.split(separator: "#").first, let colon = value.firstIndex(of: ":") else { return nil }
+        return (String(value[..<colon]), String(value[value.index(after: colon)...]))
+    }
+
     /// One key command per binding the app can carry out; the first binding of a key wins.
-    /// `propertyList` is `kind:id`.
+    /// `propertyList` is `kind:id#n` ([`Keys.value`] reads it).
     static func commands(_ bindings: [KeyBinding], action: Selector) -> [UIKeyCommand] {
         let tools = Set(Tool.allCases.map(\.engineId))
         var seen = Set<String>()
         var out: [UIKeyCommand] = []
         func add(_ title: String, _ shortcut: String, _ value: String) {
             guard let (input, flags) = parse(shortcut), seen.insert("\(input)|\(flags.rawValue)").inserted else { return }
-            let c = UIKeyCommand(title: title, action: action, input: input, modifierFlags: flags, propertyList: value)
+            // `#n` keeps each command's action and value unique: iPadOS refuses two the same when it
+            // builds the menu bar or the ⌘ list (Brush and Next Brush are both `tool:brush`).
+            let c = UIKeyCommand(title: title, action: action, input: input, modifierFlags: flags, propertyList: "\(value)#\(out.count)")
             c.wantsPriorityOverSystemBehavior = true
             out.append(c)
         }

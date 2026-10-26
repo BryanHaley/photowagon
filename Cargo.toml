@@ -1,6 +1,8 @@
 [workspace]
 resolver = "3"
 members = ["crates/*", "xtask"]
+# Patched third-party crates (each folder says why), not ours to lint.
+exclude = ["third_party"]
 
 [workspace.package]
 version = "0.10.0"
@@ -70,3 +72,7 @@ debug = "line-tables-only"
 [profile.release]
 lto = "thin"
 codegen-units = 1
+
+# wgpu-hal with Metal 4 shaders only on Metal 4 GPUs: third_party/wgpu-hal/PHOTOWAGON.md.
+[patch.crates-io]
+wgpu-hal = { path = "third_party/wgpu-hal" }

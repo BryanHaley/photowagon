@@ -585,6 +585,10 @@ final class EditorModel: ObservableObject {
     @Published private(set) var documents: [DocInfo] = []
     /// The Home screen is in front.
     @Published var showHome = true
+
+    /// The GPU canvas, built once off the main thread (`CanvasUIView`).
+    enum CanvasBuild { case none, building, built, failed }
+    var canvasBuild = CanvasBuild.none
     @Published private(set) var recents: [RecentFile]
     /// Where Recent is kept.
     let defaults: UserDefaults
@@ -937,7 +941,12 @@ final class EditorModel: ObservableObject {
         recoveryTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.recoveryTick() }
         }
-        Task.detached(priority: .utility) { _ = addFonts(paths: EditorModel.installedFontFiles()) }
+        // Its own thread: parsing every font on the device can recurse deeper than a 512 KB
+        // background thread allows. A font that won't parse is skipped (Rust catches it).
+        let fonts = Thread { _ = addFonts(paths: EditorModel.installedFontFiles()) }
+        fonts.stackSize = 8 << 20
+        fonts.qualityOfService = .utility
+        fonts.start()
     }
 
     /// Files of the fonts installed on this device.

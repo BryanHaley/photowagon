@@ -549,6 +549,7 @@ struct ContentView: View {
         let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene
         guard let root = scene?.keyWindow?.rootViewController else { return }
         sheet.popoverPresentationController?.sourceView = root.view
+        sheet.popoverPresentationController?.sourceRect = CGRect(x: root.view.bounds.midX, y: root.view.bounds.midY, width: 1, height: 1)
         root.present(sheet, animated: true)
     }
 }
@@ -715,9 +716,13 @@ enum SystemColorPicker {
     private static var delegate: Delegate?
 
     static func present(title: String, rgb: [Float], changed: @escaping ([Float]) -> Void) {
-        let root = UIApplication.shared.connectedScenes.compactMap { ($0 as? UIWindowScene)?.keyWindow?.rootViewController }.first
-        guard var top = root else { return }
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        let window = scenes.first { $0.activationState == .foregroundActive }?.keyWindow ?? scenes.compactMap(\.keyWindow).first
+        guard var top = window?.rootViewController else { return }
         while let next = top.presentedViewController { top = next }
+        // One picker at a time (a Pencil double-tapped twice), and not onto a screen that's still
+        // coming or going.
+        guard !(top is UIColorPickerViewController), !top.isBeingPresented, !top.isBeingDismissed else { return }
         let c = UIColorPickerViewController()
         c.title = title
         c.supportsAlpha = false
@@ -725,6 +730,12 @@ enum SystemColorPicker {
         let d = Delegate(changed)
         delegate = d
         c.delegate = d
+        // Where iPadOS shows it as a popover, it needs something to point at.
+        if let pop = c.popoverPresentationController {
+            pop.sourceView = top.view
+            pop.sourceRect = CGRect(x: top.view.bounds.midX, y: top.view.bounds.midY, width: 1, height: 1)
+            pop.permittedArrowDirections = []
+        }
         top.present(c, animated: true)
     }
 

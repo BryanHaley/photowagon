@@ -34,8 +34,10 @@ final class KeysTests: XCTestCase {
             KeyBinding(id: "x", label: "Panel", shortcut: "F7", kind: "panel"),
         ]
         let keys = Keys.commands(bindings, action: #selector(CanvasUIView.keyPressed(_:)))
-        let values = keys.compactMap { $0.propertyList as? String }
+        let values = keys.compactMap { Keys.value($0).map { "\($0.kind):\($0.id)" } }
         XCTAssertEqual(values, ["app:commit", "app:cancel", "tool:tools.select.move", "tool:tools.select.move", "shell:view.zoomIn", "command:edit.undo"])
+        let raw = keys.compactMap { $0.propertyList as? String }
+        XCTAssertEqual(Set(raw).count, raw.count, "no two commands with the same action and value (iPadOS refuses them)")
         XCTAssertEqual(keys[safe: 3]?.modifierFlags, .shift, "⇧V steps through the V tools")
         XCTAssertTrue(keys.allSatisfy(\.wantsPriorityOverSystemBehavior))
     }
