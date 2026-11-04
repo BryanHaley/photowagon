@@ -126,12 +126,20 @@ final class MaskBasicsTests: LayerMaskTests {
 
         step("Tap the link between the thumbnails: unlinked") {
             let link = show(element("layer.link.\(fill)"), "the link")
-            link.tap()
+            tapAt(link)
             waitIdle()
-            // A small target: a tap can miss it. Give the first time to show before tapping again.
-            let end = Date().addingTimeInterval(3)
+            // A small target: a tap can miss it. Give the first time to show before tapping again
+            // (over a second on the iOS 18 simulator).
+            let end = Date().addingTimeInterval(8)
             while mask(fill)["linked"] as? Bool != false, Date() < end { Thread.sleep(forTimeInterval: 0.3) }
-            if mask(fill)["linked"] as? Bool != false { link.tap(); waitIdle() }
+            // On iOS 18 a test's tap there can count as a hold and open the row's menu: unlink there.
+            let unlink = app.buttons["Unlink Mask"].firstMatch
+            if unlink.exists { unlink.tap(); waitIdle() } else if mask(fill)["linked"] as? Bool != false { tapAt(link); waitIdle() }
+            // iOS 18: taps right after the mask's menu closed can miss it (it works by hand). Its hold menu doesn't.
+            if mask(fill)["linked"] as? Bool != false {
+                link.press(forDuration: 1)
+                if unlink.waitForExistence(timeout: 3) { unlink.tap(); waitIdle() }
+            }
             XCTAssertEqual(mask(fill)["linked"] as? Bool, false)
         }
 

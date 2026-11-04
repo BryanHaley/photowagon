@@ -373,18 +373,7 @@ private struct InputHandles: View {
             }
             .contentShape(Rectangle())
             .gesture(DragGesture(minimumDistance: 0).onChanged { d in
-                let v = min(max(Double(d.location.x / max(w, 1)) * 255, 0), 255)
-                if dragging == nil {
-                    let dist = [channel.inBlack, mid, channel.inWhite].map { abs($0 - Double(d.startLocation.x / max(w, 1)) * 255) }
-                    dragging = dist.firstIndex(of: dist.min() ?? 0)
-                }
-                switch dragging {
-                case 0: channel.inBlack = min(v, channel.inWhite - 2).rounded()
-                case 2: channel.inWhite = max(v, channel.inBlack + 2).rounded()
-                default:
-                    let span = max(channel.inWhite - channel.inBlack, 1)
-                    channel.gamma = LevelsValues.gamma(midtone: (v - channel.inBlack) / span)
-                }
+                channel.dragInput(&dragging, from: Double(d.startLocation.x / max(w, 1)) * 255, to: Double(d.location.x / max(w, 1)) * 255)
             }.onEnded { _ in dragging = nil })
             .accessibilityElement()
             .accessibilityIdentifier("levels.input")
@@ -415,12 +404,7 @@ private struct OutputHandles: View {
             }
             .contentShape(Rectangle())
             .gesture(DragGesture(minimumDistance: 0).onChanged { d in
-                let v = (min(max(Double(d.location.x / max(w, 1)) * 255, 0), 255)).rounded()
-                if dragging == nil {
-                    let s = Double(d.startLocation.x / max(w, 1)) * 255
-                    dragging = abs(s - channel.outBlack) <= abs(s - channel.outWhite) ? 0 : 1
-                }
-                if dragging == 0 { channel.outBlack = v } else { channel.outWhite = v }
+                channel.dragOutput(&dragging, from: Double(d.startLocation.x / max(w, 1)) * 255, to: Double(d.location.x / max(w, 1)) * 255)
             }.onEnded { _ in dragging = nil })
             .accessibilityElement()
             .accessibilityIdentifier("levels.output")
@@ -457,12 +441,7 @@ struct EyedropperRow: View {
 
     private func dropper(_ point: String, _ title: String, _ fill: Color) -> some View {
         Button {
-            picking = picking == point ? nil : point
-            if picking == nil {
-                model.endPick()
-            } else {
-                model.beginPick(surface, prompt: "Tap the image to set the \(point) point") { pick(point, $0) }
-            }
+            picking = model.toggleEyedropper(point, picking: picking, surface: surface, prompt: "Tap the image to set the \(point) point") { pick(point, $0) }
         } label: {
             Image(systemName: "eyedropper.halffull")
                 .font(.title3)
@@ -539,5 +518,38 @@ struct ClippingToggle: View {
         if on, surface == .canvas {
             PreviewPane(model: model).listRowInsets(EdgeInsets())
         }
+    }
+}
+
+extension LevelsValues.Channel {
+    /// A drag on the input handles from `start` to `at` (levels): the nearest handle moves.
+    mutating func dragInput(_ handle: inout Int?, from start: Double, to at: Double) {
+        let v = min(max(at, 0), 255)
+        let mid = inBlack + (inWhite - inBlack) * LevelsValues.midtone(gamma: gamma)
+        if handle == nil {
+            let dist = [inBlack, mid, inWhite].map { abs($0 - start) }
+            handle = dist.firstIndex(of: dist.min() ?? 0)
+        }
+        switch handle {
+        case 0: inBlack = min(v, inWhite - 2).rounded()
+        case 2: inWhite = max(v, inBlack + 2).rounded()
+        default: gamma = LevelsValues.gamma(midtone: (v - inBlack) / max(inWhite - inBlack, 1))
+        }
+    }
+
+    /// A drag on the output handles: the nearer of black and white moves.
+    mutating func dragOutput(_ handle: inout Int?, from start: Double, to at: Double) {
+        let v = min(max(at, 0), 255).rounded()
+        if handle == nil { handle = abs(start - outBlack) <= abs(start - outWhite) ? 0 : 1 }
+        if handle == 0 { outBlack = v } else { outWhite = v }
+    }
+}
+
+extension EditorModel {
+    /// An eyedropper button: it picks `point` until tapped again. Returns the one picking now.
+    func toggleEyedropper(_ point: String, picking: String?, surface: PickSurface, prompt: String, pick: @escaping (CGPoint) -> Void) -> String? {
+        let now = picking == point ? nil : point
+        if now == nil { endPick() } else { beginPick(surface, prompt: prompt, pick) }
+        return now
     }
 }

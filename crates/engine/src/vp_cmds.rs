@@ -28,7 +28,7 @@ pub fn scene(p: &Value, canvas: Rect) -> Result<Scene> {
         .get("planes")
         .and_then(Value::as_array)
         .filter(|a| !a.is_empty())
-        .ok_or_else(|| bad("pass `planes`: [{\"corners\":[[x,y]×4]}, {\"from\":0,\"edge\":\"top\",\"angle\":90}]"))?;
+        .ok_or_else(|| bad("draw a plane first"))?;
     let center = [(canvas.x0 + canvas.x1) as f64 / 2.0, (canvas.y0 + canvas.y1) as f64 / 2.0];
     let corners = |v: &Value| -> Option<[[f64; 2]; 4]> {
         let a = v.get("corners")?.as_array()?;

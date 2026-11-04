@@ -220,7 +220,8 @@ final class ToolTests: XCTestCase {
         XCTAssertNotNil(model.toast)
         model.tool = .frame
         canvas.drag(pt(50, 250), pt(150, 350))
-        XCTAssertEqual(model.activeLayer?.isGroup, true, "a frame is a clipped group")
+        XCTAssertEqual(model.pendingFrame?.rect, [50, 250, 100, 100], "a frame waits for its picture (testFrameToolAsksForAPictureAndFillsTheFrame)")
+        model.request = nil
         model.tool = .note
         canvas.tap(pt(300, 300))
         model.prompt?.done("check this")
@@ -304,5 +305,55 @@ final class ToolTests: XCTestCase {
         model.selectionMode = .replace
         XCTAssertEqual(params(.quickSelect)["mode"] as? String, "add", "Quick Selection adds unless subtracting")
         XCTAssertEqual(model.strokeParams()?.0, "select.quick")
+    }
+
+    /// Frame tool: the box makes a frame and asks for a picture; the picture fills the box (its
+    /// shape kept, cut to the frame); a tap on the frame asks again and the new picture replaces
+    /// the old one; a touch elsewhere forgets a frame that never got one.
+    func testFrameToolAsksForAPictureAndFillsTheFrame() throws {
+        let (model, canvas) = canvas(tool: .frame)
+        canvas.drag(pt(100, 100), pt(300, 200))
+        XCTAssertEqual(model.request, .placeFiles, "the Place sheet opens")
+        XCTAssertEqual(model.pendingFrame?.rect, [100, 100, 200, 100])
+        let frame = try XCTUnwrap(model.layers.first { $0.kind == "Group" }, "the empty frame is made at once")
+        XCTAssertTrue(frame.hasMask, "the frame cuts the picture to the box")
+        XCTAssertEqual(model.frameOutlines, [EditorModel.FrameOutline(rect: [100, 100, 200, 100], ellipse: false)], "outlined, to show where to tap")
+        model.request = nil
+        model.place(data: try Data(contentsOf: sample("star.png")), name: "star.png")
+        wait("placed") { !model.busy && model.layers.contains { $0.depth == 1 } }
+        XCTAssertNil(model.pendingFrame)
+        XCTAssertNil(model.transform, "no transform box: it's already in place")
+        let picture = try XCTUnwrap(model.layers.first { $0.depth == 1 })
+        let b = try XCTUnwrap(picture.bounds)
+        XCTAssertTrue(b[2] >= 199 && b[3] >= 99, "the picture covers the box: \(b)")
+        XCTAssertEqual(b[0] + b[2] / 2, 200, accuracy: 1, "centred on the box")
+        XCTAssertEqual(b[1] + b[3] / 2, 150, accuracy: 1)
+
+        canvas.tap(pt(150, 150))
+        XCTAssertEqual(model.request, .placeFiles, "a tap on the frame opens the Place sheet again")
+        XCTAssertEqual(model.pendingFrame?.layer, Int(frame.id))
+        XCTAssertEqual(model.pendingFrame?.rect, [100, 100, 200, 100])
+        model.request = nil
+        let steps = model.history.past.count
+        model.place(data: try Data(contentsOf: sample("star.png")), name: "star2.png")
+        wait("replaced") { !model.busy && model.layers.contains { $0.depth == 1 && $0.name.hasPrefix("star2") } }
+        XCTAssertEqual(model.layers.filter { $0.depth == 1 }.count, 1, "the new picture replaces the old one")
+        XCTAssertEqual(model.layers.filter { $0.kind == "Group" }.count, 1, "in the same frame")
+        XCTAssertEqual(model.history.past.count, steps + 1, "placed, fitted and framed in one undo step")
+        model.run("edit.undo")
+        XCTAssertTrue(model.layers.contains { $0.depth == 1 && $0.name.hasPrefix("star") && !$0.name.hasPrefix("star2") }, "one Undo puts the old picture back")
+
+        canvas.tap(pt(20, 20))
+        XCTAssertNil(model.pendingFrame, "a tap off the frame does nothing")
+        canvas.drag(pt(10, 10), pt(60, 60))
+        XCTAssertNotNil(model.pendingFrame)
+        XCTAssertEqual(model.frameOutlines.count, 2)
+        model.tool = .brush
+        XCTAssertEqual(model.frameOutlines, [], "outlines only with the Frame tool")
+        XCTAssertNil(model.pendingFrame, "another tool forgets it: a later Place isn't put in the frame")
+        model.tool = .frame
+        canvas.drag(pt(10, 10), pt(60, 60))
+        canvas.tap(pt(5, 5))
+        XCTAssertNil(model.pendingFrame, "the picker was closed: the next touch forgets the frame")
     }
 }

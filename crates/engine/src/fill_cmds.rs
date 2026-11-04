@@ -133,6 +133,9 @@ pub fn fill(s: &mut Session, p: &Value) -> Result<Value> {
                 // The History Brush's default source: the oldest state still held.
                 None => st.history.state(0).unwrap_or_else(|| st.doc.clone()),
             };
+            if source_doc.size != st.doc.size {
+                return Err(EngineError::Other("that history state has a different canvas size".into()));
+            }
             let src = crate::channel_cmds::read_target_surface(source_doc.as_ref(), id, p)
                 .map_err(|_| EngineError::Other("the target did not exist (as pixels, a mask or a channel) in that history state".into()))?;
             Source::Pixels(area, read_rgba(src, area, "reading Fill's history source")?)
@@ -615,6 +618,14 @@ mod tests {
         s.execute(CMD, json!({"contents": "white"})).unwrap();
         s.execute(CMD, json!({"contents": "contentAware", "colorAdaptation": false})).unwrap();
         assert!(close(px(&s, 17, 12), [0x33 as f32 / 255.0, 0x66 as f32 / 255.0, 0x99 as f32 / 255.0, 1.0]), "{:?}", px(&s, 17, 12));
+    }
+
+    #[test]
+    fn history_fill_refuses_a_state_of_another_size() {
+        let mut s = session();
+        s.execute("image.imageSize", json!({"width": 10})).unwrap();
+        let err = s.execute(CMD, json!({"contents": "history"})).unwrap_err();
+        assert!(err.to_string().contains("different canvas size"), "{err}");
     }
 
     #[test]

@@ -394,7 +394,7 @@ fn live_from_params(cmd: &str, kind: &str, p: &Value, prev: Option<&LiveShape>) 
         Some(LiveShape::Rect { rect, .. } | LiveShape::Ellipse { rect } | LiveShape::Polygon { rect, .. }) => Some(*rect),
         _ => None,
     };
-    let rect = || nums::<4>(p, "rect").or(prev_rect).ok_or_else(|| bad(cmd, "`rect`: [x, y, w, h] is required"));
+    let rect = || nums::<4>(p, "rect").or(prev_rect).ok_or_else(|| bad(cmd, "draw the shape with a Shape tool"));
     Ok(match kind {
         "rect" | "rectangle" => {
             let r = match prev {

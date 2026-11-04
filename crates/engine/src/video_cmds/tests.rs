@@ -84,6 +84,16 @@ fn new_video_layer_from_image_sequence() {
 }
 
 #[test]
+fn a_movie_file_is_refused_in_plain_words() {
+    let dir = tmpdir("movie");
+    let path = format!("{dir}/clip.mov");
+    std::fs::write(&path, b"not read").unwrap();
+    let mut s = session();
+    let e = s.execute("layer.videoLayers.newVideoLayerFromFile", json!({"path": path})).unwrap_err().to_string();
+    assert!(e.contains("Movie files") && !e.contains("codec"), "{e}");
+}
+
+#[test]
 fn frames_to_layers_and_render_video() {
     let dir = tmpdir("ftl");
     write_png(&format!("{dir}/a.png"), 10, 8, "#112233");
@@ -552,4 +562,18 @@ fn render_video_rejects_gif_frames_too_large_to_stage() {
     s.execute("file.new", json!({"width": 9000, "height": 8000})).unwrap();
     let err = s.execute("file.export.renderVideo", json!({"dir": tmpdir("large-gif"), "format": "gif"})).unwrap_err();
     assert!(err.to_string().contains("too large"), "{err}");
+}
+
+#[test]
+fn a_frame_in_a_32_bit_document_is_linear() {
+    let mut doc = photocraft_doc::Document::new("f", photocraft_geom::Size::new(1, 1), photocraft_color::ColorMode::Rgb, photocraft_color::SampleType::U8);
+    let fmt = doc.pixel_format();
+    let mut l = photocraft_doc::Layer::raster("a", fmt);
+    l.surface_mut().unwrap().write_region(doc.bounds(), &[0.5, 0.5, 0.5, 1.0]);
+    doc.layers.push(l);
+    let wide = fmt.with_sample(photocraft_color::SampleType::F32);
+    let v = frame_from(&doc, wide).rgba(0, 0)[0];
+    assert!((v - 0.214).abs() < 0.01, "{v}");
+    let v = frame_from(&doc, fmt).rgba(0, 0)[0];
+    assert!((v - 0.5).abs() < 0.01, "{v}");
 }

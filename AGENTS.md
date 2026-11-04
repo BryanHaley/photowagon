@@ -118,6 +118,13 @@ While iterating, run less and keep the full commands above as the final gate: `c
 
 Commands must **never panic** on bad input (Rule 8): every `run` closure and the code it calls returns `Err`, not a panic, for any params or document state. New commands come with a graceful-failure test (empty/out-of-range/wrong-type params → `Err`, not a crash).
 
+**Before an App Store upload:** run Omega, the long test of every feature and option (hours):
+`cargo xtask omega run`, then `cargo xtask omega device` with an iPhone plugged in, then
+`cargo xtask omega gate`, which passes only when every section passed on this code. After a fix,
+`cargo xtask omega run --failed` reruns only what failed. New commands, tools, settings and
+screens are picked up by Omega itself; what it can't work out goes in `ios/OmegaShared/OmegaCatalog.swift`
+(the everyday unit tests say when).
+
 Then append a terse entry to `log/devlog.md` (what landed, numbers, what's still open). Sessions can end abruptly (crashes, context limits), so the dev log plus a green tree is how the next agent picks up. Keep the tree building at every step.
 
 ## 6. Parallel agents

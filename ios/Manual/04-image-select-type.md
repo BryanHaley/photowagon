@@ -1,6 +1,6 @@
 # Image, Select and Type
 
-These three menus live under ☰ in the top bar. Image changes the whole picture (its size, colours and colour mode), Select makes and reshapes selections, and Type works on text layers.
+These three menus live under ☰ in the top bar. Image changes the whole picture (its size, colors and color mode), Select makes and reshapes selections, and Type works on text layers.
 
 Items whose name ends in "…" open a settings screen first. On iPhone it opens as a sheet with a small preview at the top. On iPad it opens in a column beside the canvas, so you see the change on the full image. Adjustments and Color Range show the result as you change their settings: tap the eye button to compare with and without, **OK** to keep the result, or **Cancel** to go back to how it was. Items without "…" run straight away, and you can always undo them.
 
@@ -18,15 +18,15 @@ In each menu, the submenus come first, then the other items.
 
 ### Adjustments
 
-Adjustments change the colours and tones of the active layer. If you'd rather keep the change separate and editable later, use an adjustment layer instead (Layer › New Adjustment Layer, or the Adjustments panel).
+Adjustments change the colors and tones of the active layer. If you'd rather keep the change separate and editable later, use an adjustment layer instead (Layer › New Adjustment Layer, or the Adjustments panel).
 
 ![An adjustment's settings](images/adjustments.jpg)
 
-**Desaturate** removes all colour from the layer and leaves the greys. It runs straight away.
+**Desaturate** removes all color from the layer and leaves the greys. It runs straight away.
 
 **Brightness/Contrast…** lightens or darkens the layer and adds or removes contrast. Options: *Brightness*, *Contrast*, *Legacy* (an older, stronger way of working that can clip bright and dark areas).
 
-**Levels…** sets the darkest, middle and brightest tones over a histogram. Drag the handles under the histogram or type the numbers in *Input Levels* and *Output Levels*. Options: *Preset* (Default, Brighter, Darker, More Contrast, Strong Contrast, Lift Shadows, Soften Highlights, Faded), *Auto* (fixes the tones for you), *Options…* (opens Auto Options, below), *Channel* (work on all colours or one), *Show Clipping* (marks what turns pure black or white), and the eyedroppers *Set Black Point*, *Set Gray Point* and *Set White Point* (tap a spot in the image that should be black, neutral grey or white).
+**Levels…** sets the darkest, middle and brightest tones over a histogram. Drag the handles under the histogram or type the numbers in *Input Levels* and *Output Levels*. Options: *Preset* (Default, Brighter, Darker, More Contrast, Strong Contrast, Lift Shadows, Soften Highlights, Faded), *Auto* (fixes the tones for you), *Options…* (opens Auto Options, below), *Channel* (work on all colors or one), *Show Clipping* (marks what turns pure black or white), and the eyedroppers *Set Black Point*, *Set Gray Point* and *Set White Point* (tap a spot in the image that should be black, neutral grey or white).
 
 **Auto Options** (from Levels or Curves) chooses how Auto works. Options: *Algorithm* (Monochromatic Contrast, Per Channel Contrast, Find Dark & Light Colors), *Snap Neutral Midtones* (makes near-grey midtones truly grey), *Clip* *Shadows* and *Highlights* (how much of each end may turn pure black or white), *Save as Defaults*.
 
@@ -34,55 +34,55 @@ Adjustments change the colours and tones of the active layer. If you'd rather ke
 
 **Exposure…** corrects a photo that came out too dark or too light, working like a camera's exposure. Options: *Exposure* (in stops), *Offset* (lifts or lowers the darkest tones), *Gamma* (the midtones).
 
-**Vibrance…** makes colours richer or calmer. Options: *Vibrance* (boosts dull colours more than strong ones, so skin stays natural), *Saturation* (changes all colours evenly).
+**Vibrance…** makes colors richer or calmer. Options: *Vibrance* (boosts dull colors more than strong ones, so skin stays natural), *Saturation* (changes all colors evenly).
 
-**Hue/Saturation…** shifts colours, makes them stronger or weaker, and lightens or darkens them. Options: *Edit* (Master for all colours, or one colour range such as Reds or Blues), *Hue*, *Saturation*, *Lightness*, *Colorize* (tints the whole layer one colour; Master only), and for a colour range, *Range* sliders (*Fade from*, *From*, *To*, *Fade to*) that set which hues it covers.
+**Hue/Saturation…** shifts colors, makes them stronger or weaker, and lightens or darkens them. Options: *Edit* (Master for all colors, or one color range such as Reds or Blues), *Hue*, *Saturation*, *Lightness*, *Colorize* (tints the whole layer one color; Master only), and for a color range, *Range* sliders (*Fade from*, *From*, *To*, *Fade to*) that set which hues it covers.
 
-**Color Balance…** pushes colours towards one side of a pair, for example to warm up shadows or cool down highlights. Options: *Tone* (Shadows, Midtones, Highlights), three sliders (Cyan to Red, Magenta to Green, Yellow to Blue), *Preserve Luminosity* (keeps brightness the same).
+**Color Balance…** pushes colors towards one side of a pair, for example to warm up shadows or cool down highlights. Options: *Tone* (Shadows, Midtones, Highlights), three sliders (Cyan to Red, Magenta to Green, Yellow to Blue), *Preserve Luminosity* (keeps brightness the same).
 
-**Black & White…** turns the layer to greys and lets you choose how light each colour becomes, for example darker skies or brighter skin. Options: *Preset* and *Auto*, sliders for *Reds*, *Yellows*, *Greens*, *Cyans*, *Blues* and *Magentas*, *Tint* and *Tint Color* (for a sepia or toned look).
+**Black & White…** turns the layer to greys and lets you choose how light each color becomes, for example darker skies or brighter skin. Options: *Preset* and *Auto*, sliders for *Reds*, *Yellows*, *Greens*, *Cyans*, *Blues* and *Magentas*, *Tint* and *Tint Color* (for a sepia or toned look).
 
-**Photo Filter…** lays a coloured filter over the layer, like one on a camera lens. Options: *Use* (Filter or Color), *Filter* (warming, cooling and colour filters such as Sepia and Underwater) or *Color* (your own), *Density* (how strong), *Preserve Luminosity*.
+**Photo Filter…** lays a colored filter over the layer, like one on a camera lens. Options: *Use* (Filter or Color), *Filter* (warming, cooling and color filters such as Sepia and Underwater) or *Color* (your own), *Density* (how strong), *Preserve Luminosity*.
 
-**Channel Mixer…** builds each colour channel from a mix of red, green and blue. It's good for custom black and white or for odd colour effects. Options: *Preset* (Default, Monochrome, Monochrome with a Red, Green or Blue filter, Swap Red and Blue), *Output Channel*, *Monochrome*, sliders for *Red*, *Green* and *Blue* with their *Total*, *Constant* (lightens or darkens the whole channel).
+**Channel Mixer…** builds each color channel from a mix of red, green and blue. It's good for custom black and white or for odd color effects. Options: *Preset* (Default, Monochrome, Monochrome with a Red, Green or Blue filter, Swap Red and Blue), *Output Channel*, *Monochrome*, sliders for *Red*, *Green* and *Blue* with their *Total*, *Constant* (lightens or darkens the whole channel).
 
 **Invert** turns the layer into its negative. It runs straight away.
 
-**Posterize…** cuts the layer down to a few tones per colour, for a flat, poster-like look. Options: *Levels* (how many tones per colour).
+**Posterize…** cuts the layer down to a few tones per color, for a flat, poster-like look. Options: *Levels* (how many tones per color).
 
 **Threshold…** turns the layer into pure black and white, with no greys. Options: *Level* (pixels lighter than this turn white, darker ones black), shown over a histogram.
 
-**Gradient Map…** maps the layer's tones onto a gradient: dark tones take the left colour and light tones the right. Options: *Colour Stops* (tap a stop to change its colour, move it, or *Add Stop*), *Presets*, *Reverse*, *Dither* (smooths banding).
+**Gradient Map…** maps the layer's tones onto a gradient: dark tones take the left color and light tones the right. Options: *Color Stops* (tap a stop to change its color, move it, or *Add Stop*), *Presets*, *Reverse*, *Dither* (smooths banding).
 
-**Selective Color…** changes how much cyan, magenta, yellow and black goes into one range of colours, such as only the reds or only the neutrals. Options: *Colors* (the range to change), *Cyan*, *Magenta*, *Yellow*, *Black*, *Method* (Relative changes by a share of what's there, Absolute by a fixed amount).
+**Selective Color…** changes how much cyan, magenta, yellow and black goes into one range of colors, such as only the reds or only the neutrals. Options: *Colors* (the range to change), *Cyan*, *Magenta*, *Yellow*, *Black*, *Method* (Relative changes by a share of what's there, Absolute by a fixed amount).
 
-**Color Lookup…** gives the layer a ready-made colour grade. Options: *Lut* (None, Warm, Cool, Teal orange, Bleach bypass, Faded film, Day for night, Mono contrast, Cross process), *File*, *Interpolation* (Trilinear or Tetrahedral, two ways of blending between colours), *Dither*.
+**Color Lookup…** gives the layer a ready-made color grade. Options: *Lut* (None, Warm, Cool, Teal orange, Bleach bypass, Faded film, Day for night, Mono contrast, Cross process), *File*, *Interpolation* (Trilinear or Tetrahedral, two ways of blending between colors), *Dither*.
 
 **Equalize** spreads the layer's tones evenly from black to white, which can bring out detail in a flat image. It runs straight away.
 
 **Shadows/Highlights…** brings back detail in dark shadows and bright highlights without changing the middle tones much. Good for backlit photos. Options: *Shadow amount*, *Shadow tone*, *Highlight amount*, *Highlight tone*, *Radius* (the size of the area each pixel is compared with), *Color* (saturation), *Midtone* (contrast), *Black clip*, *White clip*.
 
-**Replace Color…** finds one colour and changes it, for example to make a red car blue. Options: *Pick the Colour* and *Add to the Colour* (tap the image), *Localized Color Clusters* (only near where you tapped) with *Range*, *Fuzziness* (how close a colour must be to count), and under *Replacement*, *Hue*, *Saturation*, *Lightness* and the *Result* colour.
+**Replace Color…** finds one color and changes it, for example to make a red car blue. Options: *Pick the Color* and *Add to the Color* (tap the image), *Localized Color Clusters* (only near where you tapped) with *Range*, *Fuzziness* (how close a color must be to count), and under *Replacement*, *Hue*, *Saturation*, *Lightness* and the *Result* color.
 
-**Match Color…** evens out the colour of the layer, or takes out a colour cast. Options: *Luminance*, *Intensity* (colour strength), *Fade* (blends back towards the original), *Neutralize* (removes a cast), *Use selection in source*, *Use selection in target*.
+**Match Color…** evens out the color of the layer, or takes out a color cast. Options: *Luminance*, *Intensity* (color strength), *Fade* (blends back towards the original), *Neutralize* (removes a cast), *Use selection in source*, *Use selection in target*.
 
 **HDR Toning…** gives a strong, detailed, high dynamic range look. It flattens the image to one layer. Options: *Radius*, *Strength*, *Gamma*, *Exposure*, *Detail*, *Shadow*, *Highlight*, *Vibrance*, *Saturation*.
 
 ### Mode
 
-**RGB Color, Grayscale, CMYK Color, Lab Color** change the image's colour mode. Use RGB for screens and most editing, Grayscale for black and white, CMYK for print, and Lab when you want lightness and colour kept apart. They run straight away.
+**RGB Color, Grayscale, CMYK Color, Lab Color** change the image's color mode. Use RGB for screens and most editing, Grayscale for black and white, CMYK for print, and Lab when you want lightness and color kept apart. They run straight away.
 
-**8 Bits/Channel, 16 Bits/Channel, 32 Bits/Channel** change how much detail each colour channel holds. 16 bits leaves more room for heavy edits without banding. 32 bits holds tones brighter than white.
+**8 Bits/Channel, 16 Bits/Channel, 32 Bits/Channel** change how much detail each color channel holds. 16 bits leaves more room for heavy edits without banding. 32 bits holds tones brighter than white.
 
-**Indexed Color…** cuts the image down to a palette of at most 256 colours, as used in GIFs. It flattens the image. Options: *Palette* (how the colours are chosen, such as Selective, Perceptual, Adaptive or Web), *Colors* (how many), *Forced* (colours that must stay, such as Black white), *Transparency* (keeps see-through areas), *Dither* (mixes dots to fake missing colours) and its *Amount*.
+**Indexed Color…** cuts the image down to a palette of at most 256 colors, as used in GIFs. It flattens the image. Options: *Palette* (how the colors are chosen, such as Selective, Perceptual, Adaptive or Web), *Colors* (how many), *Forced* (colors that must stay, such as Black white), *Transparency* (keeps see-through areas), *Dither* (mixes dots to fake missing colors) and its *Amount*.
 
-**Color Table…** shows the colours of an Indexed Color image. Tap a colour to change it, and every pixel that uses it follows. Options: *Table* (Custom, or a ready-made table such as Grayscale, Spectrum or Web).
+**Color Table…** shows the colors of an Indexed Color image. Tap a color to change it, and every pixel that uses it follows. Options: *Table* (Custom, or a ready-made table such as Grayscale, Spectrum or Web).
 
 **Bitmap…** turns a Grayscale image into pure black and white dots. It flattens the image. Options: *Method* (Diffusion, Threshold, Pattern, Halftone), and for halftone, *Frequency* (lines per inch), *Angle* and *Shape*.
 
-**Duotone…** prints a Grayscale image with one to four inks, for a toned look. Options: *Type* (Monotone, Duotone, Tritone, Quadtone), and for each ink, its *Name*, *Colour* and *Curve* (how much ink each tone gets).
+**Duotone…** prints a Grayscale image with one to four inks, for a toned look. Options: *Type* (Monotone, Duotone, Tritone, Quadtone), and for each ink, its *Name*, *Color* and *Curve* (how much ink each tone gets).
 
-**Multichannel** splits the image into separate ink channels with no colour mode linking them. It flattens the image.
+**Multichannel** splits the image into separate ink channels with no color mode linking them. It flattens the image.
 
 ### Analysis
 
@@ -102,7 +102,7 @@ Adjustments change the colours and tones of the active layer. If you'd rather ke
 
 ### Other Image items
 
-**Auto Tone** fixes the darkest and lightest tones of the active layer for you. **Auto Contrast** does the same but keeps the colours as they are. **Auto Color** also takes out a colour cast. They run straight away.
+**Auto Tone** fixes the darkest and lightest tones of the active layer for you. **Auto Contrast** does the same but keeps the colors as they are. **Auto Color** also takes out a color cast. They run straight away.
 
 **Image Size…** makes the image bigger or smaller in pixels, or changes its print resolution. Options: *Width* and *Height* (in pixels; they start at the current size), *Keep print size*, *Resample* (how new pixels are worked out: Automatic, Preserve details, Bicubic smoother for enlarging, Bicubic sharper for shrinking, and more; None changes the resolution only).
 
@@ -110,7 +110,7 @@ Adjustments change the colours and tones of the active layer. If you'd rather ke
 
 **Crop** crops the image to the edges of the selection. For a free crop, use the Crop tool.
 
-**Trim…** cuts away empty edges. Options: *Based on* (Transparent pixels, or the colour of the Top left or Bottom right pixel), *Top*, *Bottom*, *Left*, *Right* (which edges to trim).
+**Trim…** cuts away empty edges. Options: *Based on* (Transparent pixels, or the color of the Top left or Bottom right pixel), *Top*, *Bottom*, *Left*, *Right* (which edges to trim).
 
 **Duplicate…** makes a copy of the image as a new document. Options: *Name*, *Merged only* (the copy has all layers merged into one).
 
@@ -120,7 +120,7 @@ Adjustments change the colours and tones of the active layer. If you'd rather ke
 
 **Calculations…** blends the image's channels together and puts the result in a new channel, a new document or a selection. Options: *Opacity*, *Scale*, *Offset*, *Result* (New channel, New document, Selection), *Name*.
 
-**Trap…** spreads inks slightly at colour edges so small gaps don't show when printed. It works on CMYK images only.
+**Trap…** spreads inks slightly at color edges so small gaps don't show when printed. It works on CMYK images only.
 
 **Apply Data Set…** is in the menu but has no settings screen yet, so it doesn't do anything useful on its own.
 
@@ -148,15 +148,15 @@ These reshape the selection you already have.
 
 **Subject** finds the main subject of the image and selects it.
 
-**Refine Selection…** cleans up the selection's edge. Options: *Refine Hair* (a button that picks up hair and fur around a person), *Radius* and *Smart radius* (how far from the edge to look), *Smooth*, *Feather*, *Contrast*, *Shift edge* (moves the edge in or out), *Decontaminate* (removes colour fringes) and its *Amount*, *Output* (Selection, Layer mask, New layer, New layer with mask, New document, New document with mask), *Sample all layers*.
+**Refine Selection…** cleans up the selection's edge. Options: *Refine Hair* (a button that picks up hair and fur around a person), *Radius* and *Smart radius* (how far from the edge to look), *Smooth*, *Feather*, *Contrast*, *Shift edge* (moves the edge in or out), *Decontaminate* (removes color fringes) and its *Amount*, *Output* (Selection, Layer mask, New layer, New layer with mask, New document, New document with mask), *Sample all layers*.
 
 **Focus Area…** selects the parts of the image that are in sharp focus. Options: *Range* (higher takes in softer areas), *Noise* (higher ignores grain), *Sample all layers*, *Mode* (Replace, Add, Subtract, Intersect with the current selection).
 
-**Color Range…** selects by colour or tone. The preview shows the selection as you go. Options: *Select* (Sampled Colors, a colour such as Reds or Blues, Highlights, Midtones, Shadows, Skin Tones, Out of Gamut), the eyedropper (pick, add to or subtract from the sample) and *Pick in the Image*, *Fuzziness*, *Localized Color Clusters* with *Range*, *Invert*, *Preview* (Selection or Image), *Selection* (New, Add, Subtract, Intersect).
+**Color Range…** selects by color or tone. The preview shows the selection as you go. Options: *Select* (Sampled Colors, a color such as Reds or Blues, Highlights, Midtones, Shadows, Skin Tones, Out of Gamut), the eyedropper (pick, add to or subtract from the sample) and *Pick in the Image*, *Fuzziness*, *Localized Color Clusters* with *Range*, *Invert*, *Preview* (Selection or Image), *Selection* (New, Add, Subtract, Intersect).
 
-**Grow** adds nearby pixels of a similar colour to the selection. **Similar** adds similar colours from anywhere in the image.
+**Grow** adds nearby pixels of a similar color to the selection. **Similar** adds similar colors from anywhere in the image.
 
-**Sky** finds the sky and selects it, ready for a new sky or a colour change.
+**Sky** finds the sky and selects it, ready for a new sky or a color change.
 
 **Isolate Layers** is meant to list only the selected layers in the Layers panel, but it doesn't change the panel yet.
 
@@ -170,7 +170,7 @@ These reshape the selection you already have.
 
 **Save Selection…** keeps the selection in the document so you can load it again later. Options: *Name*, *Operation* (New, or Replace, Add, Subtract or Intersect with an existing saved selection).
 
-**Edit in Quick Mask Mode** turns the selection into a coloured overlay that you can paint on with the Brush. Paint to add or remove areas, then choose it again to turn the overlay back into a selection.
+**Edit in Quick Mask Mode** turns the selection into a colored overlay that you can paint on with the Brush. Paint to add or remove areas, then choose it again to turn the overlay back into a selection.
 
 **Load Selection** lists your saved selections by name, plus *Layer Transparency* (selects the active layer's visible pixels) and, when the layer has one, *Layer Mask*.
 

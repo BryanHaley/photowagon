@@ -181,9 +181,14 @@ struct ColorWell: View {
                 .frame(width: 24, height: 24).overlay(RoundedRectangle(cornerRadius: 6).stroke(.gray, lineWidth: 1))
                 .offset(x: 12, y: 12)
                 .accessibilityHidden(true)
-            ColorPicker("Foreground", selection: Binding(get: { Color(model.foreground) }, set: { model.setForeground(UIColor($0)) }), supportsOpacity: false)
-                .labelsHidden()
+            // Not a ColorPicker: its colour well swallows the hold that shows the name.
+            Circle().fill(Color(model.foreground))
+                .padding(5)
+                .background(Circle().strokeBorder(AngularGradient(colors: [.red, .yellow, .green, .cyan, .blue, .purple, .red], center: .center), lineWidth: 3))
                 .frame(width: 28, height: 28)
+                .namedButton("Foreground", model: model) {
+                    SystemColorPicker.present(title: "Foreground", rgb: model.foreground.rgb) { model.setForeground(UIColor(rgb: $0)) }
+                }
             // The swap's tap area goes above the picker: iOS 27 grows the picker's touch area over
             // the background swatch.
             Color.clear
@@ -255,11 +260,8 @@ struct ContextBar: View {
             chip("Make Selection", "rectangle.dashed") { model.run("path.toSelection", ["name": "work", "mode": model.selectionMode.rawValue]) }
             chip("Fill Path", "drop.fill") { model.run("path.fill", ["name": "work"]) }
             chip("Stroke Path", "pencil.line") { model.run("path.stroke", ["name": "work", "tool": "brush"]) }
-            chip("Shape Layer", "square.on.circle") { pathToShape() }
-            chip("Delete Path", "trash") {
-                model.run("path.delete", ["name": "work"])
-                model.loadWorkPath()
-            }
+            chip("Shape Layer", "square.on.circle") { model.workPathToShape() }
+            chip("Delete Path", "trash") { model.deleteWorkPath() }
         } else if model.doc?.hasSelection == true, model.tool.selects || model.tool.typeTool || [.move, .patch, .contentAwareMove].contains(model.tool) {
             chip("Deselect", "xmark") { model.run("select.deselect") }
             chip("Invert", "arrow.left.arrow.right") { model.run("select.inverse") }
@@ -381,10 +383,7 @@ struct ContextBar: View {
                 Picker("Amount", selection: Binding(get: { w.amount }, set: { model.fluidWarp?.amount = $0 })) {
                     ForEach([100.0, 90, 75, 50, 25, 0], id: \.self) { Text("Amount \(Int($0))%").tag($0) }
                 }
-                Button("Restore All", role: .destructive) {
-                    model.fluidWarp?.strokes = []
-                    model.fluidWarp?.amount = 100
-                }
+                Button("Restore All", role: .destructive) { model.restoreFluidWarp() }
             } label: { chipLabel("More", "ellipsis") }
             .accessibilityIdentifier("warp.more")
         }
@@ -433,10 +432,7 @@ struct ContextBar: View {
                 PropSlider(title: "Rotate", value: p.pins[i].rotate.map { "\(Int($0))°" } ?? "Auto",
                            position: Binding(get: { ((p.pins[i].rotate ?? 0) + 180) / 360 },
                                              set: { model.puppet?.pins[i].rotate = ($0 * 360 - 180).rounded() }))
-                chip("Delete Pin", "pin.slash") {
-                    model.puppet?.pins.remove(at: i)
-                    model.puppet?.selected = nil
-                }
+                chip("Delete Pin", "pin.slash") { model.deletePuppetPin(i) }
             } else {
                 Text(p.pins.isEmpty ? "Tap to add pins, then drag one" : "Tap a pin to select it").font(.caption).foregroundStyle(.secondary).lineLimit(1)
             }
@@ -473,9 +469,7 @@ struct ContextBar: View {
                 ForEach(0..<3) { row in
                     Section {
                         ForEach(0..<3) { col in
-                            Button("\(["Top", "Middle", "Bottom"][row]) \(["Left", "Centre", "Right"][col])") {
-                                if var t = model.transform { t.setPivot(t.gridPoint(col, row)); model.transform = t }
-                            }
+                            Button("\(["Top", "Middle", "Bottom"][row]) \(["Left", "Centre", "Right"][col])") { model.setTransformPivot(col, row) }
                         }
                     }
                 }
@@ -485,12 +479,8 @@ struct ContextBar: View {
             chip("Rotate 90° Left", "rotate.left") { model.rotateTransform(by: -90) }
             chip("Rotate 90° Right", "rotate.right") { model.rotateTransform(by: 90) }
             angleField
-            chip("Flip Horizontal", "arrow.left.and.right.righttriangle.left.righttriangle.right") {
-                if var t = model.transform { t.sx = -t.sx; model.transform = t }
-            }
-            chip("Flip Vertical", "arrow.up.and.down.righttriangle.up.righttriangle.down") {
-                if var t = model.transform { t.sy = -t.sy; model.transform = t }
-            }
+            chip("Flip Horizontal", "arrow.left.and.right.righttriangle.left.righttriangle.right") { model.flipTransform(horizontal: true) }
+            chip("Flip Vertical", "arrow.up.and.down.righttriangle.up.righttriangle.down") { model.flipTransform(horizontal: false) }
         }
     }
 
@@ -787,15 +777,6 @@ struct ContextBar: View {
         }
     }
 
-    /// The work path as a new shape layer.
-    private func pathToShape() {
-        guard let out = try? model.editor.execute(id: "path.info", params: json(["name": "work"])),
-              let obj = try? JSONSerialization.jsonObject(with: Data(out.utf8)) as? [String: Any],
-              let path = obj["path"]
-        else { return }
-        model.run("shape.create", ["kind": "path", "path": path, "fill": model.foreground.hex])
-    }
-
     /// Paste, once something is copied (from this image or another open one).
     @ViewBuilder private var pasteChip: some View {
         if model.editor.commandEnabled(id: "edit.paste") {
@@ -810,6 +791,47 @@ struct ContextBar: View {
             .frame(width: 40, height: 32)
             .background(Color(white: 0.2), in: RoundedRectangle(cornerRadius: 8))
             .namedButton(title, model: model, action)
+    }
+}
+
+/// What the options bar's buttons do to work in progress and the work path.
+extension EditorModel {
+    /// The work path as a new shape layer.
+    func workPathToShape() {
+        guard let out = try? editor.execute(id: "path.info", params: json(["name": "work"])),
+              let obj = try? JSONSerialization.jsonObject(with: Data(out.utf8)) as? [String: Any],
+              let path = obj["path"]
+        else { return }
+        run("shape.create", ["kind": "path", "path": path, "fill": foreground.hex])
+    }
+
+    func deleteWorkPath() {
+        run("path.delete", ["name": "work"])
+        loadWorkPath()
+    }
+
+    func restoreFluidWarp() {
+        fluidWarp?.strokes = []
+        fluidWarp?.amount = 100
+    }
+
+    func deletePuppetPin(_ i: Int) {
+        guard puppet?.pins.indices.contains(i) == true else { return }
+        puppet?.pins.remove(at: i)
+        puppet?.selected = nil
+    }
+
+    /// The transform's reference point at one of the nine grid points.
+    func setTransformPivot(_ col: Int, _ row: Int) {
+        guard var t = transform else { return }
+        t.setPivot(t.gridPoint(col, row))
+        transform = t
+    }
+
+    func flipTransform(horizontal: Bool) {
+        guard var t = transform else { return }
+        if horizontal { t.sx = -t.sx } else { t.sy = -t.sy }
+        transform = t
     }
 }
 
@@ -981,7 +1003,7 @@ struct AdjustPanel: View {
         }
     }
 
-    @State private var kind = Kind.brightnessContrast
+    @State var kind = Kind.brightnessContrast
     @State private var values: [String: Double] = [:]
     @State private var steps = 0
     @State private var key = UUID().uuidString
@@ -1052,18 +1074,25 @@ struct CommandSearch: View {
     @State private var searching = true
     @State private var settings: CommandInfo?
 
-    private var shown: [CommandInfo] {
+    private var shown: [CommandInfo] { Self.matching(commands, query) }
+
+    /// The commands whose menu, name or id has `query` in it.
+    static func matching(_ commands: [CommandInfo], _ query: String) -> [CommandInfo] {
         let q = query.trimmingCharacters(in: .whitespaces).lowercased()
         guard !q.isEmpty else { return commands }
         return commands.filter { "\($0.menu) \($0.label)".lowercased().contains(q) || $0.id.lowercased().contains(q) }
+    }
+
+    /// A "…" command asks for its settings first, as in Photoshop.
+    static func asksForSettings(_ c: CommandInfo, fields: [ParamField]) -> Bool {
+        c.label.hasSuffix("…") && !fields.isEmpty
     }
 
     var body: some View {
         NavigationStack {
             List(shown, id: \.id) { c in
                 Button {
-                    // A "…" command asks for its settings first, as in Photoshop.
-                    if c.label.hasSuffix("…"), !model.editor.commandFields(id: c.id).isEmpty {
+                    if Self.asksForSettings(c, fields: model.editor.commandFields(id: c.id)) {
                         settings = c
                     } else {
                         dismiss()
@@ -1092,7 +1121,7 @@ struct CommandSearch: View {
                 }
             }
         }
-        .onAppear { commands = model.editor.commands() }
+        .onAppear { commands = model.editor.commands().filter { !MenuTree.notOnIOS.contains($0.id) } }
     }
 }
 
@@ -1316,16 +1345,54 @@ extension EditorModel {
     }
 }
 
+extension EditorModel {
+    /// A Type option on the text being edited (nothing without one).
+    func setTypeStyle(_ key: String, _ value: Any, coalesce: String? = nil) {
+        guard let l = editingText else { return }
+        var p: [String: Any] = ["layer": l, key: value]
+        if let coalesce { p["coalesce"] = coalesce }
+        run("type.setStyle", p)
+    }
+
+    func setTypeAlign(_ a: String) {
+        typeAlign = a
+        setTypeStyle("align", a)
+    }
+
+    func setTypeFont(_ f: String) {
+        setTypeStyle("font", f)
+        typeFont = f
+    }
+
+    /// Size, leading or tracking typed in the options bar; one focus of the field is one undo step.
+    func setTypeNumber(_ key: String, _ v: Double, edit: Int) {
+        if v != 0 || key == "tracking" { setTypeStyle(key, v, coalesce: "type-\(key)-\(edit)") }
+    }
+}
+
 /// Type tool options: font, size, leading, tracking, alignment. They apply to the selected text
 /// layer now, and to text you add next.
 struct TypeOptions: View {
     @ObservedObject var model: EditorModel
     @State private var fonts: [String] = []
+    /// One picker session is one undo step.
+    @State private var colorEdit = 0
 
     var body: some View {
-        Group {
+        // Room between the groups: the row scrolls when it runs out.
+        HStack(spacing: 16) {
+            if textLayer != nil {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 16))
+                    .foregroundStyle(.white)
+                    .frame(width: 40, height: 32)
+                    .background(Color(white: 0.2), in: RoundedRectangle(cornerRadius: 8))
+                    .namedButton("Done", model: model) { model.finishEditingText() }
+                    .accessibilityIdentifier("type.done")
+            }
+            colorSwatch
         Menu {
-                ForEach(fonts, id: \.self) { f in Button(f) { set("font", f); model.typeFont = f } }
+                ForEach(fonts, id: \.self) { f in Button(f) { model.setTypeFont(f) } }
             } label: {
                 Text(model.typeFont.isEmpty ? "Font" : model.typeFont).font(.caption).lineLimit(1)
                     .padding(.horizontal, 10).frame(height: 32)
@@ -1333,12 +1400,7 @@ struct TypeOptions: View {
             }
             .accessibilityIdentifier("type.font")
             number("Size", "pt", Binding(get: { model.typeSize > 0 ? model.typeSize : model.defaultTypeSize }, set: { model.typeSize = $0 ?? 0 }), key: "size")
-            number("Leading", "pt", Binding(get: { model.typeLeading > 0 ? model.typeLeading : nil }, set: { model.typeLeading = $0 ?? 0 }), key: "leading", prompt: "Auto")
-            number("Tracking", "", Binding(get: { model.typeTracking }, set: { model.typeTracking = $0 ?? 0 }), key: "tracking")
-            Picker("Align", selection: Binding(get: { model.typeAlign }, set: { a in
-                model.typeAlign = a
-                set("align", a)
-            })) {
+            Picker("Align", selection: Binding(get: { model.typeAlign }, set: { model.setTypeAlign($0) })) {
                 Image(systemName: "text.alignleft").tag("left")
                 Image(systemName: "text.aligncenter").tag("center")
                 Image(systemName: "text.alignright").tag("right")
@@ -1346,6 +1408,8 @@ struct TypeOptions: View {
             .pickerStyle(.segmented)
             .frame(width: 120)
             .accessibilityIdentifier("type.align")
+            number("Leading", "pt", Binding(get: { model.typeLeading > 0 ? model.typeLeading : nil }, set: { model.typeLeading = $0 ?? 0 }), key: "leading", prompt: "Auto")
+            number("Tracking", "", Binding(get: { model.typeTracking }, set: { model.typeTracking = $0 ?? 0 }), key: "tracking")
         }
         .onAppear {
             if let l = textLayer { model.loadTypeOptions(layer: l) }
@@ -1356,20 +1420,28 @@ struct TypeOptions: View {
         .onChange(of: textLayer) { _, l in if let l { model.loadTypeOptions(layer: l) } }
     }
 
-    private var textLayer: UInt64? { model.activeLayer.flatMap { $0.kind == "Type" ? $0.id : nil } }
+    private var textLayer: UInt64? { model.editingText }
 
-    private func set(_ key: String, _ value: Any, coalesce: String? = nil) {
-        guard let l = textLayer else { return }
-        var p: [String: Any] = ["layer": l, key: value]
-        if let coalesce { p["coalesce"] = coalesce }
-        model.run("type.setStyle", p)
+    /// The text's colour (the foreground's for new text); tap to change it.
+    private var colorSwatch: some View {
+        let rgb = textLayer != nil ? model.typeColor ?? [0, 0, 0] : EffectPage.rgb(model.foreground.hex)
+        return RoundedRectangle(cornerRadius: 6)
+            .fill(Color(red: Double(rgb[safe: 0] ?? 0), green: Double(rgb[safe: 1] ?? 0), blue: Double(rgb[safe: 2] ?? 0)))
+            .frame(width: 32, height: 28)
+            .overlay(RoundedRectangle(cornerRadius: 6).stroke(.secondary))
+            .namedButton("Text Color", model: model) {
+                colorEdit += 1
+                let edit = colorEdit
+                SystemColorPicker.present(title: "Text Color", rgb: rgb) { model.setTypeColor($0, edit: edit) }
+            }
+            .accessibilityIdentifier("type.color")
     }
 
     private func number(_ title: String, _ unit: String, _ value: Binding<Double?>, key: String, prompt: String? = nil) -> some View {
         HStack(spacing: 2) {
             Text(title).font(.caption2).foregroundStyle(.secondary)
             TypeNumberField(title: title, prompt: prompt, value: value) { v, edit in
-                if v != 0 || key == "tracking" { set(key, v, coalesce: "type-\(key)-\(edit)") }
+                model.setTypeNumber(key, v, edit: edit)
             }
             .accessibilityIdentifier("type.\(key)")
             if !unit.isEmpty { Text(unit).font(.caption2).foregroundStyle(.secondary) }
@@ -1437,6 +1509,8 @@ struct PropSlider: View {
                 .accessibilityIdentifier("option.\(title)")
                 .accessibilityValue(value)
         }
+        // The row has no room for bigger labels: they'd cut down to "Si…".
+        .dynamicTypeSize(...DynamicTypeSize.xLarge)
         .frame(maxWidth: 170)
     }
 }
@@ -1468,10 +1542,13 @@ struct ActionsPanel: View {
     @ObservedObject var model: EditorModel
     /// Load Actions: pick an .atn file.
     let load: () -> Void
-    @State private var actions: [Action] = []
-    @State private var selected: String?
-    @State private var expanded: Set<String> = []
-    @State private var editing: LayerTextEdit?
+    @StateObject private var state: ActionsState
+
+    init(model: EditorModel, state: ActionsState? = nil, load: @escaping () -> Void) {
+        self.model = model
+        self.load = load
+        _state = StateObject(wrappedValue: state ?? ActionsState(model: model))
+    }
 
     struct Action: Identifiable {
         let name: String
@@ -1488,17 +1565,13 @@ struct ActionsPanel: View {
                 Section {
                     HStack(spacing: 18) {
                         if model.recordingAction != nil {
-                            button("Stop Recording", "stop.fill", "actions.stop") { stop() }
+                            button("Stop Recording", "stop.fill", "actions.stop") { state.stop() }
                         } else {
-                            button("Record", "record.circle", "actions.record", enabled: selected != nil) { record(selected) }
+                            button("Record", "record.circle", "actions.record", enabled: state.selected != nil) { state.record(state.selected) }
                         }
-                        button("Play", "play.fill", "actions.play", enabled: selected != nil && model.recordingAction == nil) { play() }
-                        button("New Action", "plus", "actions.new", enabled: model.recordingAction == nil) {
-                            editing = LayerTextEdit(layer: 0, title: "New Action", text: "Action \(actions.count + 1)") { record(nil, named: $0) }
-                        }
-                        button("Delete", "trash", "actions.delete", enabled: selected != nil && model.recordingAction == nil) {
-                            if let a = selected { run("actions.delete", ["action": a]); selected = nil }
-                        }
+                        button("Play", "play.fill", "actions.play", enabled: state.selected != nil && model.recordingAction == nil) { state.play() }
+                        button("New Action", "plus", "actions.new", enabled: model.recordingAction == nil) { state.newAction() }
+                        button("Delete", "trash", "actions.delete", enabled: state.selected != nil && model.recordingAction == nil) { state.deleteSelected() }
                     }
                     .frame(maxWidth: .infinity)
                     if let r = model.recordingAction {
@@ -1506,34 +1579,32 @@ struct ActionsPanel: View {
                             .font(.caption).foregroundStyle(.red)
                     }
                 }
-                ForEach(sets, id: \.self) { set in
+                ForEach(state.sets, id: \.self) { set in
                     Section(set) {
-                        ForEach(actions.filter { $0.set == set }) { a in
-                            let open = expanded.contains(a.name)
+                        ForEach(state.actions.filter { $0.set == set }) { a in
+                            let open = state.expanded.contains(a.name)
                             HStack {
-                                Button {
-                                    if open { expanded.remove(a.name) } else { expanded.insert(a.name) }
-                                } label: { Image(systemName: open ? "chevron.down" : "chevron.right").frame(width: 16) }
+                                Button { state.toggleExpanded(a.name) } label: { Image(systemName: open ? "chevron.down" : "chevron.right").frame(width: 16) }
                                 .buttonStyle(.borderless)
                                 .accessibilityLabel(open ? "Hide steps" : "Show steps")
                                 .accessibilityIdentifier("action.expand.\(a.name)")
-                                check(a.on, id: "action.toggle.\(a.name)") { run("actions.toggle", ["action": a.name]) }
+                                check(a.on, id: "action.toggle.\(a.name)") { state.run("actions.toggle", ["action": a.name]) }
                                 HStack {
                                     Text(a.name)
                                     Spacer()
                                     if model.recordingAction == a.name { Image(systemName: "record.circle.fill").foregroundStyle(.red) }
                                 }
                                 .contentShape(Rectangle())
-                                .onTapGesture(count: 2) { rename(a.name) }
-                                .onTapGesture { selected = a.name }
+                                .onTapGesture(count: 2) { state.rename(a.name) }
+                                .onTapGesture { state.selected = a.name }
                                 .accessibilityAddTraits(.isButton)
                                 .accessibilityIdentifier("action.\(a.name)")
                             }
-                            .listRowBackground(selected == a.name ? Color.accentColor.opacity(0.25) : nil)
+                            .listRowBackground(state.selected == a.name ? Color.accentColor.opacity(0.25) : nil)
                             if open {
                                 ForEach(Array(a.steps.enumerated()), id: \.offset) { i, step in
                                     HStack {
-                                        check(step.on, id: "step.toggle.\(a.name).\(i)") { run("actions.toggle", ["action": a.name, "step": i]) }
+                                        check(step.on, id: "step.toggle.\(a.name).\(i)") { state.run("actions.toggle", ["action": a.name, "step": i]) }
                                         Text(step.label).foregroundStyle(step.on ? .primary : .secondary)
                                             .accessibilityIdentifier("step.\(a.name).\(i)")
                                     }
@@ -1543,7 +1614,7 @@ struct ActionsPanel: View {
                         }
                     }
                 }
-                if actions.isEmpty {
+                if state.actions.isEmpty {
                     Text("No actions yet. Tap + to record one: what you do next is recorded until you stop.")
                         .foregroundStyle(.secondary)
                 }
@@ -1554,30 +1625,23 @@ struct ActionsPanel: View {
                 ToolbarItem(placement: .topBarLeading) { DoneButton() }
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
-                        Button("Rename…") { if let a = selected { rename(a) } }.disabled(selected == nil)
-                        Button("Add to Set…") {
-                            guard let a = selected else { return }
-                            editing = LayerTextEdit(layer: 0, title: "Set Name", text: "Set 1") { run("actions.assignSet", ["action": a, "set": $0]) }
-                        }
-                        .disabled(selected == nil)
+                        Button("Rename…") { if let a = state.selected { state.rename(a) } }.disabled(state.selected == nil)
+                        Button("Add to Set…") { state.addToSet() }.disabled(state.selected == nil)
                         Divider()
                         Button("Load Actions…") { load() }
-                        Button("Save Actions…") { save() }.disabled(actions.isEmpty)
+                        Button("Save Actions…") { state.save() }.disabled(state.actions.isEmpty)
                     } label: { Image(systemName: "ellipsis.circle") }
                     .accessibilityIdentifier("actions.menu")
                 }
             }
-            .alert(editing?.title ?? "", isPresented: Binding(get: { editing != nil }, set: { if !$0 { editing = nil } })) {
-                TextField("Name", text: Binding(get: { editing?.text ?? "" }, set: { editing?.text = $0 }))
+            .alert(state.editing?.title ?? "", isPresented: Binding(get: { state.editing != nil }, set: { if !$0 { state.editing = nil } })) {
+                TextField("Name", text: Binding(get: { state.editing?.text ?? "" }, set: { state.editing?.text = $0 }))
                     .accessibilityIdentifier("prompt.field")
-                Button("Cancel", role: .cancel) { editing = nil }
-                Button("OK") {
-                    if let e = editing { e.apply(e.text) }
-                    editing = nil
-                }
-                .accessibilityIdentifier("prompt.ok")
+                Button("Cancel", role: .cancel) { state.editing = nil }
+                Button("OK") { state.finishEditing() }
+                    .accessibilityIdentifier("prompt.ok")
             }
-            .onAppear(perform: reload)
+            .onAppear(perform: state.reload)
         }
     }
 
@@ -1587,12 +1651,6 @@ struct ActionsPanel: View {
         "layer.duplicate": "Duplicate Layer", "select.all": "Select All", "select.deselect": "Deselect",
         "edit.fill": "Fill", "image.size": "Image Size", "layer.transform": "Transform",
     ]
-
-    private var sets: [String] {
-        var seen: [String] = []
-        for a in actions where !seen.contains(a.set) { seen.append(a.set) }
-        return seen
-    }
 
     private func button(_ title: String, _ symbol: String, _ id: String, enabled: Bool = true, _ action: @escaping () -> Void) -> some View {
         Button(action: action) { Image(systemName: symbol).font(.title3) }
@@ -1608,17 +1666,35 @@ struct ActionsPanel: View {
             .accessibilityIdentifier(id)
             .accessibilityValue(on ? "on" : "off")
     }
+}
 
-    private func run(_ id: String, _ params: [String: Any] = [:]) {
+/// The Actions panel's list, selection and the name being typed.
+@MainActor
+final class ActionsState: ObservableObject {
+    let model: EditorModel
+    @Published var actions: [ActionsPanel.Action] = []
+    @Published var selected: String?
+    @Published var expanded: Set<String> = []
+    @Published var editing: LayerTextEdit?
+
+    init(model: EditorModel) { self.model = model }
+
+    var sets: [String] {
+        var seen: [String] = []
+        for a in actions where !seen.contains(a.set) { seen.append(a.set) }
+        return seen
+    }
+
+    func run(_ id: String, _ params: [String: Any] = [:]) {
         model.run(id, params)
         reload()
     }
 
-    private func reload() {
+    func reload() {
         if let list = model.actionList() { actions = list }
     }
 
-    private func record(_ action: String?, named name: String? = nil) {
+    func record(_ action: String?, named name: String? = nil) {
         var p: [String: Any] = [:]
         if let action { p["action"] = action }
         if let name { p["name"] = name }
@@ -1627,35 +1703,60 @@ struct ActionsPanel: View {
         selected = model.recordingAction ?? selected
     }
 
-    private func stop() {
+    func stop() {
         run("actions.stop")
         model.recordingAction = nil
     }
 
-    private func play() {
+    func play() {
         guard let a = selected else { return }
-        model.playAction(a) { reload() }
+        model.playAction(a) { [weak self] in self?.reload() }
     }
 
-    private func rename(_ name: String) {
-        editing = LayerTextEdit(layer: 0, title: "Rename Action", text: name) { new in
-            run("actions.rename", ["action": name, "name": new])
-            if selected == name { selected = new }
+    func newAction() {
+        editing = LayerTextEdit(layer: 0, title: "New Action", text: "Action \(actions.count + 1)") { [weak self] in self?.record(nil, named: $0) }
+    }
+
+    func deleteSelected() {
+        guard let a = selected else { return }
+        run("actions.delete", ["action": a])
+        selected = nil
+    }
+
+    func toggleExpanded(_ name: String) {
+        if expanded.contains(name) { expanded.remove(name) } else { expanded.insert(name) }
+    }
+
+    func rename(_ name: String) {
+        editing = LayerTextEdit(layer: 0, title: "Rename Action", text: name) { [weak self] new in
+            self?.run("actions.rename", ["action": name, "name": new])
+            if self?.selected == name { self?.selected = new }
         }
     }
 
+    func addToSet() {
+        guard let a = selected else { return }
+        editing = LayerTextEdit(layer: 0, title: "Set Name", text: "Set 1") { [weak self] in self?.run("actions.assignSet", ["action": a, "set": $0]) }
+    }
+
+    /// The prompt's OK.
+    func finishEditing() {
+        if let e = editing { e.apply(e.text) }
+        editing = nil
+    }
+
     /// Save Actions: the sets as a Photoshop .atn file in the app's folder.
-    private func save() {
+    func save(to folder: URL = AppFolder.url) {
         let set = actions.first(where: { $0.name == selected })?.set ?? actions.first?.set ?? "Actions"
         // The engine only saves named sets.
         for a in actions where a.set == set && !a.hasSet { model.run("actions.assignSet", ["action": a.name, "set": set]) }
         reload()
         guard let out = model.run("actions.save", ["set": set, "skipUnsupported": true]) as? [String: Any], let b64 = out["data"] as? String, let data = Data(base64Encoded: b64) else { return }
-        let url = AppFolder.url.appendingPathComponent("\(set).atn")
+        let url = folder.appendingPathComponent("\(set).atn")
         do {
             try data.write(to: url)
             let skipped = (out["skipped"] as? [Any])?.count ?? 0
-            model.toast = "Saved \(url.lastPathComponent)" + (skipped > 0 ? ", without \(skipped) step\(skipped == 1 ? "" : "s") a Photoshop .atn can't hold" : "")
+            model.toast = "Saved \(url.lastPathComponent)" + (skipped > 0 ? ", without \(skipped) step\(skipped == 1 ? "" : "s") an .atn file can't hold" : "")
         } catch {
             model.show(error)
         }

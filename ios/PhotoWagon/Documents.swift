@@ -329,7 +329,7 @@ struct NewDocumentSheet: View {
                 Section {
                     Picker("Preset", selection: Binding(get: { preset }, set: { name in
                         preset = name
-                        if let p = Self.presets.flatMap(\.1).first(where: { $0.name == name }) { apply(p) }
+                        if let p = Self.preset(name) { apply(p) }
                     })) {
                         Text("Custom").tag("")
                         ForEach(Self.presets, id: \.0) { group in
@@ -403,6 +403,8 @@ struct NewDocumentSheet: View {
 
     private func px(_ s: String) -> Int { Self.pixels(s, unit: unit, resolution: resolution) }
 
+    static func preset(_ name: String) -> DocPreset? { presets.flatMap(\.1).first { $0.name == name } }
+
     private func apply(_ p: DocPreset) {
         (name, unit, width, height, resolution) = (p.name, .pixels, "\(p.width)", "\(p.height)", "\(p.resolution)")
     }
@@ -475,7 +477,7 @@ struct FileBrowser: View {
                     ForEach(files, id: \.self) { u in
                         Button {
                             if choosing {
-                                if let i = chosen.firstIndex(of: u) { chosen.remove(at: i) } else { chosen.append(u) }
+                                chosen = Self.toggled(u, in: chosen)
                             } else {
                                 dismiss()
                                 pick(u)
@@ -506,8 +508,7 @@ struct FileBrowser: View {
                         if choosing {
                             Button("Place \(chosen.count)") {
                                 dismiss()
-                                // In name order, as a sequence of frames is numbered.
-                                pickMany(chosen.sorted { $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending })
+                                pickMany(Self.inNameOrder(chosen))
                             }
                             .disabled(chosen.isEmpty)
                             .accessibilityIdentifier("browser.placeChosen")
@@ -519,6 +520,15 @@ struct FileBrowser: View {
             }
             .onAppear { files = AppFolder.files(kinds) }
         }
+    }
+
+    static func toggled(_ u: URL, in chosen: [URL]) -> [URL] {
+        chosen.contains(u) ? chosen.filter { $0 != u } : chosen + [u]
+    }
+
+    /// In name order, as a sequence of frames is numbered.
+    static func inNameOrder(_ urls: [URL]) -> [URL] {
+        urls.sorted { $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending }
     }
 }
 
@@ -547,12 +557,12 @@ struct SaveSheet: View {
     let elsewhere: (Data, String, UTType) -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var name = ""
-    @State private var format = SaveFormat.layered[0]
+    @State var format = SaveFormat.layered[0]
 
     private var formats: [SaveFormat] { SaveFormat.offered(copy: copy, layerCount: model.layerCount) }
     @State private var quality = 10.0
     @State private var inAppFolder = true
-    @State private var jxlLossless = true
+    @State var jxlLossless = true
     @State private var jxlQuality = 90.0
     @State private var jxlEffort = 7.0
 
@@ -593,23 +603,10 @@ struct SaveSheet: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        let data = format.ext == "jxl"
-                            ? model.exportJXL(lossless: jxlLossless, quality: Int(jxlQuality), effort: Int(jxlEffort))
-                            : model.export(format.ext, quality: format.ext == "jpg" ? UInt8(quality) : nil)
-                        guard let data else { return }
+                        guard let data = model.fileData(format.ext, jpegQuality: quality, jxl: (jxlLossless, jxlQuality, jxlEffort)) else { return }
                         let file = "\(name.isEmpty ? model.fileStem : name).\(format.ext)"
                         dismiss()
-                        if inAppFolder {
-                            let url = AppFolder.url.appendingPathComponent(file)
-                            do {
-                                try data.write(to: url)
-                                if copy { model.toast = "Saved \(file)" } else { model.savedAs(url) }
-                            } catch {
-                                model.show(error)
-                            }
-                        } else {
-                            elsewhere(data, file, format.type)
-                        }
+                        if inAppFolder { model.saveInAppFolder(data, file: file, copy: copy) } else { elsewhere(data, file, format.type) }
                     }
                     .accessibilityIdentifier("save.save")
                 }
@@ -618,6 +615,25 @@ struct SaveSheet: View {
                 name = model.fileStem + (copy ? " copy" : "")
                 if copy { format = SaveFormat.all[0] }
             }
+        }
+    }
+}
+
+extension EditorModel {
+    /// Save As and Save a Copy's file in format `ext`.
+    func fileData(_ ext: String, jpegQuality: Double, jxl: (lossless: Bool, quality: Double, effort: Double)) -> Data? {
+        ext == "jxl" ? exportJXL(lossless: jxl.lossless, quality: Int(jxl.quality), effort: Int(jxl.effort))
+            : export(ext, quality: ext == "jpg" ? UInt8(jpegQuality) : nil)
+    }
+
+    /// A Save As or Save a Copy file in the app's folder: after Save As the document is that file.
+    func saveInAppFolder(_ data: Data, file: String, copy: Bool) {
+        let url = AppFolder.url.appendingPathComponent(file)
+        do {
+            try data.write(to: url)
+            if copy { toast = "Saved \(file)" } else { savedAs(url) }
+        } catch {
+            show(error)
         }
     }
 }
@@ -653,15 +669,24 @@ struct ExportSheet: View {
     @ObservedObject var model: EditorModel
     @Environment(\.dismiss) private var dismiss
     @State private var name = ""
-    @State private var format = "png"
+    @State var format = "png"
     @State private var quality = 80.0
-    @State private var jxlLossless = false
+    @State var jxlLossless = false
     @State private var srgb = true
     @State private var transparency = true
     @State private var width = 0
     @State private var scales: Set<Double> = [1]
 
     static let scaleChoices: [Double] = [0.25, 0.5, 0.75, 1, 1.5, 2, 3]
+
+    /// The engine's Export As settings for these choices.
+    static func prefs(format: String, quality: Double, jxlLossless: Bool, srgb: Bool) -> [String: Any] {
+        var prefs: [String: Any] = ["quickExportFormat": format, "convertToSrgb": srgb]
+        if format == "jpg" { prefs["jpegQuality"] = Int(quality) }
+        if format == "webp" { prefs["webpQuality"] = Int(quality) }
+        if format == "jxl" { (prefs["jxlLossless"], prefs["jxlQuality"]) = (jxlLossless, Int(quality)) }
+        return prefs
+    }
 
     private var height: Int {
         guard let d = model.doc, d.width > 0 else { return 0 }
@@ -731,10 +756,7 @@ struct ExportSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Export") {
                         dismiss()
-                        var prefs: [String: Any] = ["quickExportFormat": format, "convertToSrgb": srgb]
-                        if format == "jpg" { prefs["jpegQuality"] = Int(quality) }
-                        if format == "webp" { prefs["webpQuality"] = Int(quality) }
-                        if format == "jxl" { (prefs["jxlLossless"], prefs["jxlQuality"]) = (jxlLossless, Int(quality)) }
+                        let prefs = Self.prefs(format: format, quality: quality, jxlLossless: jxlLossless, srgb: srgb)
                         model.exportAs(name: name, prefs: prefs, width: max(width, 1), scales: Array(scales), transparency: transparency || format == "jpg")
                     }
                     .accessibilityIdentifier("export.export")
@@ -755,7 +777,7 @@ struct SaveForWebSheet: View {
     @ObservedObject var model: EditorModel
     @Environment(\.dismiss) private var dismiss
     @State private var name = ""
-    @State private var format = "gif"
+    @State var format = "gif"
     @State private var colors = 256
     @State private var palette = "selective"
     @State private var dither = "diffusion"
@@ -844,13 +866,8 @@ struct SaveForWebSheet: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        let file = "\(name.isEmpty ? model.fileStem : name).\(ext)"
-                        var p = params
-                        p["path"] = AppFolder.url.appendingPathComponent(file).path
                         dismiss()
-                        model.runInBackground("file.export.saveForWebLegacy", p) { [weak model] out in
-                            if out != nil { model?.toast = "Saved \(file)" }
-                        }
+                        model.saveForWeb(params, file: "\(name.isEmpty ? model.fileStem : name).\(ext)")
                     }
                     .accessibilityIdentifier("web.save")
                 }
@@ -858,7 +875,7 @@ struct SaveForWebSheet: View {
             .onAppear {
                 name = model.fileStem
                 loops = model.animation?.loops ?? 0
-                if (model.animation?.count ?? 0) <= 1 { format = "png24" }
+                if format == "gif", (model.animation?.count ?? 0) <= 1 { format = "png24" }
             }
             .task(id: "\(format)\(colors)\(palette)\(dither)\(transparency)\(quality)\(percent)\(loops)") { await estimateSize() }
         }
@@ -874,5 +891,16 @@ struct SaveForWebSheet: View {
         guard let bytes = o?["bytes"] as? Int else { estimate = nil; return }
         let size = ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file)
         estimate = (o?["frames"] as? Int).map { "\(size) · \($0) frames" } ?? size
+    }
+}
+
+extension EditorModel {
+    /// Save for Web's file, in the app's folder.
+    func saveForWeb(_ params: [String: Any], file: String) {
+        var p = params
+        p["path"] = AppFolder.url.appendingPathComponent(file).path
+        runInBackground("file.export.saveForWebLegacy", p) { [weak self] out in
+            if out != nil { self?.toast = "Saved \(file)" }
+        }
     }
 }

@@ -81,28 +81,20 @@ struct LayerPropertiesContent: View {
             }
         case let .smartFilter(i):
             if let f = row.smartFilters.first(where: { $0.index == i }), f.command == "filter.cameraRaw" {
-                CameraRawView(model: model, initial: f.params, change: { p in
-                    model.live("layer.smartFilter.setParams", ["layer": row.id, "index": i, "params": p])
-                }, cancel: { model.liveCancel() }) { p in
-                    model.liveFinish("layer.smartFilter.setParams", ["layer": row.id, "index": i, "params": p])
-                }
+                CameraRawView(model: model, initial: f.params, change: { model.setSmartFilter(row.id, i, $0) },
+                              cancel: { model.liveCancel() }) { model.setSmartFilter(row.id, i, $0, done: true) }
             } else if let f = row.smartFilters.first(where: { $0.index == i }) {
-                CommandSettings(title: f.name, fields: model.editor.commandFields(id: f.command), initial: f.params, runTitle: "OK", change: { p in
-                    model.live("layer.smartFilter.setParams", ["layer": row.id, "index": i, "params": p])
-                }) { p in
-                    model.liveFinish("layer.smartFilter.setParams", ["layer": row.id, "index": i, "params": p])
-                    dismiss()
-                }
+                CommandSettings(title: f.name, fields: model.editor.commandFields(id: f.command), initial: f.params, runTitle: "OK",
+                                change: { model.setSmartFilter(row.id, i, $0) }) { model.setSmartFilter(row.id, i, $0, done: true); dismiss() }
             }
         case .layer:
             if let a = row.adjustment, AdjustmentEditor.kinds.contains(a.kind) {
                 AdjustmentEditor(model: model, kind: a.kind, layer: row.id, initial: a.params, surface: inPanel && width == .regular ? .canvas : .preview, runTitle: "", inPanel: inPanel, key: key,
-                                 change: { p in model.run("layer.setAdjustment", p.merging(["layer": row.id, "coalesce": key]) { a, _ in a }) },
+                                 change: { model.setAdjustment(row.id, $0, key: key) },
                                  run: { _ in dismiss() })
             } else if let a = row.adjustment {
-                CommandSettings(title: AdjustmentKinds.label(a.kind), fields: fields(a.kind), initial: a.params, change: { p in
-                    model.run("layer.setAdjustment", p.merging(["layer": row.id, "coalesce": key]) { a, _ in a })
-                }) { _ in dismiss() }
+                CommandSettings(title: AdjustmentKinds.label(a.kind), fields: fields(a.kind), initial: a.params,
+                                change: { model.setAdjustment(row.id, $0, key: key) }) { _ in dismiss() }
             } else if row.kind == "Fill" {
                 FillProperties(model: model, layer: row.id, inPanel: inPanel)
             } else if row.kind == "Shape" {
@@ -218,11 +210,16 @@ struct FillProperties: View {
     }
 
     private func setOpacity(_ i: Int, at t: Double?, _ opacity: Double?) {
-        var list = transparency
-        guard list.indices.contains(i), list[i].count > 1 else { return }
+        if let list = Self.transparency(transparency, stop: i, at: t, opacity: opacity) { set(["transparency": list]) }
+    }
+
+    /// The opacity stops with stop `i` moved to `t` or set to `opacity`; `nil` for no such stop.
+    static func transparency(_ list: [[Double]], stop i: Int, at t: Double?, opacity: Double?) -> [[Double]]? {
+        var list = list
+        guard list.indices.contains(i), list[i].count > 1 else { return nil }
         if let t { list[i][0] = t }
         if let opacity { list[i][1] = opacity }
-        set(["transparency": list])
+        return list
     }
 
     private func load() {
@@ -260,10 +257,7 @@ struct ShapeProperties: View {
             if isRect {
                 Section("Corners") {
                     HStack {
-                        Slider(value: Binding(get: { radius }, set: { r in
-                            radius = r.rounded()
-                            model.run("shape.edit", ["layer": layer, "kind": "roundedRect", "radii": radius, "coalesce": key])
-                        }), in: 0...maxRadius)
+                        Slider(value: Binding(get: { radius }, set: { radius = model.setCornerRadius(layer, $0, key: key) }), in: 0...maxRadius)
                         .accessibilityIdentifier("shape.radius")
                         Text("\(Int(radius)) px").monospacedDigit().lineLimit(1).frame(width: scaled(72))
                     }
@@ -290,12 +284,18 @@ struct GradientSwatch: View {
     let stops: [[Any]]
 
     var body: some View {
-        let s = stops.compactMap { st -> Gradient.Stop? in
+        let s = Self.drawn(stops)
+        LinearGradient(stops: s.isEmpty ? [.init(color: .black, location: 0), .init(color: .white, location: 1)] : s, startPoint: .leading, endPoint: .trailing)
+            .clipShape(RoundedRectangle(cornerRadius: 4))
+    }
+
+    /// In location order: a stop's slider can pass its neighbour, and SwiftUI wants them sorted.
+    static func drawn(_ stops: [[Any]]) -> [Gradient.Stop] {
+        stops.compactMap { st -> Gradient.Stop? in
             guard let t = (st.first as? NSNumber)?.doubleValue, let c = st.last as? String, c.hasPrefix("#") else { return nil }
             return Gradient.Stop(color: Color(hex: c), location: t)
         }
-        LinearGradient(stops: s.isEmpty ? [.init(color: .black, location: 0), .init(color: .white, location: 1)] : s, startPoint: .leading, endPoint: .trailing)
-            .clipShape(RoundedRectangle(cornerRadius: 4))
+        .sorted { $0.location < $1.location }
     }
 }
 
@@ -322,7 +322,8 @@ struct HueSaturationProperties: View {
     var runTitle = "Done"
     var change: ([String: Any]) -> Void = { _ in }
     var run: ([String: Any]) -> Void = { _ in }
-    @State private var part = "master"
+    /// Master or the colour range being changed.
+    @State var part = "master"
     @State private var local: [String: Any] = [:]
 
     static let ranges = ["reds", "yellows", "greens", "cyans", "blues", "magentas"]
@@ -343,10 +344,8 @@ struct HueSaturationProperties: View {
                 }
                 .accessibilityIdentifier("hs.part")
                 if let layer {
-                    Toggle("Drag in the image to adjust", isOn: Binding(get: { model.targetedAdjust?.layer == layer }, set: { on in
-                        model.targetedAdjust = on ? TargetedAdjust(layer: layer, key: key, hue: model.targetedAdjust?.hue ?? false) : nil
-                        // Dragging in the image needs the canvas: Properties lets it take touches.
-                        if on, !inPanel { model.request = .panel(.properties) }
+                    Toggle("Drag in the image to adjust", isOn: Binding(get: { model.targetedAdjust?.layer == layer }, set: {
+                        model.setTargetedAdjust($0, layer: layer, key: key, inPanel: inPanel)
                     }))
                     .accessibilityIdentifier("hs.targeted")
                     if model.targetedAdjust?.layer == layer {
@@ -373,13 +372,8 @@ struct HueSaturationProperties: View {
                     ForEach(0..<4, id: \.self) { i in
                         HStack {
                             Text(["Fade from", "From", "To", "Fade to"][i]).lineLimit(1).minimumScaleFactor(0.8).frame(width: scaled(84), alignment: .leading)
-                            Slider(value: Binding(get: { r[i].doubleValue }, set: { v in
-                                var range = r.map(\.doubleValue)
-                                range[i] = v.rounded()
-                                // Keep them in order.
-                                for j in 0..<4 where j != i { range[j] = j < i ? min(range[j], range[i]) : max(range[j], range[i]) }
-                                setPart(["range": range])
-                            }), in: -90...450)
+                            Slider(value: Binding(get: { r[i].doubleValue }, set: { setPart(["range": Self.range(r.map(\.doubleValue), setting: i, to: $0)]) }),
+                                   in: -90...450)
                             .accessibilityIdentifier("hs.range.\(i)")
                             Text("\(r[i].intValue)°").monospacedDigit().lineLimit(1).frame(width: scaled(52))
                         }
@@ -398,6 +392,15 @@ struct HueSaturationProperties: View {
         }
     }
 
+    /// `range` with its `i`th point at `v`, the others pushed along to keep them in order.
+    static func range(_ range: [Double], setting i: Int, to v: Double) -> [Double] {
+        guard range.indices.contains(i) else { return range }
+        var range = range
+        range[i] = v.rounded()
+        for j in range.indices where j != i { range[j] = j < i ? min(range[j], range[i]) : max(range[j], range[i]) }
+        return range
+    }
+
     private func slider(_ title: String, _ k: String, _ range: ClosedRange<Double>) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             HStack {
@@ -412,7 +415,7 @@ struct HueSaturationProperties: View {
 
     private func set(_ p: [String: Any]) {
         if let layer {
-            model.run("layer.setAdjustment", p.merging(["layer": layer, "coalesce": key]) { a, _ in a })
+            model.setAdjustment(layer, p, key: key)
         } else {
             local.merge(p) { _, b in b }
             change(local)
@@ -421,6 +424,34 @@ struct HueSaturationProperties: View {
 
     private func setPart(_ p: [String: Any]) {
         set([part: current.merging(p) { _, b in b }])
+    }
+}
+
+extension EditorModel {
+    /// An adjustment layer's settings as they change; one undo step per `key`.
+    func setAdjustment(_ layer: UInt64, _ params: [String: Any], key: String) {
+        run("layer.setAdjustment", params.merging(["layer": layer, "coalesce": key]) { a, _ in a })
+    }
+
+    /// A live filter's settings, tried as they change and kept when `done`.
+    func setSmartFilter(_ layer: UInt64, _ index: Int, _ params: [String: Any], done: Bool = false) {
+        let p: [String: Any] = ["layer": layer, "index": index, "params": params]
+        if done { liveFinish("layer.smartFilter.setParams", p) } else { live("layer.smartFilter.setParams", p) }
+    }
+
+    /// A rectangle's corners, in whole pixels; returns the radius set.
+    @discardableResult
+    func setCornerRadius(_ layer: UInt64, _ r: Double, key: String) -> Double {
+        let r = r.rounded()
+        run("shape.edit", ["layer": layer, "kind": "roundedRect", "radii": r, "coalesce": key])
+        return r
+    }
+
+    /// Hue/Saturation's "Drag in the image to adjust".
+    func setTargetedAdjust(_ on: Bool, layer: UInt64, key: String, inPanel: Bool) {
+        targetedAdjust = on ? TargetedAdjust(layer: layer, key: key, hue: targetedAdjust?.hue ?? false) : nil
+        // Dragging in the image needs the canvas: Properties lets it take touches.
+        if on, !inPanel { request = .panel(.properties) }
     }
 }
 

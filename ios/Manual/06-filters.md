@@ -1,6 +1,6 @@
 # Filters and Develop
 
-Filters change the pixels of a layer: blur it, sharpen it, add noise, bend it or paint it in a new style. You'll find them all under ☰ › Filter. Develop is a full photo-finishing screen for light, colour and detail, and it's also where camera raw files open.
+Filters change the pixels of a layer: blur it, sharpen it, add noise, bend it or paint it in a new style. You'll find them all under ☰ › Filter. Develop is a full photo-finishing screen for light, color and detail, and it's also where camera raw files open.
 
 ## How filter settings work
 
@@ -20,7 +20,7 @@ Filters change the pixels of a layer: blur it, sharpen it, add noise, bend it or
 
 **Filter Gallery…** Stacks several artistic effects and applies them together. The list starts with one effect. Tap an effect for its settings, tap its eye to hide it, hold it for **Move Up** and **Move Down**, and swipe it to remove it. **Add Effect** adds another one. Effects are applied from top to bottom.
 
-The gallery's effects, by group: Artistic (Colored Pencil, Cut Paper, Dry Brush, Film Grain, Fresco, Neon Glow, Paint Daubs, Palette Knife, Plastic Wrap, Poster Edges, Rough Pastels, Smudge Stick, Sponge, Underpainting, Watercolor), Brush Strokes (Accented Edges, Angled Strokes, Crosshatch, Dark Strokes, Ink Outlines, Spatter, Sprayed Strokes, Sumi-e), Distort (Diffuse Glow, Glass, Ocean Ripple), Sketch (Bas Relief, Chalk & Charcoal, Charcoal, Chrome, Conté Crayon, Graphic Pen, Halftone Pattern, Note Paper, Photocopy, Plaster, Reticulation, Stamp, Torn Edges, Water Paper), Stylize (Glowing Edges) and Texture (Craquelure, Grain, Mosaic Tiles, Patchwork, Stained Glass, Texturizer). Some of them use your foreground and background colours.
+The gallery's effects, by group: Artistic (Colored Pencil, Cut Paper, Dry Brush, Film Grain, Fresco, Neon Glow, Paint Daubs, Palette Knife, Plastic Wrap, Poster Edges, Rough Pastels, Smudge Stick, Sponge, Underpainting, Watercolor), Brush Strokes (Accented Edges, Angled Strokes, Crosshatch, Dark Strokes, Ink Outlines, Spatter, Sprayed Strokes, Sumi-e), Distort (Diffuse Glow, Glass, Ocean Ripple), Sketch (Bas Relief, Chalk & Charcoal, Charcoal, Chrome, Conté Crayon, Graphic Pen, Halftone Pattern, Note Paper, Photocopy, Plaster, Reticulation, Stamp, Torn Edges, Water Paper), Stylize (Glowing Edges) and Texture (Craquelure, Grain, Mosaic Tiles, Patchwork, Stained Glass, Texturizer). Some of them use your foreground and background colors.
 
 ## Live filters
 
@@ -38,7 +38,7 @@ The gallery's effects, by group: Artistic (Colored Pencil, Cut Paper, Dry Brush,
 
 **Last Filter, Filter Gallery…, Convert for Live Filters.** See the sections above.
 
-**Lens Correction…** Fixes what a camera lens does to a photo: bent lines, dark corners and coloured fringes, plus tilt and rotation. With a keyboard, press ⌘⇧R. Options: *Profile* (None, Auto or Generic), *Focal length* (in mm), *Correct distortion*, *Correct vignette*, *Correct c a* (colour fringes), *Auto scale*, *Distortion*, *Red cyan* and *Blue yellow* (fringe fixes), *Vignette amount*, *Vignette midpoint*, *Vertical* and *Horizontal* (perspective), *Angle*, *Scale*, *Edge* (what fills the gaps: Transparency, Edge extension, Black or White).
+**Lens Correction…** Fixes what a camera lens does to a photo: bent lines, dark corners and colored fringes, plus tilt and rotation. With a keyboard, press ⌘⇧R. Options: *Profile* (None, Auto or Generic), *Focal length* (in mm), *Correct distortion*, *Correct vignette*, *Correct c a* (color fringes), *Auto scale*, *Distortion*, *Red cyan* and *Blue yellow* (fringe fixes), *Vignette amount*, *Vignette midpoint*, *Vertical* and *Horizontal* (perspective), *Angle*, *Scale*, *Edge* (what fills the gaps: Transparency, Edge extension, Black or White).
 
 **Develop…** Opens Develop on the selected layer. See "Develop" below. With a keyboard, press ⌘⇧A.
 
@@ -62,13 +62,13 @@ Fluid Warp's options bar: *Tool* (Forward Warp pushes pixels along your stroke, 
 
 **Surface Blur…** Smooths flat areas but keeps edges sharp. Handy for skin and noise. Options: *Radius*, *Threshold* (how different pixels must be to count as an edge).
 
-**Smart Blur…** Blurs inside areas of similar colour and can show the edges it finds. Options: *Radius*, *Threshold*, *Quality* (High, Medium or Low), *Mode* (Normal, Edge only, Overlay edge).
+**Smart Blur…** Blurs inside areas of similar color and can show the edges it finds. Options: *Radius*, *Threshold*, *Quality* (High, Medium or Low), *Mode* (Normal, Edge only, Overlay edge).
 
 **Lens Blur…** Imitates a camera's out-of-focus blur, with shaped highlights. Options: *Radius*, *Shape* (Hexagon, Triangle, Square, Pentagon, Heptagon or Octagon), *Blade curvature*, *Rotation*, *Depth map* (None, Transparency or Layer mask), *Focal distance*, *Invert*, *Brightness* and *Threshold* (for bright spots), *Noise*, *Distribution* (Uniform or Gaussian), *Monochromatic*.
 
 **Shape Blur…** Blurs using a shape, which shows in bright spots. Options: *Radius*, *Shape* (Circle, Ring, Square, Diamond, Triangle, Hexagon, Star, Heart or Cross).
 
-**Average.** Fills the layer, or the selection, with its average colour. No settings. Useful for finding the overall colour of an area.
+**Average.** Fills the layer, or the selection, with its average color. No settings. Useful for finding the overall color of an area.
 
 ## Sharpen
 
@@ -84,7 +84,7 @@ Fluid Warp's options bar: *Tool* (Forward Warp pushes pixels along your stroke, 
 
 **Despeckle.** Removes fine specks and grain while keeping edges. No settings.
 
-**Add Noise…** Adds grain, for a film look or to hide banding. Options: *Amount*, *Distribution* (Uniform or Gaussian), *Monochromatic* (grey grain instead of coloured).
+**Add Noise…** Adds grain, for a film look or to hide banding. Options: *Amount*, *Distribution* (Uniform or Gaussian), *Monochromatic* (grey grain instead of colored).
 
 **Median…** Replaces each pixel with the middle value of its neighbours, which wipes out specks. Options: *Radius*.
 
@@ -96,7 +96,7 @@ Fluid Warp's options bar: *Tool* (Forward Warp pushes pixels along your stroke, 
 
 **Mosaic…** Turns the image into square blocks. Options: *Cell size*.
 
-**Color Halftone…** Turns the image into printed-looking dots, one screen per colour. Options: *Max radius* (the biggest dot), *Channel1* to *Channel4* (the angle of each colour's dots).
+**Color Halftone…** Turns the image into printed-looking dots, one screen per color. Options: *Max radius* (the biggest dot), *Channel1* to *Channel4* (the angle of each color's dots).
 
 **Crystallize…** Breaks the image into flat, crystal-shaped cells. Options: *Cell size*.
 
@@ -106,7 +106,7 @@ Fluid Warp's options bar: *Tool* (Forward Warp pushes pixels along your stroke, 
 
 **Mezzotint…** Turns the image into a pattern of dots, lines or strokes. Options: *Type* (Fine dots, Medium dots, Grainy dots, Coarse dots, Short lines, Medium lines, Long lines, Short strokes, Medium strokes or Long strokes).
 
-**Pointillize…** Paints the image in dots of colour over the background colour. Options: *Cell size*.
+**Pointillize…** Paints the image in dots of color over the background color. Options: *Cell size*.
 
 ## Stylize
 
@@ -158,13 +158,13 @@ Fluid Warp's options bar: *Tool* (Forward Warp pushes pixels along your stroke, 
 
 **Custom…** Applies your own sharpening or blurring pattern. Its sheet only shows *Scale* and *Offset*, with no grid to enter the pattern, so it isn't much use yet.
 
-**HSB/HSL.** Swaps how the colour is stored in the pixels, from RGB to hue, saturation and brightness. It runs straight away with no settings, and the result looks strange on its own.
+**HSB/HSL.** Swaps how the color is stored in the pixels, from RGB to hue, saturation and brightness. It runs straight away with no settings, and the result looks strange on its own.
 
-**Color to Alpha…** Turns a colour into transparency, for example to lift a drawing off white paper. Soft edges stay soft. Options: *Color* (the colour to remove), *Transparency threshold*, *Opacity threshold*.
+**Color to Alpha…** Turns a color into transparency, for example to lift a drawing off white paper. Soft edges stay soft. Options: *Color* (the color to remove), *Transparency threshold*, *Opacity threshold*.
 
 ## Render
 
-**Fibers…** Draws a woven fibre texture in your foreground and background colours. Options: *Variance* (how much the colour changes), *Strength* (how long the fibres are).
+**Fibers…** Draws a woven fibre texture in your foreground and background colors. Options: *Variance* (how much the color changes), *Strength* (how long the fibres are).
 
 **Lens Flare…** Adds the bright glare a camera lens catches from a light. Options: *Brightness*, *Center x* and *Center y* (where the flare is), *Lens* (Zoom, Prime35, Prime105 or Movie prime).
 
@@ -172,7 +172,7 @@ Fluid Warp's options bar: *Tool* (Forward Warp pushes pixels along your stroke, 
 
 **Relight…** Changes where the light seems to fall on a photo, keeping its detail. Options: *Angle* and *Elevation* (where the new light comes from), *Intensity*, *Ambient* (light from everywhere), *Warmth*, *Softness*.
 
-**Clouds, Difference Clouds.** Clouds fills the layer with soft clouds in your foreground and background colours. Difference Clouds blends clouds into what's there, flipping colours. No settings.
+**Clouds, Difference Clouds.** Clouds fills the layer with soft clouds in your foreground and background colors. Difference Clouds blends clouds into what's there, flipping colors. No settings.
 
 **Picture Frame…** Draws a decorative frame round the image. Options: *Frame* (Vine with flowers, Vine with leaves, Ivy, Roses, Daisies, Berries, Bamboo, Waves, Zigzag, Dots, Rope, Scallops, Double line, Snowflakes, Stars or Hearts), *Margin*, *Size*, *Arrangement*, *Lines*, *Thickness*, *Fade*, *Vine color*, *Flower color*, *Leaf color*, *New layer*.
 
@@ -194,7 +194,7 @@ Fluid Warp's options bar: *Tool* (Forward Warp pushes pixels along your stroke, 
 
 **De-Interlace…** Removes the comb-like lines from a frame grabbed from video. Options: *Eliminate* (Odd fields or Even fields), *Create by* (Interpolation or Duplication).
 
-**NTSC Colors.** Tones colours down to what old TV broadcasts can show. No settings.
+**NTSC Colors.** Tones colors down to what old TV broadcasts can show. No settings.
 
 ## Plug-ins
 
@@ -202,7 +202,7 @@ Fluid Warp's options bar: *Tool* (Forward Warp pushes pixels along your stroke, 
 
 ## Develop
 
-Develop is a full screen for finishing photos: light, colour, curves, detail, presets and snapshots, with the image at the top. Open it from ☰ › Filter › Develop… to work on the selected layer.
+Develop is a full screen for finishing photos: light, color, curves, detail, presets and snapshots, with the image at the top. Open it from ☰ › Filter › Develop… to work on the selected layer.
 
 ![Develop](images/develop.jpg)
 
@@ -230,13 +230,13 @@ Develop is a full screen for finishing photos: light, colour, curves, detail, pr
 
 **Light.** Brightness and contrast. Options: *Exposure* (overall brightness, in stops), *Contrast*, *Highlights* (bright areas), *Shadows* (dark areas), *Whites* (the very brightest), *Blacks* (the very darkest).
 
-**Color.** White balance and colour strength. Options: *White Balance* (As Shot, Auto or Custom), **White Balance Tool** (hold on the image, then let go on something that should be grey), *Temperature* (cooler or warmer), *Tint* (green or magenta), *Vibrance* (boosts dull colours more than strong ones), *Saturation*.
+**Color.** White balance and color strength. Options: *White Balance* (As Shot, Auto or Custom), **White Balance Tool** (hold on the image, then let go on something that should be grey), *Temperature* (cooler or warmer), *Tint* (green or magenta), *Vibrance* (boosts dull colors more than strong ones), *Saturation*.
 
 **Effects.** Finishing touches. Options: *Texture* (fine detail), *Clarity* (mid-size contrast), *Dehaze* (cuts or adds haze), *Vignette* (darkens or lightens the corners) with *Midpoint*, *Roundness* and *Feather*, *Grain* with *Size* and *Roughness*.
 
 **Curve.** A tone curve over the image's histogram. Pick *RGB*, *Red*, *Green* or *Blue*, then tap the curve to add a point and drag points to move them. Drag a point off the graph to remove it.
 
-**Color Mixer.** Changes one range of colours at a time. Pick *Hue*, *Saturation* or *Luminance*, then move the slider for *Red*, *Orange*, *Yellow*, *Green*, *Aqua*, *Blue*, *Purple* or *Magenta*.
+**Color Mixer.** Changes one range of colors at a time. Pick *Hue*, *Saturation* or *Luminance*, then move the slider for *Red*, *Orange*, *Yellow*, *Green*, *Aqua*, *Blue*, *Purple* or *Magenta*.
 
 **Detail.** Sharpening and noise. Options: *Sharpening* with *Radius*, *Detail* and *Masking* (sharpen only the edges), *Noise Reduction* with *Detail*, *Color Noise Reduction* with *Detail*.
 

@@ -39,6 +39,12 @@ final class HelperTests: XCTestCase {
         XCTAssertEqual(UIColor(Color(hex: "nonsense")).hex, "#000000")
     }
 
+    func testAGradientSwatchDrawsItsStopsInOrder() {
+        let s = GradientSwatch.drawn([[0.8, "#ff0000"], [0.2, "#0000ff"], [0.5, "bad"]])
+        XCTAssertEqual(s.map(\.location), [0.2, 0.8], "a stop dragged past its neighbour, and one without a colour")
+        XCTAssertEqual(UIColor(s[0].color).hex, "#0000ff")
+    }
+
     func testAdjustmentNamesAndNeutralFills() {
         XCTAssertEqual(AdjustmentKinds.label("hueSaturation"), "Hue/Saturation")
         XCTAssertEqual(AdjustmentKinds.label("future"), "Adjustment")

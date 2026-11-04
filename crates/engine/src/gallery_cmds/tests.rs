@@ -101,7 +101,8 @@ fn stack_applies_in_order_and_skips_hidden_layers() {
 #[test]
 fn gallery_validates_and_lists() {
     let mut s = session(8, "rgb");
-    assert!(s.execute("filter.filterGallery", json!({})).is_err());
+    let empty = s.execute("filter.filterGallery", json!({})).unwrap_err().to_string();
+    assert!(empty.contains("Filter Gallery") && !empty.contains("filter.filterGallery"), "{empty}");
     assert!(s.execute("filter.filterGallery", json!({"effects": [{"filter": "nope"}]})).is_err());
     let too_many: Vec<_> = (0..33).map(|_| json!({"filter": "coloredPencil"})).collect();
     assert!(s.execute("filter.filterGallery", json!({"effects": too_many})).is_err());

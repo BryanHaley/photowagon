@@ -16,7 +16,7 @@ use photocraft_algo::liquify::{LiquifyField, LiquifyStroke, apply_liquify, auto_
 use photocraft_algo::perspective::{PerspectiveMap, Plane, Straighten, straighten};
 use photocraft_algo::puppet::{PuppetDensity, PuppetMode, PuppetPin, PuppetWarp, puppet_warp, puppet_warp_with_mask};
 use photocraft_algo::transform::Interp;
-use photocraft_algo::warp::{warp_mesh_gray, warp_mesh_surface};
+use photocraft_algo::warp::{maps_too_far, warp_mesh_gray, warp_mesh_surface};
 use photocraft_color::PixelFormat;
 use photocraft_doc::{Document, Layer, LayerContent, LayerId, Locks, SmartFilter};
 use photocraft_geom::Rect;
@@ -90,7 +90,7 @@ pub fn puppet_params(cmd: &str, p: &Value) -> Result<PuppetWarp> {
 pub fn perspective_params(cmd: &str, p: &Value) -> Result<Vec<Plane>> {
     let mut planes: Vec<Plane> = match p.get("planes") {
         Some(v) => serde_json::from_value(v.clone()).map_err(|e| bad(cmd, format!("bad `planes` (each {{\"src\":[4×[x,y]],\"dst\":[4×[x,y]]}}): {e}")))?,
-        None => return Err(bad(cmd, "pass `planes`: [{\"src\":[[x,y]×4],\"dst\":[[x,y]×4]}]")),
+        None => return Err(bad(cmd, "draw a plane first")),
     };
     if planes.is_empty() {
         return Err(bad(cmd, "`planes` is empty"));
@@ -257,13 +257,15 @@ impl LiquifyPreview {
 }
 
 /// Perspective-warps a surface's content.
-pub fn perspective_surface(surf: &Surface, planes: &[Plane], interp: Interp) -> Surface {
+/// `None` when the result would be too big to make.
+pub fn perspective_surface(surf: &Surface, planes: &[Plane], interp: Interp) -> Option<Surface> {
     let b = surf.content_bounds();
     if PerspectiveMap::is_identity(planes) || b.is_empty() {
-        return surf.clone();
+        return Some(surf.clone());
     }
-    let Some(m) = PerspectiveMap::new(planes) else { return surf.clone() };
-    warp_mesh_surface(surf, b, &|x, y| m.map(x, y), interp)
+    let Some(m) = PerspectiveMap::new(planes) else { return Some(surf.clone()) };
+    let f = |x, y| m.map(x, y);
+    (!maps_too_far(b, &f)).then(|| warp_mesh_surface(surf, b, &f, interp))
 }
 
 /// Smart-filter hook: re-applies a stored Liquify / Puppet / Perspective Warp to a rendered
@@ -276,7 +278,7 @@ pub fn apply_to_surface(id: &str, params: &Value, surf: &Surface, canvas: Rect) 
         }
         // A stored warp too far to render leaves the smart object as it is (#1019).
         PUPPET | PUPPET_SMART => Some(puppet_surface(surf, &puppet_params(id, params).ok()?, interp(params)).unwrap_or_else(|| surf.clone())),
-        PERSPECTIVE | PERSPECTIVE_SMART => Some(perspective_surface(surf, &perspective_params(id, params).ok()?, interp(params))),
+        PERSPECTIVE | PERSPECTIVE_SMART => Some(perspective_surface(surf, &perspective_params(id, params).ok()?, interp(params)).unwrap_or_else(|| surf.clone())),
         _ => None,
     }
 }
@@ -422,7 +424,7 @@ fn puppet(s: &mut Session, p: &Value, cmd: &str) -> Result<Value> {
         return Ok(json!({"layer": id.0, "changed": false}));
     }
     let it = interp(p);
-    let too_far = || bad(cmd, "the pins stretch the content too far: the result would cover more than 2^30 pixels");
+    let too_far = || bad(cmd, "the pins stretch the content too far: the result would be too big");
     // A linked layer mask moves with the pixels on the same mesh (#4910): the layer's warp
     // solves the mesh once and leaves the moved mask here for the mask step.
     let linked = s.active().and_then(|d| d.doc.layer(id)).and_then(|l| l.mask.as_ref()).filter(|m| m.linked).map(|m| m.surface.clone());
@@ -451,9 +453,13 @@ fn perspective(s: &mut Session, p: &Value, cmd: &str) -> Result<Value> {
     }
     let it = interp(p);
     let map = PerspectiveMap::new(&planes);
+    let too_far = || bad(cmd, "the corners stretch the content too far: the result would be too big");
     let mask_fn = |m: &Surface, sel: Option<&Surface>| {
         let Some(map) = &map else { return Ok(m.clone()) };
         let f = |x, y| map.map(x, y);
+        if maps_too_far(m.content_bounds(), &f) {
+            return Err(too_far());
+        }
         let whole = |m: &Surface| Ok(warp_mesh_gray(m, &f, Interp::Bilinear));
         match sel {
             Some(sel) => crate::transform_cmds::move_gray_selected(m, sel, &|lifted, src| Ok(warp_mesh_surface(lifted, src, &f, Interp::Bilinear)), &whole),
@@ -466,7 +472,7 @@ fn perspective(s: &mut Session, p: &Value, cmd: &str) -> Result<Value> {
         "Perspective Warp",
         p,
         true,
-        &|surf, sel, _| deform_selected(surf, sel, &|x| Ok(perspective_surface(x, &planes, it))),
+        &|surf, sel, _| deform_selected(surf, sel, &|x| perspective_surface(x, &planes, it).ok_or_else(too_far)),
         Some(&mask_fn),
     )?;
     r["planes"] = json!(planes);

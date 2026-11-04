@@ -4,8 +4,6 @@
 //! headless and scriptable, so an agent can bind a template once and batch-render many files over
 //! the CLI/MCP (`file.export.dataSetsAsFiles`).
 
-use std::sync::Arc;
-
 use photocraft_algo::resample::{Resample, resize_surface, translate_surface};
 use photocraft_doc::text::{ParagraphRun, TextRun};
 use photocraft_doc::variables::Value as VarValue;
@@ -98,20 +96,17 @@ fn parse_value(v: &Value) -> Option<VarValue> {
     }
 }
 
-/// Mutate the document's variables without a history step (config, not a canvas edit).
-fn set_vars(s: &mut Session, f: impl FnOnce(&mut Variables)) -> Result<()> {
-    let st = s.active_mut().ok_or(EngineError::NoDocument)?;
-    let mut doc = (*st.doc).clone();
-    f(&mut doc.variables);
-    st.doc = Arc::new(doc);
-    st.revision += 1;
-    Ok(())
+fn set_vars(s: &mut Session, label: &str, f: impl FnOnce(&mut Variables)) -> Result<()> {
+    s.edit(label, |doc, _| {
+        f(&mut doc.variables);
+        Ok(())
+    })
 }
 
 // --------------------------------------------------------------------------- commands
 
 fn define(s: &mut Session, p: &Value) -> Result<Value> {
-    let defs_in = p.get("defs").and_then(Value::as_array).ok_or_else(|| bad("image.variables.define", "need `defs`"))?;
+    let defs_in = p.get("defs").and_then(Value::as_array).ok_or_else(|| bad("image.variables.define", "no variables to define"))?;
     let doc = s.active().ok_or(EngineError::NoDocument)?.doc.clone();
     let mut defs = Vec::with_capacity(defs_in.len());
     for d in defs_in {
@@ -126,12 +121,12 @@ fn define(s: &mut Session, p: &Value) -> Result<Value> {
         }
         defs.push(VariableDef { name: name.to_string(), layer, kind });
     }
-    set_vars(s, |v| v.defs = defs)?;
+    set_vars(s, "Define Variables", |v| v.defs = defs)?;
     list(s)
 }
 
 fn data_sets(s: &mut Session, p: &Value) -> Result<Value> {
-    let rows = p.get("dataSets").and_then(Value::as_array).ok_or_else(|| bad("image.variables.dataSets", "need `dataSets`"))?;
+    let rows = p.get("dataSets").and_then(Value::as_array).ok_or_else(|| bad("image.variables.dataSets", "no data sets given"))?;
     let mut sets = Vec::with_capacity(rows.len());
     for r in rows {
         let name = r.get("name").and_then(Value::as_str).ok_or_else(|| bad("image.variables.dataSets", "a data set needs `name`"))?;
@@ -144,7 +139,7 @@ fn data_sets(s: &mut Session, p: &Value) -> Result<Value> {
         sets.push(DataSet { name: name.to_string(), values });
     }
     let append = p.get("append").and_then(Value::as_bool).unwrap_or(false);
-    set_vars(s, |v| {
+    set_vars(s, "Data Sets", |v| {
         if append {
             v.data_sets.extend(sets);
         } else {
@@ -254,8 +249,11 @@ fn apply_data_set(s: &mut Session, p: &Value) -> Result<Value> {
             }
         }
     }
-    s.edit(&format!("Apply Data Set \"{}\"", set.name), |doc, _| apply_to_doc(doc, &vars, &set))?;
-    set_vars(s, |v| v.active = Some(idx))?;
+    s.edit(&format!("Apply Data Set \"{}\"", set.name), |doc, _| {
+        apply_to_doc(doc, &vars, &set)?;
+        doc.variables.active = Some(idx);
+        Ok(())
+    })?;
     Ok(json!({"applied": set.name, "index": idx}))
 }
 
@@ -269,7 +267,7 @@ fn resolve_set(s: &Session, p: &Value, cmd: &str) -> Result<(DataSet, usize)> {
         let i = i as usize;
         vars.data_sets.get(i).map(|d| (d.clone(), i)).ok_or_else(|| bad(cmd, format!("no data set at index {i}")))
     } else {
-        Err(bad(cmd, "need `name` or `index`"))
+        Err(bad(cmd, "pick a data set"))
     }
 }
 
@@ -277,7 +275,7 @@ fn resolve_set(s: &Session, p: &Value, cmd: &str) -> Result<(DataSet, usize)> {
 /// A value is a boolean (true/false) for a Visibility variable, a path for a Pixel Replacement
 /// variable, else text. The first column may be a data-set name (header empty or `DataSet`).
 fn import_data_sets(s: &mut Session, p: &Value) -> Result<Value> {
-    let path = p.get("path").and_then(Value::as_str).ok_or_else(|| bad("file.import.variableDataSets", "need `path`"))?;
+    let path = p.get("path").and_then(Value::as_str).ok_or_else(|| bad("file.import.variableDataSets", "pick a file"))?;
     let text = std::fs::read_to_string(path).map_err(|e| EngineError::Other(format!("read `{path}`: {e}")))?;
     import_data_sets_text(s, &text, p)
 }
@@ -318,7 +316,7 @@ pub fn import_data_sets_text(s: &mut Session, text: &str, p: &Value) -> Result<V
         sets.push(DataSet { name, values });
     }
     let n = sets.len();
-    set_vars(s, |v| v.data_sets = sets)?;
+    set_vars(s, "Import Data Sets", |v| v.data_sets = sets)?;
     Ok(json!({"imported": n}))
 }
 
@@ -378,7 +376,7 @@ fn split_csv(line: &str, delim: u8) -> Vec<String> {
 /// Apply each data set in turn and export the flattened document, restoring the original after.
 /// `{dir, format?("png"), dataSets?[names]}` → `{files:[…],count}`.
 fn export_as_files(s: &mut Session, p: &Value) -> Result<Value> {
-    let dir = p.get("dir").and_then(Value::as_str).ok_or_else(|| bad("file.export.dataSetsAsFiles", "need `dir`"))?.to_string();
+    let dir = p.get("dir").and_then(Value::as_str).ok_or_else(|| bad("file.export.dataSetsAsFiles", "pick a folder"))?.to_string();
     // The directory appears only once the batch has been planned, as it always did, so a batch
     // rejected for colliding names still leaves no directory behind.
     let mut made_dir = false;

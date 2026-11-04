@@ -8,6 +8,7 @@ mod corpus_pins;
 mod ios;
 mod layers;
 mod licenses;
+mod omega;
 mod pinned;
 mod sha256;
 mod stats;
@@ -38,6 +39,10 @@ commands:
                   build the iOS app's Rust core (photocraft-ffi) as ios/Frameworks/PhotoWagonCore.xcframework
                   and its Swift bindings (UniFFI), and target/ios/Acknowledgements.json (every bundled
                   library's licence); needs rustup's iOS targets and Xcode
+  omega run [--section <Name>]... [--failed] [--resume] | omega list | omega report
+                  the long pre-release test (plan/omega-e2e.md), in sections that can be rerun on
+                  their own: every command on every kind of document, on iOS 27 and 18; resumes
+                  after a crash; report in target/omega/report
 ";
 
 fn main() -> ExitCode {
@@ -51,6 +56,7 @@ fn main() -> ExitCode {
         Some("stats") => stats::run(&root(), rest.contains(&"--exact")),
         Some("version") => version::run(&root(), &rest),
         Some("ios") => ios::cmd(&root(), &rest),
+        Some("omega") => omega::cmd(&root(), &rest),
         Some("-h" | "--help" | "help") | None => {
             print!("{USAGE}");
             Ok(())

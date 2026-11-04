@@ -106,6 +106,28 @@ pub fn warp_mesh_surface(src: &Surface, src_rect: Rect, f: &(dyn Fn(f64, f64) ->
     warp_triangles(src, src_rect, &verts, &tris, interp)
 }
 
+/// Whether `f` throws `src_rect` over more than 2^28 pixels (the warp takes minutes and many GB
+/// past that), or to infinity (a perspective's vanishing line inside the rect).
+pub fn maps_too_far(src_rect: Rect, f: &(dyn Fn(f64, f64) -> (f64, f64) + Sync)) -> bool {
+    let (mut lo, mut hi) = ([f64::INFINITY; 2], [f64::NEG_INFINITY; 2]);
+    for j in 0..=FAR_PROBE {
+        for i in 0..=FAR_PROBE {
+            let x = f64::from(src_rect.x0) + f64::from(src_rect.width()) * i as f64 / FAR_PROBE as f64;
+            let y = f64::from(src_rect.y0) + f64::from(src_rect.height()) * j as f64 / FAR_PROBE as f64;
+            let (dx, dy) = f(x, y);
+            if !dx.is_finite() || !dy.is_finite() {
+                return true;
+            }
+            lo = [lo[0].min(dx), lo[1].min(dy)];
+            hi = [hi[0].max(dx), hi[1].max(dy)];
+        }
+    }
+    (hi[0] - lo[0]) * (hi[1] - lo[1]) > f64::from(1u32 << 28)
+}
+
+/// Probe lines per axis [`maps_too_far`] follows: fine enough to land near a vanishing line.
+const FAR_PROBE: usize = 128;
+
 /// Probe lines per axis [`mapped_lengths`] follows through the map.
 const PROBE: usize = 16;
 

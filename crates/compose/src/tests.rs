@@ -2629,6 +2629,15 @@ fn effect_maps_with_nested_rayon_work_do_not_deadlock() {
 // Samples from the photoshop corpus photo-filter.psd (Warming Filter (85), density 40 %, Preserve
 // Luminosity): pure blue gains red, and white stays white (#442).
 #[test]
+fn photo_filter_leaves_a_gray_document_gray() {
+    let adj = Adjustment::PhotoFilter { color: [0.9, 0.5, 0.0], density: 0.4, preserve_luminosity: false };
+    let mut b = Buffer::filled(Rect::new(0, 0, 1, 1), [0.5, 0.5, 0.5, 1.0]);
+    adjust::apply_in(&adj, &mut b, adjust::Transfer::for_document(ColorMode::Grayscale, SampleType::U8), Some(SampleType::U8), ColorMode::Grayscale);
+    assert_eq!(b.px[0][0], b.px[0][1]);
+    assert_eq!(b.px[0][1], b.px[0][2]);
+}
+
+#[test]
 fn photo_filter_matches_photoshop() {
     let filter = |color: [f32; 3], depth, v: [f32; 3]| {
         let adj = Adjustment::PhotoFilter { color, density: 0.4, preserve_luminosity: true };

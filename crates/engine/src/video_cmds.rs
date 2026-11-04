@@ -241,6 +241,16 @@ fn fps_from_delays(delays: &[u32]) -> Option<f32> {
     best.map(|(d, _)| 1000.0 / d as f32)
 }
 
+/// A file's image as a frame. 32-bit documents hold linear light.
+fn frame_from(doc: &photocraft_doc::Document, fmt: photocraft_color::PixelFormat) -> photocraft_raster::Surface {
+    let mut frame = crate::file_cmds::flattened(doc, fmt);
+    if fmt.sample == photocraft_color::SampleType::F32 && matches!(fmt.mode, photocraft_color::ColorMode::Rgb | photocraft_color::ColorMode::Grayscale) {
+        let transfer = photocraft_compose::adjust::Transfer::for_document(doc.mode, doc.depth);
+        frame.map_color(|v| transfer.decode(v));
+    }
+    frame
+}
+
 /// Load frames from `path`: a single image (1 frame, or every frame of an animated GIF), or a
 /// directory of images (sorted = an image sequence). Each becomes a full raster frame in the
 /// document's format.
@@ -266,6 +276,9 @@ fn load_frames(path: &str, fmt: photocraft_color::PixelFormat) -> Result<Footage
     if files.is_empty() {
         return Err(EngineError::Other(format!("no images in `{path}`")));
     }
+    if p.extension().and_then(|e| e.to_str()).is_some_and(|e| ["mov", "mp4", "m4v", "avi", "mkv", "webm"].contains(&e.to_ascii_lowercase().as_str())) {
+        return Err(EngineError::Other("Movie files can't be read yet. Use an animated GIF or a folder of images.".into()));
+    }
     let mut frames = Vec::with_capacity(files.len());
     let mut delays = Vec::new();
     for f in &files {
@@ -273,7 +286,7 @@ fn load_frames(path: &str, fmt: photocraft_color::PixelFormat) -> Result<Footage
         let name = f.to_string_lossy();
         if photocraft_codecs::detect(&bytes) == Some(photocraft_codecs::Format::Gif) {
             photocraft_io::import_gif_frames(&name, &bytes, &mut |doc, delay_ms| {
-                frames.push(crate::file_cmds::flattened(&doc, fmt));
+                frames.push(frame_from(&doc, fmt));
                 delays.push(delay_ms);
                 Ok(())
             })
@@ -285,7 +298,7 @@ fn load_frames(path: &str, fmt: photocraft_color::PixelFormat) -> Result<Footage
         if f.extension().is_some_and(|e| e.eq_ignore_ascii_case("tga")) {
             photocraft_io::tga_alpha_channel_to_transparency(&mut doc);
         }
-        frames.push(crate::file_cmds::flattened(&doc, fmt));
+        frames.push(frame_from(&doc, fmt));
     }
     // Only a lone GIF says how fast it plays; a sequence mixing files has no single rate.
     let fps = if files.len() == 1 { fps_from_delays(&delays) } else { None };
@@ -296,7 +309,7 @@ fn new_from_file(s: &mut Session, p: &Value) -> Result<Value> {
     let path = p
         .get("path")
         .and_then(Value::as_str)
-        .ok_or_else(|| EngineError::BadParams { cmd: "layer.videoLayers.newVideoLayerFromFile".into(), msg: "need `path`".into() })?
+        .ok_or_else(|| EngineError::BadParams { cmd: "layer.videoLayers.newVideoLayerFromFile".into(), msg: "pick a video file".into() })?
         .to_string();
     let fmt = s.active().ok_or(EngineError::NoDocument)?.doc.pixel_format();
     let Footage { frames, fps: footage_fps } = load_frames(&path, fmt)?;
@@ -328,7 +341,7 @@ fn replace_footage(s: &mut Session, p: &Value) -> Result<Value> {
     let path = p
         .get("path")
         .and_then(Value::as_str)
-        .ok_or_else(|| EngineError::BadParams { cmd: "layer.videoLayers.replaceFootage".into(), msg: "need `path`".into() })?
+        .ok_or_else(|| EngineError::BadParams { cmd: "layer.videoLayers.replaceFootage".into(), msg: "pick a video file".into() })?
         .to_string();
     let fmt = s.active().ok_or(EngineError::NoDocument)?.doc.pixel_format();
     let frames = load_frames(&path, fmt)?.frames;
@@ -380,7 +393,7 @@ fn frames_to_layers(s: &mut Session, p: &Value) -> Result<Value> {
     let path = p
         .get("path")
         .and_then(Value::as_str)
-        .ok_or_else(|| EngineError::BadParams { cmd: "file.import.videoFramesToLayers".into(), msg: "need `path`".into() })?
+        .ok_or_else(|| EngineError::BadParams { cmd: "file.import.videoFramesToLayers".into(), msg: "pick a video file".into() })?
         .to_string();
     let fmt = s.active().ok_or(EngineError::NoDocument)?.doc.pixel_format();
     let frames = load_frames(&path, fmt)?.frames;
@@ -403,7 +416,7 @@ fn frames_to_layers(s: &mut Session, p: &Value) -> Result<Value> {
 /// Export › Render Video: composite the whole document at each timeline frame and write an image
 /// sequence (`{dir}/{stem}_NNNN.{format}`). Clean-room; no proprietary codec.
 fn render_video(s: &mut Session, p: &Value) -> Result<Value> {
-    let dir = p.get("dir").and_then(Value::as_str).ok_or_else(|| EngineError::BadParams { cmd: "file.export.renderVideo".into(), msg: "need `dir`".into() })?;
+    let dir = p.get("dir").and_then(Value::as_str).ok_or_else(|| EngineError::BadParams { cmd: "file.export.renderVideo".into(), msg: "pick a folder".into() })?;
     std::fs::create_dir_all(dir).map_err(|e| EngineError::Other(format!("mkdir `{dir}`: {e}")))?;
     render_video_with(s, p, |name, bytes| crate::file_cmds::write_file(&format!("{dir}/{name}"), bytes), |_, _| true)
 }

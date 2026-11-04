@@ -227,7 +227,7 @@ fn select_all_layers(s: &mut Session) -> Result<Value> {
 }
 
 fn find_layers(s: &mut Session, p: &Value) -> Result<Value> {
-    let needle = p.get("name").and_then(Value::as_str).ok_or_else(|| bad("select.findLayers", "missing `name`"))?.to_lowercase();
+    let needle = p.get("name").and_then(Value::as_str).filter(|n| !n.trim().is_empty()).ok_or_else(|| bad("select.findLayers", "type part of a layer's name"))?.to_lowercase();
     let d = s.active().ok_or(EngineError::NoDocument)?;
     let ids: Vec<LayerId> = d.doc.walk().into_iter().filter(|(_, _, l)| l.name.to_lowercase().contains(&needle)).map(|(_, _, l)| l.id).collect();
     if ids.is_empty() {
@@ -1225,7 +1225,7 @@ fn lock_layers(s: &mut Session, p: &Value) -> Result<Value> {
 }
 
 fn rename_layer(s: &mut Session, p: &Value) -> Result<Value> {
-    let name = p.get("name").and_then(Value::as_str).filter(|n| !n.trim().is_empty()).ok_or_else(|| bad("layer.renameLayer", "missing `name`"))?.to_string();
+    let name = p.get("name").and_then(Value::as_str).filter(|n| !n.trim().is_empty()).ok_or_else(|| bad("layer.renameLayer", "type a name"))?.to_string();
     let id = crate::commands::layer_param(s, p)?;
     s.edit("Rename Layer", |doc, _| {
         doc.layer_mut(id).ok_or(EngineError::NoLayer(id))?.name = name;
@@ -1453,7 +1453,7 @@ pub fn specs() -> Vec<CommandSpec> {
             }
             Ok(Value::Null)
         }),
-        spec!("select.findLayers", "Find Layers", &["Select"], Some("Cmd+Alt+Shift+F"), r##"{"name":str (case-insensitive substring)}"##, has_doc, find_layers),
+        spec!("select.findLayers", "Find Layers…", &["Select"], Some("Cmd+Alt+Shift+F"), r##"{"name":str (case-insensitive substring)}"##, has_doc, find_layers),
         spec!("layer.selectLinkedLayers", "Select Linked Layers", &["Layer"], None, "{}", has_linked, |s, _| select_linked(s)),
         spec!("layer.align.topEdges", "Top Edges", &["Layer", "Align"], None, ALIGN, can_align, |s, p| align(s, p, "topEdges")),
         spec!("layer.align.verticalCenters", "Vertical Centers", &["Layer", "Align"], None, ALIGN, can_align, |s, p| align(s, p, "verticalCenters")),
@@ -1509,7 +1509,7 @@ pub fn specs() -> Vec<CommandSpec> {
             has_layer,
             lock_layers
         ),
-        spec!("layer.renameLayer", "Rename Layer", &["Layer"], None, r##"{"layer":id?,"name":str}"##, has_layer, rename_layer),
+        spec!("layer.renameLayer", "Rename Layer…", &["Layer"], None, r##"{"layer":id?,"name":str}"##, has_layer, rename_layer),
     ]
 }
 
@@ -1971,6 +1971,7 @@ mod tests {
         let r = s.execute("select.findLayers", json!({"name": "PHOTO"})).unwrap();
         assert_eq!(r["selected"], json!([a.0, b.0]));
         assert!(s.execute("select.findLayers", json!({"name": "nothing"})).is_err());
+        assert!(s.execute("select.findLayers", json!({"name": " "})).is_err(), "a blank search would select every layer");
         assert!(s.execute("layer.renameLayer", json!({})).is_err());
     }
 

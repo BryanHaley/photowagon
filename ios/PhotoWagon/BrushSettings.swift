@@ -11,6 +11,17 @@ enum BrushPaths {
         path.split(separator: ".").reduce(brush as Any?) { v, key in (v as? [String: Any])?[String(key)] }
     }
 
+    /// `brush` with `value` at `path`, for the slider to show while dragging.
+    static func merged(_ brush: [String: Any], _ path: String, _ value: Any) -> [String: Any] {
+        func put(_ d: [String: Any], _ keys: ArraySlice<Substring>) -> [String: Any] {
+            guard let k = keys.first.map(String.init) else { return d }
+            var d = d
+            d[k] = keys.count == 1 ? value : put(d[k] as? [String: Any] ?? [:], keys.dropFirst())
+            return d
+        }
+        return put(brush, path.split(separator: ".")[...])
+    }
+
     /// What a dynamic setting follows (Photoshop's Control pop-ups). No stylus wheel on a Pencil.
     static let controls = [("off", "Off"), ("fade", "Fade"), ("penPressure", "Pen Pressure"), ("penTilt", "Pen Tilt"),
                            ("rotation", "Pencil Rotation"), ("initialDirection", "Initial Direction"), ("direction", "Direction")]
@@ -93,12 +104,7 @@ struct BrushSettingsSheet: View {
             .alert("New Brush Preset", isPresented: $naming) {
                 TextField("Name", text: $presetName)
                 Button("Cancel", role: .cancel) {}
-                Button("OK") {
-                    let name = presetName.trimmingCharacters(in: .whitespaces)
-                    guard !name.isEmpty else { return }
-                    model.run("brush.presets.save", ["name": name, "toolSettings": toolSettings])
-                    model.reloadBrushPresets()
-                }
+                Button("OK") { model.saveBrushPreset(presetName, toolSettings: toolSettings) }
             }
             .onAppear(perform: reload)
         }
@@ -150,7 +156,7 @@ struct BrushSettingsSheet: View {
                 Spacer()
                 ValueLabel(text: text, width: 64, font: .body)
             }
-            Slider(value: Binding(get: { min(max(value, range.lowerBound), range.upperBound) }, set: { brush = merged(path, map($0)) }), in: range) { editing in
+            Slider(value: Binding(get: { min(max(value, range.lowerBound), range.upperBound) }, set: { brush = BrushPaths.merged(brush, path, map($0)) }), in: range) { editing in
                 if !editing { set(path, double(path)) }
             }
             .accessibilityIdentifier("brushSettings.\(path)")
@@ -168,16 +174,6 @@ struct BrushSettingsSheet: View {
         if let minimum { percent(minimum, "\(path).minimum") }
     }
 
-    /// `brush` with `value` at `path`, for the slider to show while dragging.
-    private func merged(_ path: String, _ value: Any) -> [String: Any] {
-        func put(_ d: [String: Any], _ keys: ArraySlice<Substring>) -> [String: Any] {
-            guard let k = keys.first.map(String.init) else { return d }
-            var d = d
-            d[k] = keys.count == 1 ? value : put(d[k] as? [String: Any] ?? [:], keys.dropFirst())
-            return d
-        }
-        return put(brush, path.split(separator: ".")[...])
-    }
 }
 
 extension Tool {
@@ -194,6 +190,14 @@ extension EditorModel {
 
     static func modeTitle(_ engine: String) -> String {
         blendModes.flatMap { $0 }.first { engineMode($0) == engine } ?? engine
+    }
+
+    /// Brush Settings' New Brush Preset; a blank name saves nothing.
+    func saveBrushPreset(_ name: String, toolSettings: Bool) {
+        let name = name.trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty else { return }
+        run("brush.presets.save", ["name": name, "toolSettings": toolSettings])
+        reloadBrushPresets()
     }
 
     /// ← and → turn the brush tip a degree (⇧: 15°), → clockwise as in Photoshop.

@@ -151,7 +151,7 @@ fn a_panic_in_a_command_becomes_an_error_and_the_document_is_unchanged() {
     let (rev, steps) = (s.active().unwrap().revision, s.active().unwrap().history.past_len());
     let msg = s.execute("test.panic", json!({})).unwrap_err().to_string();
     assert!(msg.contains("internal error"), "{msg}");
-    assert!(msg.contains("test.panic"), "{msg}");
+    assert!(msg.contains(&crate::command_name("test.panic")), "{msg}");
     let st = s.active().unwrap();
     assert!(Arc::ptr_eq(&st.doc, &doc_before), "the document snapshot was not replaced");
     assert_eq!((st.revision, st.history.past_len()), (rev, steps));
@@ -535,7 +535,7 @@ fn params_that_are_not_an_object_are_rejected_before_running() {
     for id in ["image.adjustments.invert", "filter.blur.gaussianBlur", "layer.new.layer"] {
         for p in [json!([3]), json!("x"), json!(5), json!(true)] {
             let e = s.execute(id, p.clone()).unwrap_err().to_string();
-            assert!(e.contains(id) && e.contains("must be a JSON object"), "{id} {p}: {e}");
+            assert!(e.contains(&crate::command_name(id)) && e.contains("must be a JSON object"), "{id} {p}: {e}");
             assert!(s.start(id, p).is_err(), "{id}: background start must reject too");
         }
     }

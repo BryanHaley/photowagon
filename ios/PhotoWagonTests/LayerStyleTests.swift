@@ -19,6 +19,8 @@ final class LayerStyleTests: XCTestCase {
     func testDropShadowsShareTheGlobalLightAndOneCanBeDeleted() throws {
         let (model, layer) = try styled()
         let style = LayerStyleState(model: model, layer: layer, start: "dropShadow")
+        XCTAssertEqual(model.row("text")?.effects, [], "making the sheet's state doesn't change the document")
+        style.open()
         XCTAssertEqual(style.effects.map(\.kind), ["dropShadow"], "opening a missing effect adds it")
         XCTAssertEqual(style.current?.kind, "dropShadow")
         XCTAssertEqual(model.row("text")?.effects.map(\.name), ["Drop Shadow"])
@@ -49,6 +51,7 @@ final class LayerStyleTests: XCTestCase {
         // Reopening finds the shadow instead of adding another; a hidden one comes back on.
         style.set(first, enabled: false)
         let again = LayerStyleState(model: model, layer: layer, start: "dropShadow")
+        again.open()
         XCTAssertEqual(again.effects.count, 1)
         XCTAssertEqual(again.current?.enabled, true)
     }
@@ -61,6 +64,7 @@ final class LayerStyleTests: XCTestCase {
         XCTAssertEqual(model.historyNames, history, "nothing changed: nothing undone")
 
         let style = LayerStyleState(model: model, layer: layer, start: "stroke")
+        style.open()
         style.add("bevelEmboss")
         style.set(try XCTUnwrap(style.current?.id), "depth", 300)
         style.setBlending("fillOpacity", 50)
@@ -73,6 +77,7 @@ final class LayerStyleTests: XCTestCase {
         // OpacityFillTests: drag in the image to move the shadow.
         let (model, layer) = try styled()
         let style = LayerStyleState(model: model, layer: layer, start: "dropShadow")
+        style.open()
         let id = try XCTUnwrap(style.current?.id)
         style.set(id, ["angle": 90.0, "distance": 10.0, "useGlobalLight": false])
         style.updateDrag()

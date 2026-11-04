@@ -106,6 +106,34 @@ pub fn check_kerning(p: &Value) -> std::result::Result<(), String> {
     }
 }
 
+/// Every size of `t` times `f`, about its anchor; refused when a size would leave the allowed range.
+fn scale_text(t: &mut TextLayer, f: f32) -> Result<()> {
+    if matches!(t.shape, TextShape::Path { .. }) {
+        return Err(bad("type.edit", "text on a path can't be scaled here: change its size instead"));
+    }
+    let sizes = std::iter::once(t.size_pt).chain(t.runs.iter().map(|r| r.style.size_pt));
+    if sizes.map(|v| f64::from(v * f)).any(|v| !(TYPE_SIZE_MIN_PT..=TYPE_SIZE_MAX_PT).contains(&v)) {
+        return Err(bad("type.edit", format!("type sizes must stay between {TYPE_SIZE_MIN_PT} and {TYPE_SIZE_MAX_PT} pt")));
+    }
+    t.size_pt *= f;
+    for r in &mut t.runs {
+        let st = &mut r.style;
+        st.size_pt *= f;
+        st.leading_pt = st.leading_pt.map(|l| l * f);
+        st.baseline_shift_pt *= f;
+    }
+    for r in &mut t.paragraphs {
+        let st = &mut r.style;
+        for v in [&mut st.first_line_indent_pt, &mut st.start_indent_pt, &mut st.end_indent_pt, &mut st.space_before_pt, &mut st.space_after_pt] {
+            *v *= f;
+        }
+    }
+    if let TextShape::Box { x, y, width, height } = &mut t.shape {
+        (*x, *y, *width, *height) = (*x * f, *y * f, *width * f, *height * f);
+    }
+    Ok(())
+}
+
 /// Validates text metrics (size, tracking, leading, baseline shift, scales) that can otherwise
 /// exceed the rasterizer's supported range or overflow `f32`, which a .pcraft manifest cannot hold.
 pub fn check_size_tracking(p: &Value) -> std::result::Result<(), String> {
@@ -850,7 +878,7 @@ pub fn specs() -> Vec<CommandSpec> {
             label: "Edit Type",
             menu: &[],
             shortcut: None,
-            params: r##"{"layer":id?,"text":str? (replace all, styles kept),"replace":{"start":char,"end":char,"text":str}?,"runs":[{"start":char,"end":char,…character keys}]?,"box":[x,y,w,h]? (to paragraph text),"point":[x,y]? (to point text),"move":[dx,dy]?,"transform":[a,b,c,d,e,f]?,"antialias":"none|sharp|crisp|strong|smooth"?,"name":str?,"kerning":1/1000em|"metrics"|"optical"|"off"? (with "range":[startChar,endChar]?, default all),"kernPair":{"at":caretChar,"by":1/1000em}? (Alt+←/→: the pair before the caret becomes manual, its current kerning + by)}"##,
+            params: r##"{"layer":id?,"text":str? (replace all, styles kept),"replace":{"start":char,"end":char,"text":str}?,"runs":[{"start":char,"end":char,…character keys}]?,"box":[x,y,w,h]? (to paragraph text),"point":[x,y]? (to point text),"move":[dx,dy]?,"transform":[a,b,c,d,e,f]?,"scale":factor? (every size, leading, shift, indent, spacing and the box, about the anchor: the Type tool's box handles),"antialias":"none|sharp|crisp|strong|smooth"?,"name":str?,"kerning":1/1000em|"metrics"|"optical"|"off"? (with "range":[startChar,endChar]?, default all),"kernPair":{"at":caretChar,"by":1/1000em}? (Alt+←/→: the pair before the caret becomes manual, its current kerning + by)}"##,
             enabled: has_doc,
             journal: true,
             run: |s, p| {
@@ -882,6 +910,10 @@ pub fn specs() -> Vec<CommandSpec> {
                             .ok_or_else(|| bad("type.edit", "kernPair.by must be a number of 1/1000 em"))?;
                         Some((at as usize, by))
                     }
+                };
+                let scale = match p.get("scale") {
+                    None => None,
+                    Some(v) => Some(v.as_f64().filter(|f| f.is_finite() && *f > 0.0).ok_or_else(|| bad("type.edit", "scale must be a positive number"))? as f32),
                 };
                 let label = if kern_pair.is_some() { "Kerning" } else { "Edit Type" };
                 with_text_layer(s, p, label, |t, doc, rename| {
@@ -929,6 +961,9 @@ pub fn specs() -> Vec<CommandSpec> {
                                 apply_char_props(st, r);
                             });
                         }
+                    }
+                    if let Some(f) = scale {
+                        scale_text(t, f)?;
                     }
                     let lin = t.transform.m;
                     if let Some(b) = p.get("box").and_then(Value::as_array).filter(|b| b.len() == 4) {
@@ -1467,6 +1502,24 @@ mod tests {
         let t = text_layer(&s, id);
         assert_eq!(t.shape, TextShape::Point);
         assert_eq!(t.transform.m[4], 15.0);
+    }
+
+    #[test]
+    fn scale_grows_every_size_about_the_anchor_in_one_step() {
+        let mut s = session();
+        let r = s.execute("type.create", json!({"x": 10, "y": 50, "text": "Hi", "size": 20, "leading": 30})).unwrap();
+        let id = r["layer"].as_u64().unwrap();
+        let steps = s.active().unwrap().history.entries().len();
+        let (c, sn) = (0.5f64.cos(), 0.5f64.sin());
+        s.execute("type.edit", json!({"layer": id, "scale": 2, "transform": [c, sn, -sn, c, 12, 52]})).unwrap();
+        let t = text_layer(&s, id);
+        assert_eq!(t.runs.iter().map(|r| (r.style.size_pt, r.style.leading_pt)).collect::<Vec<_>>(), vec![(40.0, Some(60.0))]);
+        assert_eq!(t.transform.m, [c, sn, -sn, c, 12.0, 52.0]);
+        assert_eq!(s.active().unwrap().history.entries().len(), steps + 1);
+        for bad in [json!(0), json!(-1), json!("x"), json!(100)] {
+            assert!(s.execute("type.edit", json!({"layer": id, "scale": bad})).is_err(), "{bad}");
+        }
+        assert_eq!(text_layer(&s, id).runs[0].style.size_pt, 40.0);
     }
 
     #[test]

@@ -160,7 +160,7 @@ fn install(_s: &mut Session, p: &Value) -> Result<Value> {
         let path = path.as_str().filter(|s| !s.is_empty()).ok_or_else(|| bad(CMD, "`path` must be a file path"))?;
         load_path(path)?
     } else {
-        return Err(bad(CMD, "give `path` (a .wasm file) or `data` (the module as base64)"));
+        return Err(bad(CMD, "pick a .wasm file"));
     };
     let replace = p.get("replace").and_then(Value::as_bool).unwrap_or(true);
     if !replace && registry::get(plugin.id()).is_some() {

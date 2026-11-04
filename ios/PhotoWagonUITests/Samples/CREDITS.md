@@ -19,3 +19,8 @@ art (`light-leak.jpg`, `bee.jpg`, `bee-cutout.png`, `blend.png`, `concrete.jpg`,
 
 `cast.jpg` (the red-haired portrait with a green blotch on the skin) is made from the CC0 photo above by `make_samples.py`.
 `wire.jpg` (the seaside photo with a dark wire drawn across the sky) is made the same way from `seaside.jpg`.
+
+`formats/` holds the small files Omega's Files section opens: every picture format, camera raws, presets
+(`.grd`, `.aco`, `.ase`, `.pat`, `.abr`, `.shc`), actions (`.atn`), a plug-in (`.wasm`) and footage. All are our own, generated
+from scratch by our writers and test generators: `cargo run -p photocraft-engine --example make_omega_files`.
+Omega reads them from the source folder, so they aren't bundled into any app or test target.

@@ -7,8 +7,8 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.0"
-    MARKETING_VERSION: "1.1.1"
-    CURRENT_PROJECT_VERSION: "4"
+    MARKETING_VERSION: "1.2.0"
+    CURRENT_PROJECT_VERSION: "5"
     # The Rust build step writes to ../target, outside the build sandbox.
     ENABLE_USER_SCRIPT_SANDBOXING: NO
 targets:
@@ -62,6 +62,7 @@ targets:
         excludes:
           - "Samples/*.py"
           - "Samples/*.md"
+          - "Samples/formats/**"
     dependencies:
       - target: PhotoWagon
     settings:
@@ -77,6 +78,7 @@ targets:
     platform: iOS
     sources:
       - path: PhotoWagonTests
+      - path: OmegaShared
     dependencies:
       - target: PhotoWagon
     settings:
@@ -85,7 +87,53 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/PhotoWagon.app/PhotoWagon"
         BUNDLE_LOADER: "$(TEST_HOST)"
+  # Omega, the long pre-release test (plan/omega-e2e.md): its own scheme, out of the everyday runs.
+  PhotoWagonOmegaTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: PhotoWagonOmegaTests
+      - path: OmegaShared
+    dependencies:
+      - target: PhotoWagon
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: net.bhaley.photowagon.omegatests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/PhotoWagon.app/PhotoWagon"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+  # Omega's touch tier: the real UI, with the walkthroughs' helpers and samples.
+  PhotoWagonOmegaUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: PhotoWagonOmegaUITests
+      - path: PhotoWagonUITests/WalkthroughHelpers.swift
+      - path: PhotoWagonUITests/Samples
+        excludes:
+          - "*.py"
+          - "*.md"
+          - "formats/**"
+    dependencies:
+      - target: PhotoWagon
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: net.bhaley.photowagon.omegauitests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: PhotoWagon
+        COMPRESS_PNG_FILES: NO
+        STRIP_PNG_TEXT: NO
 schemes:
+  Omega:
+    build:
+      targets:
+        PhotoWagon: all
+        PhotoWagonOmegaTests: [test]
+        PhotoWagonOmegaUITests: [test]
+    test:
+      targets:
+        - PhotoWagonOmegaTests
+        - PhotoWagonOmegaUITests
   PhotoWagon:
     build:
       targets:
@@ -105,15 +153,17 @@ aggregateTargets:
             # Xcode's environment (SDKROOT and friends) breaks cargo's host builds: start clean.
             slice=--device
             [ "$PLATFORM_NAME" = iphonesimulator ] && slice=--sim
+            # PHOTOWAGON_RUST_RELEASE=1 (a build setting): the shipping Rust core in a Debug build,
+            # for Omega, which tests what ships.
             release=
-            [ "$CONFIGURATION" = Release ] && release=--release
+            [ "$CONFIGURATION" = Release ] || [ "$PHOTOWAGON_RUST_RELEASE" = 1 ] && release=--release
             cd "$SRCROOT/.." && env -i HOME="$HOME" PATH="/opt/homebrew/opt/rustup/bin:$HOME/.cargo/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
-              cargo xtask ios $slice $release
+              PHOTOWAGON_RUST_COVERAGE="$PHOTOWAGON_RUST_COVERAGE" cargo xtask ios $slice $release
             # Xcode copies the library out of the XCFramework before this step can rebuild it: put
             # the fresh one where the app links from.
             triple=aarch64-apple-ios
             [ "$PLATFORM_NAME" = iphonesimulator ] && triple=aarch64-apple-ios-sim
             profile=debug
-            [ "$CONFIGURATION" = Release ] && profile=release
+            [ "$CONFIGURATION" = Release ] || [ "$PHOTOWAGON_RUST_RELEASE" = 1 ] && profile=release
             mkdir -p "$BUILT_PRODUCTS_DIR"
             cp "target/$triple/$profile/libphotocraft_ffi.a" "$BUILT_PRODUCTS_DIR/libphotocraft_ffi.a"

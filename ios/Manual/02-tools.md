@@ -10,9 +10,9 @@ A few things work the same with every tool:
 
 **Moving around.** Pinch with two fingers to zoom, drag with two fingers to pan, and twist two fingers to turn the view (it starts turning once you twist past a small amount). Tap with two fingers to undo, and with three fingers to redo.
 
-**The loupe.** When a tool places an exact point (a corner, a colour sample, a path point), a magnifier shows the pixels under your finger. It stays a moment after you lift so you can see where the point went.
+**The loupe.** When a tool places an exact point (a corner, a color sample, a path point), a magnifier shows the pixels under your finger. It stays a moment after you lift so you can see where the point went.
 
-**Touch and hold to pick a colour.** With painting tools, touch and hold the image to pick the colour under your finger as the foreground colour. With Clone Stamp and Repair Brush, touch and hold sets the source instead.
+**Touch and hold to pick a color.** With painting tools, touch and hold the image to pick the color under your finger as the foreground color. With Clone Stamp and Repair Brush, touch and hold sets the source instead.
 
 **Painting on text or shapes.** If you paint on a type, shape, fill or embedded layer, PhotoWagon asks whether to Rasterize it first, which turns it into plain pixels.
 
@@ -62,9 +62,9 @@ These select regular shapes. Like all selection tools, they have three mode butt
 
 **Object Selection** finds an object for you. Tap an object, or drag a box round it. With Object Finder on, touch and hold to highlight the object under your finger, then lift to select it. Options: mode, *Object Finder* (highlights objects as you hold), *Show All Objects* (shows every object it can find), *Subject* (selects the main subject of the photo).
 
-**Quick Selection** grows a selection as you paint over an area; it spreads to similar colours and stops at edges. Use the Subtract mode to paint parts back out. Options: mode, *Size*, *Sample All Layers* (looks at every layer, not only the active one), *Enhance Edge* (a smoother, cleaner edge), *Subject*. You can also touch and hold the group's icon for *Select Subject*.
+**Quick Selection** grows a selection as you paint over an area; it spreads to similar colors and stops at edges. Use the Subtract mode to paint parts back out. Options: mode, *Size*, *Sample All Layers* (looks at every layer, not only the active one), *Enhance Edge* (a smoother, cleaner edge), *Subject*. You can also touch and hold the group's icon for *Select Subject*.
 
-**Magic Wand** selects colours like the one you tap. Options: mode, *Tolerance* (how different a colour can be and still be picked, 0 to 255), *Contiguous* (only touching pixels; off picks that colour everywhere), *Sample All Layers*.
+**Magic Wand** selects colors like the one you tap. Options: mode, *Tolerance* (how different a color can be and still be picked, 0 to 255), *Contiguous* (only touching pixels; off picks that color everywhere), *Sample All Layers*.
 
 **Select Subject** (the *Subject* button) looks at the photo and selects the main subject, such as a person, pet or product. It uses the active layer unless Sample All Layers is on.
 
@@ -76,7 +76,7 @@ Once there's a selection, and you're using a selection tool, a type tool, Move, 
 
 ![A selection with the selection buttons in the options bar](images/selection.jpg)
 
-**Deselect** removes the selection. **Invert** selects everything that wasn't selected. **Fill** fills the selection with the foreground colour. **Quick Fill** deletes what's inside and fills it from the area around it. **AI Remove** fills it with the on-device AI (see AI Remove below). **Delete** clears what's inside to transparent. **Copy** copies the selected part. **Paste** pastes what you copied as a new layer, in this image or another open one: switch to its tab first. **Select All** selects the whole image. **Copy to Layer** copies the selected part to a new layer. **Mask** adds a layer mask that shows only the selection. **Transform** starts Free Transform on the selected part.
+**Deselect** removes the selection. **Invert** selects everything that wasn't selected. **Fill** fills the selection with the foreground color. **Quick Fill** deletes what's inside and fills it from the area around it. **AI Remove** fills it with the on-device AI (see AI Remove below). **Delete** clears what's inside to transparent. **Copy** copies the selected part. **Paste** pastes what you copied as a new layer, in this image or another open one: switch to its tab first. **Select All** selects the whole image. **Copy to Layer** copies the selected part to a new layer. **Mask** adds a layer mask that shows only the selection. **Transform** starts Free Transform on the selected part.
 
 ## Crop and Slice tools
 
@@ -90,13 +90,13 @@ Once there's a selection, and you're using a selection tool, a type tool, Move, 
 
 ## Frame
 
-**Frame** makes a picture frame layer where you drag a box.
+**Frame** makes a picture frame layer where you drag a box, then asks for the picture to go in it. Tap a frame to pick a different picture for it.
 
 ## Measuring tools
 
-**Eyedropper** picks the foreground colour from the image. Tap, or drag to see the colour change as you go. Options: *Sample Size* (*Point Sample*, or an average of 3 by 3 up to 101 by 101 pixels), *Sample* (*All Layers*, *Current Layer*, *Current & Below*, and the same two without adjustment layers).
+**Eyedropper** picks the foreground color from the image. Tap, or drag to see the color change as you go. Options: *Sample Size* (*Point Sample*, or an average of 3 by 3 up to 101 by 101 pixels), *Sample* (*All Layers*, *Current Layer*, *Current & Below*, and the same two without adjustment layers).
 
-**Color Sampler** marks a spot so you can read its colour. Tap to add a sampler; a message shows its number and its R, G and B values. Drag a sampler to move it.
+**Color Sampler** marks a spot so you can read its color. Tap to add a sampler; a message shows its number and its R, G and B values. Drag a sampler to move it.
 
 **Ruler** measures distance and angle. Drag a line; the options bar shows its width (W), height (H), length (L) in pixels and angle (A). Drag either end to change it.
 
@@ -110,13 +110,13 @@ Once there's a selection, and you're using a selection tool, a type tool, Move, 
 
 **Quick Fill** removes something by filling it from the surroundings, with no AI. Paint over it and lift. Options: *Size*, *Sample All Layers*, *Remove After Each Stroke* (on: each stroke is filled when you lift; off: paint several strokes, then tap *Commit* to fill them all at once), *Straight Line*.
 
-**AI Remove** removes things with an AI model that fills the gap with what should be behind it. It runs on your device, so your photos never leave it. Paint over what you want gone, or select it and tap *Remove Selection*. Options: *Size*, *Sample All Layers*, *Remove After Each Stroke* (as for Quick Fill), *Match Colour* (blends the fill into the colour round it), *Remove Selection* (shown when something is selected), *Straight Line*.
+**AI Remove** removes things with an AI model that fills the gap with what should be behind it. It runs on your device, so your photos never leave it. Paint over what you want gone, or select it and tap *Remove Selection*. Options: *Size*, *Sample All Layers*, *Remove After Each Stroke* (as for Quick Fill), *Match Color* (blends the fill into the color round it), *Remove Selection* (shown when something is selected), *Straight Line*.
 
 ![AI Remove's options](images/ai-remove.jpg)
 
 The first time you use AI Remove, PhotoWagon asks to download its model (about 25 MB, once). Tap *Download* to get it, or *Not Now*. When the download finishes, what you painted or selected is removed.
 
-**Repair Brush** copies texture from one place to cover another, matched to the light and colour where you paint. Touch and hold to set the source, then paint over the problem. Options: *Size*, *Opacity*, *Hardness*, *Straight Line*.
+**Repair Brush** copies texture from one place to cover another, matched to the light and color where you paint. Touch and hold to set the source, then paint over the problem. Options: *Size*, *Opacity*, *Hardness*, *Straight Line*.
 
 **Patch** repairs a selected area with texture from somewhere else. Select the area first (with any selection tool), switch to Patch, then drag from the selection to a clean area to take the patch from.
 
@@ -126,7 +126,7 @@ The first time you use AI Remove, PhotoWagon asks to download its model (about 2
 
 ## Brush tools
 
-**Brush** paints with the foreground colour. Paint with your finger or Apple Pencil; pressure works with the Pencil.
+**Brush** paints with the foreground color. Paint with your finger or Apple Pencil; pressure works with the Pencil.
 
 Options: *Brush Tip* (pick a brush preset from its groups, or *Import Brush Tips…*), *Mode* (how the paint blends with what's below, such as Normal, Multiply or Screen), *Size*, *Opacity*, *Hardness*, *Flow* (how much paint each dab lays down), *Smoothing* (evens out shaky strokes), *Pressure for Size*, *Pressure for Opacity* (the Pencil's pressure changes size or opacity), *Symmetry* (*Off*, *Vertical*, *Horizontal*, *Dual Axis*, *Diagonal*: paints a mirror image across the middle of the canvas), *Brush Angle* (the angle dial), *Brush Settings* (the full brush screen), *Straight Line*.
 
@@ -136,9 +136,9 @@ On a narrow screen only the sliders that fit are shown, and the rest move into t
 
 **Pencil** paints hard-edged lines. Options: as for Brush, without Hardness and Flow.
 
-**Color Replacement** paints the foreground colour over the colours you paint on, keeping their light and shade. Options: *Size*, *Straight Line*.
+**Color Replacement** paints the foreground color over the colors you paint on, keeping their light and shade. Options: *Size*, *Straight Line*.
 
-**Mixer Brush** paints colour that mixes with the colours already there, like wet paint. Options: *Size*, *Flow*, *Smoothing*, *Pressure for Size*, *Pressure for Opacity*, *Brush Angle*, *Brush Settings*, *Straight Line*.
+**Mixer Brush** paints color that mixes with the colors already there, like wet paint. Options: *Size*, *Flow*, *Smoothing*, *Pressure for Size*, *Pressure for Opacity*, *Brush Angle*, *Brush Settings*, *Straight Line*.
 
 ### Brush Angle
 
@@ -162,7 +162,7 @@ Each jitter has a *Control* that sets what drives it: *Off*, *Fade*, *Pen Pressu
 
 **Flow and Smoothing.** *Flow*, *Smoothing*, *Pulled String Mode* (the stroke only moves once your finger pulls past a short string), *Stroke Catch-up*, *Catch-up on Stroke End*, *Adjust for Zoom*.
 
-**Other settings.** *Noise* (adds grain to soft edges), *Wet Edges* (darker edges, like watercolour), *Build-up* (paint keeps building while you hold).
+**Other settings.** *Noise* (adds grain to soft edges), *Wet Edges* (darker edges, like watercolor), *Build-up* (paint keeps building while you hold).
 
 **New Brush Preset…** saves the brush under a name you give, so it shows up in the Brush Tip menu. *Include Tool Settings* also saves the mode, opacity, flow and the pressure buttons with it.
 
@@ -180,15 +180,15 @@ Each jitter has a *Control* that sets what drives it: *Off*, *Fade*, *Pen Pressu
 
 **Eraser** erases to transparent as you paint. Options: as for Brush, without Mode.
 
-**Background Eraser** erases the colour you paint over while leaving other colours, handy for removing a plain background round an edge. Options: *Size*, *Hardness*, *Straight Line*.
+**Background Eraser** erases the color you paint over while leaving other colors, handy for removing a plain background round an edge. Options: *Size*, *Hardness*, *Straight Line*.
 
-**Magic Eraser** erases all colours like the one you tap. Options: *Tolerance*, *Contiguous*, *Sample All Layers*.
+**Magic Eraser** erases all colors like the one you tap. Options: *Tolerance*, *Contiguous*, *Sample All Layers*.
 
 ## Gradient and Paint Bucket
 
-**Gradient** fills the layer with a smooth blend of colours. Drag from where it starts to where it ends. Options: *Gradient* (pick a gradient preset; the default is Foreground to Background), the style (*Linear*, *Radial*, *Angle*, *Reflected*, *Diamond*), *Reverse* (swaps the ends).
+**Gradient** fills the layer with a smooth blend of colors. Drag from where it starts to where it ends. Options: *Gradient* (pick a gradient preset; the default is Foreground to Background), the style (*Linear*, *Radial*, *Angle*, *Reflected*, *Diamond*), *Reverse* (swaps the ends).
 
-**Paint Bucket** fills colours like the one you tap with the foreground colour. Options: *Tolerance*, *Contiguous*, *Sample All Layers*.
+**Paint Bucket** fills colors like the one you tap with the foreground color. Options: *Tolerance*, *Contiguous*, *Sample All Layers*.
 
 ## Blur, Sharpen and Smudge
 
@@ -196,7 +196,7 @@ Each jitter has a *Control* that sets what drives it: *Off*, *Fade*, *Pen Pressu
 
 **Sharpen** makes detail crisper where you paint. Options: as for Blur.
 
-**Smudge** smears colour along your stroke, like a finger in wet paint. Options: as for Blur.
+**Smudge** smears color along your stroke, like a finger in wet paint. Options: as for Blur.
 
 ## Dodge, Burn and Sponge
 
@@ -204,11 +204,11 @@ Each jitter has a *Control* that sets what drives it: *Off*, *Fade*, *Pen Pressu
 
 **Burn** darkens where you paint. Options: as for Dodge.
 
-**Sponge** takes colour out where you paint. Options: *Size*, *Flow*, *Hardness*, *Straight Line*.
+**Sponge** takes color out where you paint. Options: *Size*, *Flow*, *Hardness*, *Straight Line*.
 
 ## Pen tools
 
-The pen tools draw a path, a smooth outline you can turn into a selection, a fill, a stroke or a shape. All of them share these options: *Make Selection* (selects the inside of the path, using the selection mode), *Fill Path* (fills it with the foreground colour), *Stroke Path* (paints along it with the brush), *Shape Layer* (makes it a new shape layer), *Delete Path*.
+The pen tools draw a path, a smooth outline you can turn into a selection, a fill, a stroke or a shape. All of them share these options: *Make Selection* (selects the inside of the path, using the selection mode), *Fill Path* (fills it with the foreground color), *Stroke Path* (paints along it with the brush), *Shape Layer* (makes it a new shape layer), *Delete Path*.
 
 **Pen** draws a path point by point. Tap for a corner, or drag to pull out handles for a curve. Tap the first point to close the shape.
 
@@ -224,7 +224,7 @@ The pen tools draw a path, a smooth outline you can turn into a selection, a fil
 
 ## Type tools
 
-**Horizontal Type** adds text. Tap for a line of text, or drag a box for text that wraps inside it. Type your text and confirm. Tap existing text to edit it. The text uses the foreground colour. Options: *Font*, *Size* (in points), *Leading* (the gap between lines; empty is Auto), *Tracking* (the space between letters), and left, centre or right alignment. With a text layer active, changes apply to it straight away.
+**Horizontal Type** adds text. Tap for a line of text, or drag a box for text that wraps inside it. Type your text (Return starts a new line) and tap OK. Tap existing text to edit it. With a text layer selected, a box with handles shows around it: drag inside to move the text, drag a corner to make it bigger or smaller, and drag the round handle (or just outside a corner) to turn it. Options: *Text Color* (new text uses the foreground color), *Font*, *Size* (in points), *Leading* (the gap between lines; empty is Auto), *Tracking* (the space between letters), and left, centre or right alignment. With a text layer active, changes apply to it straight away.
 
 **Vertical Type** adds text that runs top to bottom. Options: as for Horizontal Type.
 
@@ -238,7 +238,7 @@ The pen tools draw a path, a smooth outline you can turn into a selection, a fil
 
 ## Shape tools
 
-Each shape tool draws a new shape layer filled with the foreground colour. Drag to draw the shape; hold Shift on a keyboard for an even square or circle.
+Each shape tool draws a new shape layer filled with the foreground color. Drag to draw the shape; hold Shift on a keyboard for an even square or circle.
 
 **Rectangle** draws a rectangle. **Ellipse** draws an oval. **Triangle** draws a triangle.
 

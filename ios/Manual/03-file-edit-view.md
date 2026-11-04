@@ -12,7 +12,7 @@ Items whose names end in "…" open a settings sheet first. Change what you need
 
 New, Open and your recent files are on Home (the house at the top left).
 
-**New…** (Home › **New file**) makes a blank document. Pick a *Preset* (Photo, Print, Art & Illustration, Web, Mobile, Film & Video) or set the size yourself. Options: *Name*, *Units* (Pixels, Inches, Centimeters), *Width*, *Height*, *Resolution (pixels/inch)*, *Colour Mode* (RGB Color, Grayscale, CMYK Color, Lab Color), *Colour Profile*, *Bit Depth* (8, 16 or 32 bit), *Background* (White, Black, Background Color, Transparent). Tap **Create**.
+**New…** (Home › **New file**) makes a blank document. Pick a *Preset* (Photo, Print, Art & Illustration, Web, Mobile, Film & Video) or set the size yourself. Options: *Name*, *Units* (Pixels, Inches, Centimeters), *Width*, *Height*, *Resolution (pixels/inch)*, *Color Mode* (RGB Color, Grayscale, CMYK Color, Lab Color), *Color Profile*, *Bit Depth* (8, 16 or 32 bit), *Background* (White, Black, Background Color, Transparent). Tap **Create**.
 
 **Open** (on Home) lists the pictures in On My iPhone › PhotoWagon, newest first. Tap one to open it. **Browse Files…** lets you pick from anywhere in Files, and **Photos…** from your photo library. You can open JPEG, PNG, HEIC, JPEG XL, TIFF, PSD, WebP, GIF, BMP, SVG, EXR, camera raw files and more. A JPEG XL file made of layers opens with its layers, and an animated one with a layer per frame.
 
@@ -38,7 +38,7 @@ New, Open and your recent files are on Home (the house at the top left).
 
 - **Quick Export as PNG** saves a PNG straight away, named after the document.
 - **Export As…** saves one or more copies at the sizes you choose. Options: *Name*, *Format* (PNG, JPEG, WebP, JPEG XL, GIF), *Lossless* (JPEG XL), *Quality* (1 to 100, for JPEG, WebP and lossy JPEG XL), *Transparency* (off fills see-through areas with white; JPEG is always filled), *Width* (the height follows), *Sizes* (0.25x to 3x; each size is its own file, such as name@2x.png), *Convert to sRGB*.
-- **Save for Web…** makes a small file for the web, with a preview and the file size it will come to. Options: *Name*, *Format* (GIF, PNG-8, PNG-24, JPEG), *Colour Reduction* (Perceptual, Selective, Adaptive, Restrictive), *Colours* (2 to 256), *Dither* (Diffusion, Pattern, Noise, No Dither), *Quality* (JPEG), *Transparency*, *Percent* (the size), and for an animation, *Looping* (Once, 3 Times, Forever).
+- **Save for Web…** makes a small file for the web, with a preview and the file size it will come to. Options: *Name*, *Format* (GIF, PNG-8, PNG-24, JPEG), *Color Reduction* (Perceptual, Selective, Adaptive, Restrictive), *Colors* (2 to 256), *Dither* (Diffusion, Pattern, Noise, No Dither), *Quality* (JPEG), *Transparency*, *Percent* (the size), and for an animation, *Looping* (Once, 3 Times, Forever).
 
 ![Export As](images/export.jpg)
 
@@ -58,7 +58,7 @@ New, Open and your recent files are on Home (the house at the top left).
 
 **Fit Image…** is meant to shrink or grow the image to fit a box, but the box's size can't be set here yet, so the image keeps its size. Options: *Dont enlarge*, *Resample*.
 
-**Conditional Mode Change…** changes the document to another colour mode, whatever mode it's in now. Options: *To* (Rgb, Grayscale, Cmyk, Lab).
+**Conditional Mode Change…** changes the document to another color mode, whatever mode it's in now. Options: *To* (Rgb, Grayscale, Cmyk, Lab).
 
 **Crop and Straighten Photos** finds each photo on a scan of several prints, straightens it and opens it as its own new document.
 
@@ -122,9 +122,9 @@ Purge frees memory. **Undo** forgets the undo steps of the current document. **C
 
 **Undo** steps back one change, and **Redo** puts it back. You can also jump to any step in the History panel.
 
-**Fill…** fills the selection (or the whole layer) with a colour or pattern. Options: *Contents* (Foreground, Background, Color, Surroundings, Pattern, History, Black, Gray, White), *Color*, *Scale*, *Color adaptation*, *Mode* (Normal, Multiply), *Opacity*, *Preserve transparency* (only fill where there are already pixels).
+**Fill…** fills the selection (or the whole layer) with a color or pattern. Options: *Contents* (Foreground, Background, Color, Surroundings, Pattern, History, Black, Gray, White), *Color*, *Scale*, *Color adaptation*, *Mode* (Normal, Multiply), *Opacity*, *Preserve transparency* (only fill where there are already pixels).
 
-**Clear** deletes the selected pixels, leaving them see-through. On the Background they become the background colour.
+**Clear** deletes the selected pixels, leaving them see-through. On the Background they become the background color.
 
 **Cut**, **Copy** and **Paste** work as you'd expect on the current layer's selected pixels. Paste puts what you copied on a new layer. With no document open, Paste makes a new document from it.
 
@@ -132,11 +132,11 @@ Purge frees memory. **Undo** forgets the undo steps of the current document. **C
 
 **Toggle Last State** flips between your last change and the step before it, so you can compare before and after.
 
-**Assign Profile…** tags the document with a different colour profile without changing its pixels, so the colours look different. Options: *Profile* (Working, Srgb, Display-p3, Adobe-rgb-compat, Prophoto-compat, Linear-srgb, Rec2020, Sgray, Dot-gain-20-compat, Lab-d50, Coated-cmyk, None).
+**Assign Profile…** tags the document with a different color profile without changing its pixels, so the colors look different. Options: *Profile* (Working, Srgb, Display-p3, Adobe-rgb-compat, Prophoto-compat, Linear-srgb, Rec2020, Sgray, Dot-gain-20-compat, Lab-d50, Coated-cmyk, None).
 
-**Convert to Profile…** changes the pixels to a new colour profile so the colours look the same. Options: *Profile* (the same list), *Intent* (Perceptual, Relative, Saturation, Absolute), *Bpc* (black point compensation).
+**Convert to Profile…** changes the pixels to a new color profile so the colors look the same. Options: *Profile* (the same list), *Intent* (Perceptual, Relative, Saturation, Absolute), *Bpc* (black point compensation).
 
-**Color Settings…** sets how the app handles colour profiles. Options: *Working rgb*, *Working gray*, *Policy rgb*, *Policy cmyk* and *Policy gray* (Preserve, Convert, Off), *Ask on mismatch*, *Ask on paste*, *Ask on missing*, *Intent*, *Blend text gamma*, *Bpc*, *Dither*, *Monitor profile*, *Reset* (back to the defaults).
+**Color Settings…** sets how the app handles color profiles. Options: *Working rgb*, *Working gray*, *Policy rgb*, *Policy cmyk* and *Policy gray* (Preserve, Convert, Off), *Ask on mismatch*, *Ask on paste*, *Ask on missing*, *Intent*, *Blend text gamma*, *Bpc*, *Dither*, *Monitor profile*, *Reset* (back to the defaults).
 
 **Stroke…** draws a line round the selection. Options: *Width* (1 to 250 px), *Color*, *Location* (Inside, Center, Outside), *Opacity*, *Preserve transparency*.
 
@@ -172,13 +172,13 @@ Purge frees memory. **Undo** forgets the undo steps of the current document. **C
 
 **Fit on Screen** shows the whole image. **Actual Size** shows one image pixel per screen pixel. **Straighten View** undoes any turn you've given the view with two fingers.
 
-**Canvas Colour** sets the colour round your image: Default, Black, Dark Gray, Medium Gray, Light Gray, White or Custom… (pick any colour).
+**Canvas Color** sets the color round your image: Default, Black, Dark Gray, Medium Gray, Light Gray, White or Custom… (pick any color).
 
 ### Proof Setup
 
-These preview the image a different way and turn Proof Colors on. **Working Cyan Plate**, **Working Magenta Plate**, **Working Yellow Plate** and **Working Black Plate** show one printing ink on its own, and **Working CMY Plate** shows the three colour inks without black. **Legacy Macintosh RGB** shows how it would look on an older Mac screen.
+These preview the image a different way and turn Proof Colors on. **Working Cyan Plate**, **Working Magenta Plate**, **Working Yellow Plate** and **Working Black Plate** show one printing ink on its own, and **Working CMY Plate** shows the three color inks without black. **Legacy Macintosh RGB** shows how it would look on an older Mac screen.
 
-**Color Blindness (Protanopia-type and Deuteranopia-type)** show roughly how the image looks to people with two common kinds of colour blindness. They're handy for checking that labels and charts still read well.
+**Color Blindness (Protanopia-type and Deuteranopia-type)** show roughly how the image looks to people with two common kinds of color blindness. They're handy for checking that labels and charts still read well.
 
 ### More View items
 
@@ -188,7 +188,7 @@ These preview the image a different way and turn Proof Colors on. **Working Cyan
 
 **Proof Colors** (on or off) previews the image as it would print, using the proof setup.
 
-**Gamut Warning** (on or off) marks the colours that won't print as they look on screen.
+**Gamut Warning** (on or off) marks the colors that won't print as they look on screen.
 
 **New Guide Layout…** adds rows and columns of guides in one go. Options: *Columns*, *Gutter*, *Rows*, *Center columns*, *Clear existing*, *Target* (Document, Selected artboards).
 

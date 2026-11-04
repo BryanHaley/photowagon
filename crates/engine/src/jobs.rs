@@ -736,7 +736,7 @@ impl Session {
         // error instead of taking the app down. `edit` only commits a document after its closure
         // returns, so the documents are unchanged.
         let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| (spec.run)(self, &run_params)))
-            .unwrap_or_else(|_| Err(EngineError::Other(format!("`{id}` failed with an internal error (logged); the document is unchanged"))));
+            .unwrap_or_else(|_| Err(EngineError::Other(format!("{} failed with an internal error (logged); the document is unchanged", crate::command_name(id)))));
         if self.actions.recording.is_none() {
             self.actions.recording = recording;
         }

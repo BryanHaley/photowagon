@@ -135,7 +135,7 @@ struct AcknowledgementsView: View {
     }
 }
 
-private struct LicenseView: View {
+struct LicenseView: View {
     let entry: Acknowledgements.Entry
     let texts: [String]
 

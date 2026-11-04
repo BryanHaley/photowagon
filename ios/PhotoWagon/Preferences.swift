@@ -5,6 +5,18 @@ extension EditorModel {
     func pref(_ path: String) -> Any? { query("prefs.get", ["path": path]) }
 
     func setPref(_ path: String, _ value: Any) { run("prefs.set", ["path": path, "value": value]) }
+
+    /// The Pencil's pressure curve as the graph draws it, 0…255 both ways.
+    var pressurePoints: [CGPoint] {
+        get {
+            let pts = (pref("tools.pressureCurve") as? [[NSNumber]])?.map { $0.map(\.doubleValue) } ?? PencilPressure.normal.curve
+            return pts.filter { $0.count == 2 }.map { CGPoint(x: $0[0] * 255, y: $0[1] * 255) }
+        }
+        set {
+            setPref("tools.pressureCurve", newValue.map { [Double($0.x) / 255, Double($0.y) / 255] })
+            objectWillChange.send()
+        }
+    }
 }
 
 /// Edit › Preferences › General: the general settings the app uses, and File Handling's recovery.
@@ -138,13 +150,7 @@ struct PressureCurveView: View {
         .onAppear(perform: load)
     }
 
-    private func load() {
-        let pts = (model.pref("tools.pressureCurve") as? [[NSNumber]])?.map { $0.map(\.doubleValue) } ?? PencilPressure.normal.curve
-        points = pts.filter { $0.count == 2 }.map { CGPoint(x: $0[0] * 255, y: $0[1] * 255) }
-    }
+    private func load() { points = model.pressurePoints }
 
-    private func save() {
-        model.setPref("tools.pressureCurve", points.map { [Double($0.x) / 255, Double($0.y) / 255] })
-        model.objectWillChange.send()
-    }
+    private func save() { model.pressurePoints = points }
 }

@@ -16,6 +16,63 @@ final class MenuTests: XCTestCase {
         e.flatMap { ($0 as? UIMenu).map { [$0] + flat($0.children) } ?? [$0] }
     }
 
+    func testCommandsAPersonCantFinishAreHidden() throws {
+        let model = makeModel()
+        func ids(_ n: MenuTree.Node) -> [String] { n.commands.map(\.id) + n.children.flatMap(ids) }
+        let shown = Set(MenuTree(model.editor.commands()).top.flatMap(ids))
+        XCTAssertEqual(shown.intersection(MenuTree.notOnIOS), [])
+        // Still engine commands, for scripts.
+        let all = Set(model.editor.allCommands().map(\.id))
+        XCTAssertEqual(MenuTree.notOnIOS.subtracting(all), [])
+    }
+
+    func testRenameLayerAndFindLayersAskForAName() throws {
+        let model = makeModel(width: 8, height: 8)
+        model.run("layer.new.layer")
+        let info = { (id: String) in model.editor.commands().first { $0.id == id } }
+        for id in ["layer.renameLayer", "select.findLayers"] {
+            let c = try XCTUnwrap(info(id))
+            model.perform(c)
+            XCTAssertEqual(model.commandSettings?.id, id)
+            model.commandSettings = nil
+        }
+        let fields = model.editor.commandFields(id: "select.findLayers")
+        XCTAssertEqual(fields.map(\.name), ["name"])
+        XCTAssertNil(model.startingValues(fields, for: "select.findLayers")["name"], "a search starts empty")
+        XCTAssertEqual(model.startingValues(fields, for: "layer.renameLayer")["name"] as? String, model.activeLayer?.name)
+    }
+
+    func testRenderVideoAndDataSetsAskForAFolder() throws {
+        let model = makeModel(width: 8, height: 8)
+        for id in ["file.export.renderVideo", "file.export.dataSetsAsFiles"] {
+            XCTAssertEqual(EditorModel.request(for: id), .exportToFolder(id))
+            XCTAssertTrue(MenuTree.shows(command(id)))
+            model.perform(command(id))
+            XCTAssertEqual(model.request, .exportToFolder(id))
+            model.request = nil
+        }
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        model.run("timeline.create", ["duration": 2, "fps": 24.0])
+        model.picked(folder, for: .folder("file.export.renderVideo"))
+        wait("the frames are written") { model.toast == "Saved to \(folder.lastPathComponent)" }
+        XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: folder.path).count, 2)
+    }
+
+    func testVideoAndImportCommandsAskForAFile() throws {
+        let model = makeModel(width: 8, height: 8)
+        let id = "layer.videoLayers.newVideoLayerFromFile"
+        XCTAssertTrue(MenuTree.shows(command(id)))
+        model.perform(command(id))
+        XCTAssertEqual(model.request, .commandFile(id))
+        model.request = nil
+        let clip = URL(fileURLWithPath: #filePath).deletingLastPathComponent().appendingPathComponent("../PhotoWagonUITests/Samples/formats/clip.gif")
+        let before = model.layers.count
+        model.picked(clip, for: .commandFile(id))
+        wait("the video layer is made") { model.layers.count == before + 1 }
+    }
+
     func testTheMenusFollowPhotoshopsOrderAndHideWhatCantRunHere() throws {
         let model = makeModel()
         let all = model.editor.commands()
@@ -69,6 +126,10 @@ final class MenuTests: XCTestCase {
         let again = flat(menu.items("File"))
         XCTAssertTrue(Set(titles(again)).isDisjoint(with: ["New…", "Open…", "Open from Photos…", "Open Recent"]), "those are on Home")
         XCTAssertFalse(try XCTUnwrap(again.compactMap { $0 as? UIAction }.first { $0.title == "Close" }).attributes.contains(.disabled))
+        // One Export submenu: the app's exports, then the engine's.
+        let exports = again.compactMap { $0 as? UIMenu }.filter { $0.title == "Export" }
+        XCTAssertEqual(exports.count, 1)
+        XCTAssertTrue(Set(titles(flat(exports.first?.children ?? []))).isSuperset(of: ["Export As…", "Export Preferences…"]))
 
         let filter = menu.items("Filter")
         XCTAssertEqual((filter.first as? UIMenu)?.options.contains(.displayInline), true, "Filter's own filters first")

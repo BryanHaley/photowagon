@@ -511,6 +511,10 @@ fn history_brush_restores_earlier_pixels() {
         assert!(rgba(&s, 30, 10).iter().all(|v| *v > 0.99));
         assert!(rgba(&s, 20, 10)[1] > 0.99, "between the dabs still green");
         assert!(s.execute("paint.historyBrush", json!({"points": [[5, 10]], "state": 99})).is_err());
+        let mut resized = session(40, 20, depth, "rgb");
+        resized.execute("image.imageSize", json!({"width": 20, "height": 10})).unwrap();
+        let e = resized.execute("paint.historyBrush", json!({"points": [[5, 5]], "state": 0})).unwrap_err();
+        assert!(e.to_string().contains("different canvas size"), "{e}");
     }
 }
 

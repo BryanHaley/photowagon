@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="96" height="64" viewBox="0 0 96 64">
+  <title>Omega test art</title>
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2060d0"/><stop offset="1" stop-color="#f0e0a0"/>
+    </linearGradient>
+    <radialGradient id="sun" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#fff0a0"/><stop offset="1" stop-color="#e06010" stop-opacity="0.2"/>
+    </radialGradient>
+    <clipPath id="box"><rect x="50" y="30" width="36" height="24" rx="4"/></clipPath>
+    <g id="dot"><circle r="3" fill="#ffffff"/></g>
+  </defs>
+  <rect width="96" height="64" fill="url(#sky)"/>
+  <g id="Sun" opacity="0.9"><circle cx="24" cy="20" r="14" fill="url(#sun)"/></g>
+  <g id="Hills" transform="translate(0 4)">
+    <path d="M0 50 C 20 30, 40 30, 60 50 S 90 60, 96 44 L96 64 L0 64 Z" fill="#30a040" stroke="#104020" stroke-width="1.5"/>
+    <ellipse cx="70" cy="40" rx="10" ry="5" fill="#208030" fill-opacity="0.6"/>
+  </g>
+  <g id="Clipped" clip-path="url(#box)"><polygon points="50,30 90,34 70,60" fill="#c04020"/></g>
+  <polyline points="4,4 12,10 20,4 28,10" fill="none" stroke="#ffffff" stroke-width="1" stroke-dasharray="2 1"/>
+  <line x1="60" y1="6" x2="90" y2="6" stroke="#000000" stroke-linecap="round" stroke-width="2"/>
+  <use xlink:href="#dot" x="80" y="16"/>
+  <text x="6" y="58" font-family="Helvetica" font-size="8" fill="#000000">Omega</text>
+</svg>

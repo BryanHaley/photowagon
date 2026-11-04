@@ -54,7 +54,7 @@ final class SaveExportTests: WalkthroughTestCase {
             waitIdle()
             painted = stats([200, 180, 700, 270]).mean
             XCUIDevice.shared.press(.home)
-            Thread.sleep(forTimeInterval: 2)
+            Thread.sleep(forTimeInterval: 2 * Self.slow)
             app.terminate()
             app.launchArguments = ["-uiTestProbe", probeFolder.path]
             app.launch()

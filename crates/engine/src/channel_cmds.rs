@@ -1219,6 +1219,9 @@ fn gray_document(name: &str, like: &Document, plane: &[f32]) -> Document {
         s.prune();
     }
     d.layers.push(bg);
+    if like.depth == photocraft_color::SampleType::F32 {
+        crate::image_cmds::tag_for_depth(&mut d, true);
+    }
     d
 }
 
@@ -1651,6 +1654,9 @@ fn merge(s: &mut Session, p: &Value) -> Result<Value> {
     close.sort_unstable();
     for i in close.into_iter().rev() {
         s.close(i);
+    }
+    if out.depth == photocraft_color::SampleType::F32 {
+        crate::image_cmds::tag_for_depth(&mut out, true);
     }
     let i = s.add_document(out, None);
     Ok(json!({ "document": i }))

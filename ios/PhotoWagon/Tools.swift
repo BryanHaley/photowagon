@@ -169,7 +169,7 @@ enum Tool: String, CaseIterable, Identifiable {
         case .perspectiveCrop: "Tap four corners, then ✓."
         case .slice: "Drag to cut slices for the web."
         case .sliceSelect: "Tap a slice to pick it."
-        case .frame: "Drag to draw a picture frame."
+        case .frame: "Drag a frame, then pick the picture for it. Tap a frame to change its picture."
         case .eyedropper: "Tap to pick a color."
         case .colorSampler: "Tap to mark a color to read."
         case .ruler: "Drag to measure."

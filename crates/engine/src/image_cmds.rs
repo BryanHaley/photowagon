@@ -216,6 +216,9 @@ fn image_size(s: &mut Session, p: &Value) -> Result<Value> {
         (None, Some(h)) => (h * ow as f64 / oh.max(1) as f64, h),
         (None, None) => (ow as f64, oh as f64),
     };
+    if !(nw.round() >= 1.0 && nh.round() >= 1.0) {
+        return Err(bad("image.imageSize", "width and height must be at least 1 pixel"));
+    }
     let (nw, nh) = (nw.round().clamp(1.0, 300_000.0) as u32, nh.round().clamp(1.0, 300_000.0) as u32);
     // Each side may reach 300000 px, but resampling writes real pixels: refuse a canvas whose
     // raster alone would pass the budget, before allocating any of it (#1544).
@@ -409,6 +412,9 @@ fn canvas_size(s: &mut Session, p: &Value) -> Result<Value> {
     let w = p.get("width").and_then(Value::as_f64).unwrap_or(if relative { 0.0 } else { ow });
     let h = p.get("height").and_then(Value::as_f64).unwrap_or(if relative { 0.0 } else { oh });
     let (nw, nh) = if relative { (ow + w, oh + h) } else { (w, h) };
+    if !(nw.round() >= 1.0 && nh.round() >= 1.0) {
+        return Err(bad("image.canvasSize", "the canvas must be at least 1 pixel wide and high"));
+    }
     let (nw, nh) = (nw.round().clamp(1.0, 300_000.0) as u32, nh.round().clamp(1.0, 300_000.0) as u32);
     let (ax, ay) = anchor_factors("image.canvasSize", p.get("anchor").and_then(Value::as_str).unwrap_or("center"))?;
     let dx = ((nw as f64 - ow) * ax).round() as i32;
@@ -741,9 +747,27 @@ fn convert_depth(s: &mut Session, depth: SampleType) -> Result<Value> {
             ch.surface = ch.surface.convert(f);
         }
         doc.depth = depth;
+        if crosses {
+            tag_for_depth(doc, to_linear);
+        }
         Ok(())
     })?;
     Ok(Value::Null)
+}
+
+/// The profile says what the numbers now are, so the screen and flat exports show the same image.
+pub(crate) fn tag_for_depth(doc: &mut Document, linear: bool) {
+    use photocraft_cms::{Builtin, builtin::linear_gray, curve};
+    let p = crate::color_cmds::document_profile(doc);
+    if doc.mode == ColorMode::Grayscale {
+        doc.icc_profile = linear.then(|| linear_gray().to_bytes());
+    } else if p.is_matrix_shaper() {
+        let c = if linear { photocraft_cms::Curve::Identity } else { curve::srgb_trc() };
+        let mut q = (*p).clone();
+        q.trc = Some([c.clone(), c.clone(), c]);
+        let q = q.with_encoded_bytes();
+        doc.icc_profile = (linear || !q.same_colors(Builtin::Srgb.profile())).then(|| q.to_bytes());
+    }
 }
 
 /// Image → Duplicate.
@@ -858,6 +882,21 @@ pub fn specs() -> Vec<CommandSpec> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn sizes_below_one_pixel_are_refused() {
+        for (cmd, p) in [
+            ("image.imageSize", json!({"width": 0, "height": 0})),
+            ("image.imageSize", json!({"width": 0.4})),
+            ("image.canvasSize", json!({"width": 0, "height": 0})),
+            ("image.canvasSize", json!({"width": -1000, "height": 0, "relative": true})),
+        ] {
+            let mut s = session();
+            let before = s.active().unwrap().doc.size;
+            assert!(s.execute(cmd, p.clone()).is_err(), "{cmd} {p}");
+            assert_eq!(s.active().unwrap().doc.size, before);
+        }
+    }
 
     #[test]
     fn crop_rejects_rectangles_that_would_wrap() {
@@ -1485,6 +1524,22 @@ mod tests {
         for (got, want) in px.iter().zip([128.0 / 255.0, 32.0 / 255.0, 1.0, 128.0 / 255.0]) {
             assert!((got - want).abs() < 0.6 / 255.0, "{px:?}");
         }
+    }
+
+    #[test]
+    fn depth_conversion_keeps_the_look() {
+        let mut s = Session::new();
+        s.execute("file.new", json!({"width": 4, "height": 4, "background": "white"})).unwrap();
+        s.execute("edit.fill", json!({"color": "#c04020"})).unwrap();
+        let look = |s: &Session| crate::display_color::srgb_thumbnail(doc(s), 4).unwrap().pixels;
+        let before = look(&s);
+        s.execute("image.mode.bits32", json!({})).unwrap();
+        for (a, b) in before.iter().zip(look(&s)) {
+            assert!(a.abs_diff(b) <= 1, "{before:?} vs {:?}", look(&s));
+        }
+        s.execute("image.mode.bits8", json!({})).unwrap();
+        assert_eq!(look(&s), before);
+        assert!(doc(&s).icc_profile.is_none(), "back to plain sRGB");
     }
 
     #[test]

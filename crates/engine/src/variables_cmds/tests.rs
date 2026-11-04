@@ -1,6 +1,7 @@
 use super::*;
 use photocraft_doc::{Layer, TextLayer};
 use photocraft_geom::Rect;
+use std::sync::Arc;
 
 /// A document with a raster layer "photo", a togglable raster "badge" and a text layer "title".
 fn session() -> (Session, LayerId, LayerId, LayerId) {
@@ -81,6 +82,13 @@ fn define_apply_visibility_and_text() {
     assert!(s.undo());
     assert!(doc(&s).layer(badge).unwrap().visible);
     assert_eq!(text_of(&s, title), "Old");
+    assert_eq!(doc(&s).variables.active, None);
+
+    // Defining variables and data sets are undo steps too.
+    assert!(s.undo());
+    assert!(doc(&s).variables.data_sets.is_empty());
+    assert!(s.undo());
+    assert!(doc(&s).variables.defs.is_empty());
 }
 
 #[test]

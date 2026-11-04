@@ -334,6 +334,10 @@ pub fn apply_in(adj: &Adjustment, buf: &mut Buffer, transfer: Transfer, depth: O
         }
     } else {
         apply_depth(adj, buf, transfer, depth);
+        // One channel holds no tint.
+        if mode == ColorMode::Grayscale && matches!(adj, Adjustment::PhotoFilter { .. }) {
+            map_rgb(buf, |c| [photocraft_color::blend::lum(c); 3]);
+        }
     }
 }
 

@@ -18,21 +18,37 @@ class WalkthroughTestCase: XCTestCase {
         app.launch()
     }
 
+    override func tearDown() {
+        writeRustCoverage()
+        super.tearDown()
+    }
+
+    /// Omega's Rust coverage (`OMEGA_RUST_COVERAGE` is the folder): the app's line counts so far,
+    /// before the test ends it.
+    func writeRustCoverage() {
+        guard let dir = ProcessInfo.processInfo.environment["OMEGA_RUST_COVERAGE"], app?.state == .runningForeground else { return }
+        probe("app.coverage", ["path": "\(dir)/ui-\(UUID().uuidString).profraw"])
+    }
+
     // MARK: - Probe
 
     /// Shared with the app (simulator processes see the Mac's /tmp).
     let probeFolder = URL(fileURLWithPath: "/tmp/photowagon-probe-\(ProcessInfo.processInfo.processIdentifier)")
 
-    private var probeSeq = 0
+    /// Across tests: a result left by the test before must not match a new query.
+    private static var nextProbe = 0
+    /// How much slower a Rust coverage build runs.
+    static let slow: Double = ProcessInfo.processInfo.environment["OMEGA_RUST_COVERAGE"] == nil ? 1 : 5
     private var toastsSeen = 0
 
     /// Run a read-only engine command through the app's test probe.
     @discardableResult
     func probe(_ id: String, _ params: [String: Any] = [:]) -> [String: Any] {
-        probeSeq += 1
+        Self.nextProbe += 1
+        let probeSeq = Self.nextProbe
         let (query, result) = (probeFolder.appendingPathComponent("query.json"), probeFolder.appendingPathComponent("result.json"))
         XCTAssertNoThrow(try JSONSerialization.data(withJSONObject: ["seq": probeSeq, "id": id, "params": params]).write(to: query, options: .atomic))
-        let end = Date().addingTimeInterval(20)
+        let end = Date().addingTimeInterval(20 * Self.slow)
         while Date() < end {
             if let data = try? Data(contentsOf: result), let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any], obj["seq"] as? Int == probeSeq {
                 let r = obj["result"]
@@ -255,8 +271,53 @@ class WalkthroughTestCase: XCTestCase {
         return false
     }
 
-    /// Set a percentage slider in the options row to `percent`, within 1 (an iOS 27 option slider
-    /// has about half a point of travel per percent).
+    /// Slide `s` until `value()` reads `target`: move where the drag ends by how far it missed, each time
+    /// grabbing the thumb where `position` (value → 0…1) says it is. A slider whose
+    /// accessibility value isn't a percentage (Size says "207") can't report its own position.
+    func slide(_ s: XCUIElement, to target: Double, value: @escaping () -> Double, position: @escaping (Double) -> Double, tolerance: Double) {
+        // The value follows the thumb a moment late: read until it holds still.
+        let settled = { () -> Double in
+            var a = value()
+            for _ in 0..<6 {
+                Thread.sleep(forTimeInterval: 0.3)
+                let b = value()
+                if b == a { break }
+                a = b
+            }
+            return a
+        }
+        Thread.sleep(forTimeInterval: 0.4)
+        var end = position(target)
+        var last = settled()
+        for i in 0..<10 {
+            // A busy simulator can lose a drag by coordinates; XCUITest's own adjust finds the thumb.
+            if i < 7 {
+                // A very short drag may not move the thumb: from far away instead.
+                if i > 0 {
+                    let far = end > 0.5 ? 0.1 : 0.9
+                    s.drag(from: position(last), to: far)
+                    last = settled()
+                }
+                s.drag(from: position(last), to: end)
+            } else {
+                s.adjust(toNormalizedSliderPosition: end)
+            }
+            let v = settled()
+            if abs(v - target) <= tolerance { return }
+            // Correct by how far it landed off, unless the drag was lost.
+            if v != last { end = min(max(end + position(target) - position(v), 0), 1) }
+            last = v
+        }
+        XCTFail("\(s) didn't reach \(target): \(value())")
+    }
+
+    /// The options bar's Size: the app's curve (`sizeSlider` in Panels.swift), small sizes given more travel.
+    func sizePosition(_ px: Double) -> Double { pow(max(0, px - 1) / 499, 1 / 2.2) }
+
+    var brushSize: Double { (probe("brush.get")["size"] as? Double) ?? 0 }
+
+    /// Set a percentage slider in the options row to `percent`, within 2 (an iOS 27 option slider
+    /// has about half a point of travel per percent, less on a small phone).
     func option(_ title: String, percent: Int) {
         let s = app.sliders["option.\(title)"].firstMatch
         XCTAssert(s.waitForExistence(timeout: 5), "option \(title)")
@@ -267,7 +328,7 @@ class WalkthroughTestCase: XCTestCase {
             // iOS 27 updates the slider's accessibility value a moment after it moves.
             Thread.sleep(forTimeInterval: 0.5)
             guard let v = (s.value as? String).flatMap({ Int($0.dropLast()) }) else { return }
-            if abs(v - percent) <= 1 { return }
+            if abs(v - percent) <= 2 { return }
             if v < percent { low = position } else { high = position }
             position = (low + high) / 2
         }
@@ -345,10 +406,12 @@ class WalkthroughTestCase: XCTestCase {
         waitIdle()
     }
 
+    /// `size` is the Size slider's position; the pixels it means (the app's curve) are checked.
     func brush(_ tip: String, size: Double) {
         tool(group: "Brush", pick: "Brush")
         brushTip("General", tip)
-        option("Size", size)
+        let px = 1 + pow(size, 2.2) * 499
+        slide(app.sliders["option.Size"].firstMatch, to: px, value: { self.brushSize }, position: sizePosition, tolerance: max(3, px * 0.3))
     }
 
     func swapColors() {
@@ -461,6 +524,9 @@ class WalkthroughTestCase: XCTestCase {
         start.press(forDuration: 0.05, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.05)
     }
 
+    /// The text prompt's field: a text view when it takes several lines (type).
+    var promptField: XCUIElement { app.descendants(matching: .any).matching(identifier: "prompt.field").firstMatch }
+
     func replace(_ field: XCUIElement, with text: String) {
         XCTAssert(field.waitForExistence(timeout: 5), "\(field)")
         // Focus it (again if a sheet was still moving), go to the end, delete what is there.
@@ -479,7 +545,9 @@ class WalkthroughTestCase: XCTestCase {
     }
 
     /// Open the menu bar and follow `path` (File › Save As…).
-    func menu(_ path: String...) {
+    func menu(_ path: String...) { menu(path: path) }
+
+    func menu(path: [String]) {
         // Inside the open menu, not a toolbar button with the same name (Filter › Blur, the Blur tool).
         let item = { (name: String) in self.app.collectionViews.buttons.named(name) }
         let menu = app.buttons["menu"]
@@ -498,6 +566,11 @@ class WalkthroughTestCase: XCTestCase {
                 if start == nil { Thread.sleep(forTimeInterval: 0.2) }
             }
             if start != nil { break }
+            // Open, but the item is below the fold (Help): the menu builds only the rows on screen.
+            if app.collectionViews.buttons.count > 0, scrollMenu(to: item(path[0])) {
+                start = 0
+                break
+            }
         }
         guard let first = start else { return XCTFail("the menu didn't open for \(path.joined(separator: " › "))") }
         for i in first..<path.count {
@@ -589,32 +662,56 @@ class WalkthroughTestCase: XCTestCase {
         XCTAssertFalse(error.exists, error.exists ? error.label : "")
     }
 
-    /// Pick a swatch in the system colour picker from the colour well.
+    /// The colours the walkthroughs pick by name, typed as hex: a swatch's place in the system
+    /// picker's grid, and what it's called, change with the iOS version.
+    static let named = ["red": "FF0000", "orange": "FF8000", "yellow": "FFE600", "green": "00B050", "blue": "0060FF", "black": "000000", "white": "FFFFFF"]
+
+    /// Open the system colour picker from the colour well, and pick `name`.
     func pickColor(containing name: String) {
         let well = app.buttons["Foreground"].firstMatch.exists ? app.buttons["Foreground"].firstMatch : app.colorWells.firstMatch
         XCTAssert(well.waitForExistence(timeout: 5), "color well")
-        well.tap()
-        // A tap while something animates is lost: open the picker again if no swatch shows.
-        let swatch = app.otherElements.matching(NSPredicate(format: "label BEGINSWITH %@", name)).firstMatch
-        if !swatch.waitForExistence(timeout: 8) { well.tap() }
+        let sliders = app.buttons["Sliders"].firstMatch
+        // A tap while something animates is lost: open the picker again if it doesn't show.
+        for _ in 0..<2 where !sliders.exists {
+            well.tap()
+            _ = sliders.waitForExistence(timeout: 8)
+        }
         chooseColor(containing: name)
     }
 
-    /// In the open system colour picker: tap a swatch, then close it.
+    /// In the open system colour picker: pick `name` (typed into the Sliders tab's hex field when
+    /// it's one of `named`, else its swatch), then close it.
     func chooseColor(containing name: String) {
-        let starts = app.otherElements.matching(NSPredicate(format: "label BEGINSWITH %@", name)).firstMatch
-        // The picker is another process: slow to show its swatches when simulators share the CPU.
-        let swatch = starts.waitForExistence(timeout: 15) ? starts : app.otherElements.matching(NSPredicate(format: "label CONTAINS %@", name)).firstMatch
-        tapAt(swatch)
+        if let hex = Self.named[name] {
+            let sliders = app.buttons["Sliders"].firstMatch
+            XCTAssert(sliders.waitForExistence(timeout: 15), "the picker's Sliders tab")
+            tapAt(sliders)
+            // The one field holding six hex digits (a sheet behind can have fields of its own).
+            let field = app.textFields.matching(NSPredicate(format: "value MATCHES '[0-9A-Fa-f]{6}'")).firstMatch
+            XCTAssert(field.waitForExistence(timeout: 5), "the picker's hex field")
+            // Focusing it doesn't select its text: clear it first.
+            tapAt(field)
+            Thread.sleep(forTimeInterval: 0.5)
+            field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 8) + hex + "\n")
+        } else {
+            let starts = app.otherElements.matching(NSPredicate(format: "label BEGINSWITH %@", name)).firstMatch
+            // The picker is another process: slow to show its swatches when simulators share the CPU.
+            let swatch = starts.waitForExistence(timeout: 15) ? starts : app.otherElements.matching(NSPredicate(format: "label CONTAINS %@", name)).firstMatch
+            tapAt(swatch)
+        }
         tapAt(app.buttons["close"])
     }
 
     /// Pick `option` in a picker shown as a menu.
     func pick(_ picker: XCUIElement, _ option: String) {
         XCTAssert(picker.waitForExistence(timeout: 5), "\(picker)")
-        picker.tap()
         let button = app.buttons.named(option)
-        XCTAssert(button.waitForExistence(timeout: 5), "option \(option)")
+        picker.tap()
+        // A tap while a sheet is still moving is lost.
+        for _ in 0..<2 where !button.waitForExistence(timeout: 3) {
+            picker.tap()
+        }
+        XCTAssert(button.exists, "option \(option)")
         button.tap()
     }
 
@@ -691,7 +788,7 @@ class WalkthroughTestCase: XCTestCase {
         let spinner = app.activityIndicators.firstMatch
         let gone = NSPredicate(format: "exists == false")
         expectation(for: gone, evaluatedWith: spinner)
-        waitForExpectations(timeout: 60)
+        waitForExpectations(timeout: 60 * Self.slow)
     }
 
     /// Pick `name` in the Open / Place sheet (On My iPhone › PhotoWagon).
@@ -711,6 +808,28 @@ class WalkthroughTestCase: XCTestCase {
 }
 
 extension XCUIElement {
+    /// One drag of a slider's thumb from `from` to `to` (0…1 of its track).
+    func drag(from: Double, to: Double) {
+        let thumb = min(37.0, frame.width / 2)
+        let track = frame.width - thumb
+        let x = { (p: Double) in thumb / 2 + max(0, min(1, p)) * track }
+        let origin = coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0.5))
+        let go = { (a: Double, b: Double) in
+            origin.withOffset(CGVector(dx: x(a), dy: 0))
+                .press(forDuration: 0.1, thenDragTo: origin.withOffset(CGVector(dx: x(b), dy: 0)), withVelocity: .slow, thenHoldForDuration: 0.1)
+        }
+        // A drag of a few points doesn't move the thumb: go the other way first.
+        if abs(to - from) * track < 12 {
+            let away = to < 0.5 ? 1.0 : 0.0
+            go(from, away)
+            Thread.sleep(forTimeInterval: 0.4)
+            go(away, to)
+        } else {
+            go(from, to)
+        }
+        Thread.sleep(forTimeInterval: 0.4)
+    }
+
     /// Drag a slider's thumb to `position` (0…1). On iOS 27 `adjust(toNormalizedSliderPosition:)`
     /// only reaches the ends of a short slider: its thumb is about 37 points wide.
     func slide(to position: Double) {

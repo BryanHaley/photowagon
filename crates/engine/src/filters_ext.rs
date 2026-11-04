@@ -484,7 +484,7 @@ pub(crate) fn resolve(s: &Session, fp: &mut FilterParams, p: &Value) -> Result<(
         let ds = found.ok_or_else(|| EngineError::Other("displacement map document not found".into()))?;
         map_from_document(&ds.doc, layer)
     } else {
-        return Err(EngineError::Other("Displace needs a displacement map: pass `mapPath` or `mapDocument`".into()));
+        return Err(EngineError::Other("Displace needs a displacement map".into()));
     };
     *map = Some(Arc::new(img.ok_or_else(|| EngineError::Other("the displacement map is empty".into()))?));
     Ok(())

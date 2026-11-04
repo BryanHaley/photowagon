@@ -56,6 +56,9 @@ extension CanvasUIView {
 
     func toolBegan(_ t: ToolTouch, modifiers: UIKeyModifierFlags = [], alt: Bool = false) {
         defer { updateLoupe(t) }
+        // A frame whose picture was never picked (the Place sheet closed): forget it. Not while
+        // the picture is still being placed.
+        if !model.busy { model.pendingFrame = nil }
         let p = t.location
         startScreen = p
         startDoc = toDoc(p)
@@ -80,6 +83,13 @@ extension CanvasUIView {
                 model.puppet?.selected = p.pins.count
                 toolDrag = .none
             }
+            return
+        }
+        // The Type tool's box: inside, a corner or the knob moves, sizes or turns the text.
+        if model.transform == nil, let tb = model.typeBox, let drag = typeBoxDrag(tb.box, at: startDoc) {
+            model.typeDrag = true
+            model.transform = tb.box
+            toolDrag = drag
             return
         }
         // Free Transform takes the canvas while it is open, whatever the tool.
@@ -410,6 +420,18 @@ extension CanvasUIView {
             toolDrag = .none
             return
         }
+        if model.typeDrag {
+            toolDrag = .none
+            if tapped {
+                // A tap still edits the text.
+                model.typeDrag = false
+                model.transform = nil
+                typeEnded(at: end, box: nil)
+            } else {
+                model.commitTypeBox()
+            }
+            return
+        }
         if model.transform != nil {
             toolDrag = .none
             return
@@ -532,7 +554,11 @@ extension CanvasUIView {
             showSlices(at: end)
         case .frame:
             setToolPath(nil)
-            if let r = rect { model.run("layer.new.frame", ["x": r[0], "y": r[1], "width": r[2], "height": r[3]]) }
+            if tapped {
+                model.tappedFrame(at: Int(end.x), Int(end.y))
+            } else if let r = rect {
+                model.drewFrame(r)
+            }
         case .artboard:
             setToolPath(nil)
             if let r = rect { model.run("layer.new.artboard", ["rect": r]) }
@@ -867,13 +893,15 @@ extension CanvasUIView {
            let h = try? JSONSerialization.jsonObject(with: Data(hit.utf8)) as? [String: Any], let layer = h["layer"] as? NSNumber,
            let info = try? model.editor.execute(id: "type.info", params: json(["layer": layer])),
            let i = try? JSONSerialization.jsonObject(with: Data(info.utf8)) as? [String: Any] {
-            model.prompt = TextPrompt(title: "Edit Text", text: i["text"] as? String ?? "") { [weak self] text in
+            // Back to working on it after Done.
+            model.typeDone = nil
+            model.prompt = TextPrompt(title: "Edit Text", text: i["text"] as? String ?? "", multiline: true) { [weak self] text in
                 self?.model.run("type.edit", ["layer": layer, "text": text])
             }
             return
         }
         let size = model.defaultTypeSize
-        model.prompt = TextPrompt(title: mask ? "Type Mask" : "Text", text: "") { [weak self] text in
+        model.prompt = TextPrompt(title: mask ? "Type Mask" : "Text", text: "", multiline: true) { [weak self] text in
             guard let self, !text.isEmpty else { return }
             var params: [String: Any] = ["text": text, "size": self.model.typeSize > 0 ? self.model.typeSize : size, "color": self.model.foreground.hex,
                                          "orientation": vertical ? "vertical" : "horizontal", "align": self.model.typeAlign]
@@ -1055,6 +1083,18 @@ extension CanvasUIView {
         return .rotate(box, atan2(p.y - c.y, p.x - c.x))
     }
 
+    /// The Type box's handle at `p`: inside moves, a corner sizes, near a corner or the knob
+    /// turns; `nil` elsewhere, so the Type tool adds text there as usual.
+    func typeBoxDrag(_ box: TransformBox, at p: Point) -> ToolDrag? {
+        let quad = box.quad
+        let knob = rotateHandle(box).knob
+        let at = toScreen(p)
+        let near = hypot(at.x - knob.x, at.y - knob.y) < 22 || quad.contains { screenDistance($0, p) < 48 } || inside(p, quad: quad)
+        guard near else { return nil }
+        if case .pivot = transformDrag(box, at: p) { return .moveBox(box) }
+        return transformDrag(box, at: p)
+    }
+
     /// Whether `p` is inside the quadrilateral `q` (convex, either winding).
     func inside(_ p: Point, quad q: [Point]) -> Bool {
         var sign: Float = 0
@@ -1100,8 +1140,9 @@ extension CanvasUIView {
             let (vx, vy) = (p.x - pf.x, p.y - pf.y)
             let (lx, ly) = (vx * cs - vy * sn, vx * sn + vy * cs)
             // Keep Proportions (⇧ swaps it for this drag).
+            // Type keeps its proportions: the corner changes the font size.
             guard let scale = TransformBox.cornerScale(local: (lx, ly), corner: (ci.x - fixed.x, ci.y - fixed.y),
-                                                       current: (b.sx, b.sy), keep: model.keepProportions != shift) else { return }
+                                                       current: (b.sx, b.sy), keep: model.typeDrag || model.keepProportions != shift) else { return }
             var n = b
             (n.sx, n.sy) = scale
             (n.dx, n.dy) = (0, 0)
@@ -1175,17 +1216,19 @@ extension CanvasUIView {
             lines.addPath(polyline(model.quad, closed: model.tool == .perspectiveCrop && model.quad.count == 4))
             model.quad.forEach { dot(toScreen($0), 4) }
         }
-        if let t = model.transform {
+        if let t = model.transform ?? model.typeBox?.box {
             lines.addPath(polyline(t.quad, closed: true))
             t.quad.forEach { dot(toScreen($0), 8) }
             let (base, knob) = rotateHandle(t)
             lines.move(to: base)
             lines.addLine(to: knob)
             lines.addEllipse(in: CGRect(x: knob.x - 9, y: knob.y - 9, width: 18, height: 18))
-            // The reference point: a circle with a cross.
-            let r = toScreen(t.map(t.origin))
-            lines.addEllipse(in: CGRect(x: r.x - 7, y: r.y - 7, width: 14, height: 14))
-            dot(r, 2)
+            // The reference point: a circle with a cross (Free Transform's; the Type box turns about its centre).
+            if !model.typeDrag, model.transform != nil {
+                let r = toScreen(t.map(t.origin))
+                lines.addEllipse(in: CGRect(x: r.x - 7, y: r.y - 7, width: 14, height: 14))
+                dot(r, 2)
+            }
         }
         if let p = model.puppet {
             if p.showMesh {
@@ -1236,6 +1279,17 @@ extension CanvasUIView {
             let c = box.handles.prefix(4).map(\.1)
             lines.addPath(polyline(Array(c), closed: true))
             box.handles.forEach { dot(toScreen($0.1), 5) }
+        }
+        if model.tool == .frame {
+            for f in model.frameOutlines {
+                let (x, y, w, h) = (Float(f.rect[0]), Float(f.rect[1]), Float(f.rect[2]), Float(f.rect[3]))
+                let corners = [Point(x: x, y: y), Point(x: x + w, y: y), Point(x: x + w, y: y + h), Point(x: x, y: y + h)]
+                let oval = (0..<48).map { i -> Point in
+                    let a = Float(i) / 48 * 2 * .pi
+                    return Point(x: x + w / 2 * (1 + cos(a)), y: y + h / 2 * (1 + sin(a)))
+                }
+                lines.addPath(polyline(f.ellipse ? oval : corners, closed: true))
+            }
         }
         if model.tool == .slice || model.tool == .sliceSelect {
             for r in sliceRects where r.count == 4 {

@@ -784,7 +784,17 @@ fn transform_again_params(s: &Session) -> Result<Value> {
             p["quad"] = json!(corners);
         }
         (_, _, Some(m)) => p["matrix"] = m,
-        _ => return Err(EngineError::Other("the last transform can't be repeated".into())),
+        _ => {
+            let relative = ["scaleX", "scaleY", "rotate", "dx", "dy"];
+            if !relative.iter().any(|k| last.get(*k).is_some()) {
+                return Err(EngineError::Other("the last transform can't be repeated".into()));
+            }
+            for k in relative {
+                if let Some(v) = last.get(k) {
+                    p[k] = v.clone();
+                }
+            }
+        }
     }
     Ok(p)
 }
@@ -1973,6 +1983,16 @@ mod tests {
             assert!(lo < 0.05 && hi > 0.95, "{cmd}: {a:?} {b:?}");
             s.undo();
         }
+    }
+
+    /// Omega: a transform in the relative form (what an action records) couldn't be repeated.
+    #[test]
+    fn transform_again_repeats_the_relative_form() {
+        let mut s = session();
+        let start = active_bounds(&s);
+        s.execute("edit.transform", json!({"dx": 5, "dy": 2})).unwrap();
+        s.execute("edit.transform.again", json!({})).unwrap();
+        assert_eq!(active_bounds(&s), Rect::new(start.x0 + 10, start.y0 + 4, start.x1 + 10, start.y1 + 4));
     }
 
     /// #352: ⌥⇧⌘T steps and repeats: each press adds a copy one transform further on, and each

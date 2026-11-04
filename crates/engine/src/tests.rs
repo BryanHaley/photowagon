@@ -115,7 +115,7 @@ fn file_new_rejects_invalid_fields_without_changing_the_session() {
             let mut p = json!({});
             p[key] = value;
             let error = s.execute("file.new", p).unwrap_err().to_string();
-            assert!(error.contains("file.new") && error.contains(key), "{error}");
+            assert!(error.starts_with("New: ") && error.contains(key), "{error}");
             assert_eq!(s.documents().len(), 1);
             assert_eq!(s.active_index(), Some(0));
             assert!(std::sync::Arc::ptr_eq(&s.active().unwrap().doc, &original));

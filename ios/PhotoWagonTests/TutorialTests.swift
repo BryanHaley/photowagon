@@ -46,5 +46,11 @@ final class TutorialTests: XCTestCase {
         model.showTutorial(.menu)
         model.menuClosed()
         XCTAssertEqual(model.tutorialStep, .undo)
+
+        // Touches reach the target through the dimmed screen.
+        let blocks = TutorialOverlay.around(CGRect(x: 40, y: 50, width: 44, height: 40), in: CGSize(width: 400, height: 800))
+        XCTAssertFalse(blocks.contains(CGPoint(x: 60, y: 70)), "the target")
+        XCTAssertTrue(blocks.contains(CGPoint(x: 200, y: 400)))
+        XCTAssertTrue(blocks.contains(CGPoint(x: 100, y: 70)), "beside the target")
     }
 }

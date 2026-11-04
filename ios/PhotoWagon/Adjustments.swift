@@ -590,18 +590,8 @@ struct GradientStopsSections: View {
                     Text("\(Int((number(s.first) ?? 0) * 100))%").monospacedDigit().lineLimit(1).frame(width: scaled(52))
                 }
             }
-            .onDelete { idx in
-                var s = stops
-                s.remove(atOffsets: idx)
-                // A gradient needs two stops.
-                if s.count >= 2 { set(s) }
-            }
-            Button("Add Stop") {
-                var s = stops
-                s.append([0.5, "#ffffff"])
-                s.sort { (number($0.first) ?? 0) < (number($1.first) ?? 0) }
-                set(s)
-            }
+            .onDelete { idx in if let s = Self.removing(idx, from: stops) { set(s) } }
+            Button("Add Stop") { set(Self.addingStop(to: stops)) }
             .accessibilityIdentifier("\(id).addStop")
         }
         Section("Presets") {
@@ -615,6 +605,21 @@ struct GradientStopsSections: View {
                 .accessibilityIdentifier("\(id).preset.\(p.name)")
             }
         }
+    }
+
+    /// The stops without those at `idx`; `nil` when fewer than two would be left.
+    static func removing(_ idx: IndexSet, from stops: [[Any]]) -> [[Any]]? {
+        var s = stops
+        s.remove(atOffsets: idx)
+        return s.count >= 2 ? s : nil
+    }
+
+    /// A white stop added in the middle, the stops in order.
+    static func addingStop(to stops: [[Any]]) -> [[Any]] {
+        var s = stops
+        s.append([0.5, "#ffffff"])
+        s.sort { (number($0.first) ?? 0) < (number($1.first) ?? 0) }
+        return s
     }
 
     private func pick(_ i: Int) {
@@ -696,12 +701,7 @@ struct ReplaceColorEditor: View {
 
     private func pickButton(_ mode: String, _ symbol: String, _ title: String) -> some View {
         Button {
-            picking = picking == mode ? nil : mode
-            if picking == nil {
-                model.endPick()
-            } else {
-                model.beginPick(surface, prompt: "Tap the color to replace") { pick(mode, $0) }
-            }
+            picking = model.toggleEyedropper(mode, picking: picking, surface: surface, prompt: "Tap the color to replace") { pick(mode, $0) }
         } label: {
             Image(systemName: symbol).font(.title3).frame(width: 44, height: 44)
                 .background(Color(white: 0.2), in: RoundedRectangle(cornerRadius: 8))
@@ -714,12 +714,16 @@ struct ReplaceColorEditor: View {
 
     private func pick(_ mode: String, _ at: CGPoint) {
         guard let d = model.doc, let c = sampler.color(at: at) else { return }
-        let pt = PreviewSampler.docPoint(at, d)
+        set(Self.sampled(p, mode: mode, at: PreviewSampler.docPoint(at, d), color: c))
+    }
+
+    /// The points after a pick at `pt`: Add keeps the others; Pick also sets the colour.
+    static func sampled(_ p: [String: Any], mode: String, at pt: [Int], color c: [Double]) -> [String: Any] {
         var points = mode == "add" ? (p["points"] as? [[Int]] ?? []) : []
         points.append(pt)
         var q: [String: Any] = ["points": points]
         if mode == "pick" { q["color"] = ColorRow.hex(c.map { Float($0) }) }
-        set(q)
+        return q
     }
 
     /// The picked colour shifted by Hue, Saturation and Lightness, for the Result swatch.

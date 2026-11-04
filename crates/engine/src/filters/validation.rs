@@ -204,7 +204,7 @@ mod tests {
         let error = s.execute(id, json!({key:value})).unwrap_err();
         assert!(matches!(error, EngineError::BadParams { .. }), "{id}: {error}");
         let error = error.to_string();
-        assert!(error.contains(id) && error.contains(key), "{error}");
+        assert!(error.contains(&crate::command_name(id)) && error.contains(key), "{error}");
         assert!(Arc::ptr_eq(&s.active().unwrap().doc, &doc), "{id}: {key}");
         assert_eq!(s.active().unwrap().history.entries(), history);
         assert_eq!(s.active().unwrap().active_layer, active);

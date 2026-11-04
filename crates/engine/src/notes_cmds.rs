@@ -162,7 +162,7 @@ fn read(path: &str) -> Result<Vec<u8>> {
 /// canvas are pulled inside, as Photoshop does when sizes differ.
 fn import(s: &mut Session, p: &Value) -> Result<Value> {
     const CMD: &str = "file.import.notes";
-    let path = p.get("path").and_then(Value::as_str).ok_or_else(|| bad(CMD, "pass `path` (.psd, .psb or .pcraft)"))?;
+    let path = p.get("path").and_then(Value::as_str).ok_or_else(|| bad(CMD, "pick a .psd, .psb or .pcraft file"))?;
     let bytes = read(path)?;
     let name = std::path::Path::new(path).file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| path.to_string());
     import_notes_from(s, &name, &bytes)

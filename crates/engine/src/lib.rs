@@ -116,6 +116,7 @@ pub mod snap;
 pub mod solid_fill_cmds;
 pub mod stamp_cmds;
 pub mod stats_cmds;
+pub mod fingerprint_cmds;
 pub mod swatch_cmds;
 pub mod symmetry_cmds;
 mod timeline_cmds;
@@ -154,9 +155,9 @@ pub use photocraft_paint::BrushSettings;
 pub enum EngineError {
     #[error("unknown command `{0}`")]
     UnknownCommand(String),
-    #[error("command `{0}` is not available right now: {1}")]
+    #[error("{} isn't available right now: {}", command_name(.0), .1)]
     Disabled(String, String),
-    #[error("invalid parameters for `{cmd}`: {msg}")]
+    #[error("{}: {msg}", command_name(cmd))]
     BadParams { cmd: String, msg: String },
     #[error("no active document")]
     NoDocument,
@@ -174,6 +175,11 @@ pub enum EngineError {
 }
 
 pub type Result<T> = std::result::Result<T, EngineError>;
+
+/// The name people see for command `id` (its menu label), or `id` when it isn't one.
+pub fn command_name(id: &str) -> String {
+    commands::find(id).map_or_else(|| id.to_string(), |spec| spec.label.trim_end_matches(['…', '.']).to_string())
+}
 
 impl From<photocraft_raster::AllocationError> for EngineError {
     fn from(error: photocraft_raster::AllocationError) -> Self {

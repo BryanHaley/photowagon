@@ -14,29 +14,28 @@ struct CameraRawView: View {
     var cancel: (() -> Void)?
     let done: ([String: Any]) -> Void
     @Environment(\.dismiss) private var dismiss
-    @State private var settings = DevelopSettings()
-    @State private var last = DevelopSettings()
-    @State private var undo: [DevelopSettings] = []
-    @State private var redo: [DevelopSettings] = []
-    @State private var loaded = false
+    @State private var edit = DevelopTries()
     @State private var naming = false
     @State private var presetName = ""
     @State private var preset: [String: Double]?
     @State private var presetAmount = 100.0
     @State private var namingSnapshot = false
     @State private var snapshotName = ""
-    @State private var expanded: Set<String> = ["Light"]
+    /// The panels open.
+    @State var expanded: Set<String> = ["Light"]
     @State private var mixerKind = "hslSat"
     @State private var curveKey = "pointCurve"
     @State private var curvePoint: Int?
-    @State private var autoWB = false
     @State private var pickingWB = false
     @State private var showClipping = false
-    /// The image as it opened, for Auto and the White Balance Tool.
-    @State private var pixels = AutoPixels(rgb: [])
     @State private var sampler = PreviewSampler()
     @State private var space = ""
     @State private var depth = 0
+
+    private var settings: DevelopSettings {
+        get { edit.settings }
+        nonmutating set { edit.settings = newValue }
+    }
 
     var body: some View {
         NavigationStack {
@@ -149,9 +148,9 @@ struct CameraRawView: View {
         ToolbarItem(placement: .topBarTrailing) {
             Menu {
                 Button { step(back: true) } label: { Label("Undo", systemImage: "arrow.uturn.backward") }
-                    .disabled(undo.isEmpty).accessibilityIdentifier("raw.undo")
+                    .disabled(edit.undo.isEmpty).accessibilityIdentifier("raw.undo")
                 Button { step(back: false) } label: { Label("Redo", systemImage: "arrow.uturn.forward") }
-                    .disabled(redo.isEmpty).accessibilityIdentifier("raw.redo")
+                    .disabled(edit.redo.isEmpty).accessibilityIdentifier("raw.redo")
                 Button(role: .destructive) {
                     settings.reset()
                     preset = nil
@@ -222,7 +221,7 @@ struct CameraRawView: View {
     private func content(_ panel: DevelopSettings.Panel) -> some View {
         switch panel.name {
         case "Color":
-            Picker("White Balance", selection: Binding(get: { autoWB ? "auto" : settings.asShot ? "asShot" : "custom" }, set: setWhiteBalance)) {
+            Picker("White Balance", selection: Binding(get: { edit.whiteBalance }, set: { if let p = edit.setWhiteBalance($0) { change?(p) } })) {
                 Text("As Shot").tag("asShot")
                 Text("Auto").tag("auto")
                 Text("Custom").tag("custom")
@@ -242,7 +241,7 @@ struct CameraRawView: View {
             }
             .pickerStyle(.segmented)
             .accessibilityIdentifier("raw.curve.channel")
-            CurveGraph(bins: bins, tint: curveTint, points: Binding(get: { settings.curve(curveKey) }, set: { settings.setCurve(curveKey, $0) }),
+            CurveGraph(bins: edit.bins(curveKey), tint: DevelopTries.tint(curveKey), points: Binding(get: { settings.curve(curveKey) }, set: { settings.setCurve(curveKey, $0) }),
                        selected: $curvePoint, ended: tried)
                 .frame(height: 220)
         case "Color Mixer":
@@ -292,7 +291,127 @@ struct CameraRawView: View {
         }
     }
 
-    private var bins: [Int] {
+    /// The colour picked, as the image opened, made gray.
+    private func pickWhiteBalance(_ p: CGPoint) {
+        pickingWB = false
+        if let p = edit.whiteBalance(at: p, in: sampler) { change?(p) }
+    }
+
+    private func applyAuto(_ keys: [String]) {
+        if let p = edit.applyAuto(keys) { change?(p) }
+    }
+
+    private func autoValue(_ key: String) -> Double? { edit.autoValue(key) }
+
+    private func tried() {
+        if let p = edit.tried() { change?(p) }
+    }
+
+    private func step(back: Bool) {
+        if let p = edit.step(back: back) { change?(p) }
+    }
+
+    private func open(asObject: Bool) {
+        model.developOpenImage(settings.params(), asObject: asObject, space: space, depth: depth)
+        dismiss()
+    }
+
+    private func load() {
+        guard !edit.loaded else { return }
+        edit.load(initial, pixels: AutoPixels.load(model, layer: nil))
+        sampler = PreviewSampler(model, layer: nil)
+        // Settings kept from the last time this file opened show at once.
+        if opening, !initial.isEmpty { change?(settings.params()) }
+    }
+}
+
+/// Develop's settings as they're tried, with their own undo and redo.
+struct DevelopTries {
+    var settings = DevelopSettings()
+    private(set) var last = DevelopSettings()
+    private(set) var undo: [DevelopSettings] = []
+    private(set) var redo: [DevelopSettings] = []
+    private(set) var loaded = false
+    /// White Balance shows Auto until something else changes.
+    private(set) var autoWB = false
+    /// The image as it opened, for Auto and the White Balance Tool.
+    private(set) var pixels = AutoPixels(rgb: [])
+
+    mutating func load(_ initial: [String: Any], pixels: AutoPixels) {
+        self.pixels = pixels
+        settings = DevelopSettings(initial)
+        last = settings
+        loaded = true
+    }
+
+    /// After a change: a step to undo when the settings changed. The params to try; `nil` before loading.
+    mutating func tried() -> [String: Any]? {
+        guard loaded else { return nil }
+        if settings != last {
+            undo.append(last)
+            redo = []
+            last = settings
+            autoWB = false
+        }
+        return settings.params()
+    }
+
+    mutating func step(back: Bool) -> [String: Any]? {
+        guard let s = back ? undo.popLast() : redo.popLast() else { return nil }
+        if back { redo.append(settings) } else { undo.append(settings) }
+        (settings, last) = (s, s)
+        return settings.params()
+    }
+
+    func autoValue(_ key: String) -> Double? {
+        if key == "temperature" || key == "tint" {
+            return DevelopSettings.autoWhiteBalance(pixels.rgb).map { key == "temperature" ? $0.temperature : $0.tint }
+        }
+        return DevelopSettings.light.contains { $0.key == key } ? DevelopSettings.auto(pixels.rgb)[key] : nil
+    }
+
+    mutating func applyAuto(_ keys: [String]) -> [String: Any]? {
+        for k in keys { if let v = autoValue(k) { settings[k] = v } }
+        return tried()
+    }
+
+    var whiteBalance: String { autoWB ? "auto" : settings.asShot ? "asShot" : "custom" }
+
+    mutating func setWhiteBalance(_ mode: String) -> [String: Any]? {
+        switch mode {
+        case "asShot":
+            settings["temperature"] = 0
+            settings["tint"] = 0
+        case "auto":
+            guard let wb = DevelopSettings.autoWhiteBalance(pixels.rgb) else { return nil }
+            settings["temperature"] = wb.temperature
+            settings["tint"] = wb.tint
+        default: return nil
+        }
+        let p = tried()
+        autoWB = mode == "auto"
+        return p
+    }
+
+    /// White balance from the pixels round `p` (0…1 across the image as it opened).
+    mutating func whiteBalance(at p: CGPoint, in sampler: PreviewSampler) -> [String: Any]? {
+        guard let image = sampler.snapshot else { return nil }
+        // A 5 by 5 average, so one grain of texture doesn't decide it.
+        let (dx, dy) = (1 / CGFloat(max(image.width, 1)), 1 / CGFloat(max(image.height, 1)))
+        let around = (-2...2).flatMap { i in (-2...2).compactMap { j in sampler.color(at: CGPoint(x: p.x + CGFloat(i) * dx, y: p.y + CGFloat(j) * dy)) } }
+        return whiteBalance(from: around)
+    }
+
+    /// White balance that makes the average of `around` gray.
+    mutating func whiteBalance(from around: [[Double]]) -> [String: Any]? {
+        guard !around.isEmpty, let wb = DevelopSettings.whiteBalance((0..<3).map { c in around.map { $0[c] }.reduce(0, +) / Double(around.count) }) else { return nil }
+        settings["temperature"] = wb.temperature
+        settings["tint"] = wb.tint
+        return tried()
+    }
+
+    /// The curve's histogram: luminance, or one channel.
+    func bins(_ curveKey: String) -> [Int] {
         var b = [Int](repeating: 0, count: 256)
         let c = DevelopSettings.curveKeys.firstIndex { $0.0 == curveKey } ?? 0
         for p in pixels.rgb {
@@ -302,87 +421,13 @@ struct CameraRawView: View {
         return b
     }
 
-    private var curveTint: Color {
+    static func tint(_ curveKey: String) -> Color {
         switch curveKey {
         case "pointCurveRed": .red
         case "pointCurveGreen": .green
         case "pointCurveBlue": .blue
         default: .primary
         }
-    }
-
-    private func autoValue(_ key: String) -> Double? {
-        if key == "temperature" || key == "tint" {
-            return DevelopSettings.autoWhiteBalance(pixels.rgb).map { key == "temperature" ? $0.temperature : $0.tint }
-        }
-        return DevelopSettings.light.contains { $0.key == key } ? DevelopSettings.auto(pixels.rgb)[key] : nil
-    }
-
-    private func applyAuto(_ keys: [String]) {
-        for k in keys { if let v = autoValue(k) { settings[k] = v } }
-        tried()
-    }
-
-    private func setWhiteBalance(_ mode: String) {
-        switch mode {
-        case "asShot":
-            settings["temperature"] = 0
-            settings["tint"] = 0
-        case "auto":
-            guard let wb = DevelopSettings.autoWhiteBalance(pixels.rgb) else { return }
-            settings["temperature"] = wb.temperature
-            settings["tint"] = wb.tint
-        default: return
-        }
-        tried()
-        autoWB = mode == "auto"
-    }
-
-    /// The colour picked, as the image opened, made gray.
-    private func pickWhiteBalance(_ p: CGPoint) {
-        pickingWB = false
-        guard let image = sampler.snapshot else { return }
-        // A 5 by 5 average, so one grain of texture doesn't decide it.
-        let (dx, dy) = (1 / CGFloat(max(image.width, 1)), 1 / CGFloat(max(image.height, 1)))
-        let around = (-2...2).flatMap { i in (-2...2).compactMap { j in sampler.color(at: CGPoint(x: p.x + CGFloat(i) * dx, y: p.y + CGFloat(j) * dy)) } }
-        guard !around.isEmpty, let wb = DevelopSettings.whiteBalance((0..<3).map { c in around.map { $0[c] }.reduce(0, +) / Double(around.count) }) else { return }
-        settings["temperature"] = wb.temperature
-        settings["tint"] = wb.tint
-        tried()
-    }
-
-    private func tried() {
-        guard loaded else { return }
-        if settings != last {
-            undo.append(last)
-            redo = []
-            last = settings
-            autoWB = false
-        }
-        change?(settings.params())
-    }
-
-    private func step(back: Bool) {
-        guard let s = back ? undo.popLast() : redo.popLast() else { return }
-        if back { redo.append(settings) } else { undo.append(settings) }
-        (settings, last) = (s, s)
-        change?(settings.params())
-    }
-
-    private func open(asObject: Bool) {
-        model.developOpenImage(settings.params(), asObject: asObject, space: space, depth: depth)
-        dismiss()
-    }
-
-    private func load() {
-        guard !loaded else { return }
-        pixels = AutoPixels.load(model, layer: nil)
-        sampler = PreviewSampler(model, layer: nil)
-        settings = DevelopSettings(initial)
-        last = settings
-        loaded = true
-        // Settings kept from the last time this file opened show at once.
-        if opening, !initial.isEmpty { change?(settings.params()) }
     }
 }
 

@@ -18,6 +18,9 @@ pub(crate) fn min_max_preserve(src: &Image, out: Rect, radius: f32, max: bool, p
 /// `dx² + dy² ≤ radius²`, so corners and straight edges move by the same distance. Each row of
 /// the disc is a horizontal window, taken with the van Herk / Gil-Werman running extreme
 /// (constant work per pixel whatever the window), so the cost is O(radius) per pixel.
+/// Pixels outside `src` don't count. A caller that repeats the edge pixels can pass only the
+/// pixels inside the edge instead: repeats add nothing to an extreme, and a radius much bigger
+/// than the image then costs no more.
 pub(crate) fn min_max_round(src: &Image, out: Rect, radius: f32, max: bool) -> Vec<f32> {
     let n = src.ch;
     let r = radius.max(0.0);
@@ -26,21 +29,49 @@ pub(crate) fn min_max_round(src: &Image, out: Rect, radius: f32, max: bool) -> V
         return src.crop(out);
     }
     let w = out.width() as usize;
+    let s = src.rect;
     let pick = |a: f32, b: f32| if max { a.max(b) } else { a.min(b) };
     let mut res = vec![if max { f32::MIN } else { f32::MAX }; w * out.height() as usize * n];
-    let (mut row, mut ext) = (Vec::new(), Vec::new());
-    for dy in -ri..=ri {
-        // Half-width of the disc on this row (the epsilon keeps exact squares, e.g. r 5, dy 3 → 4).
-        let hw = ((r * r - (dy * dy) as f32).max(0.0).sqrt() + 1e-4).floor() as i32;
-        for y in out.y0..out.y1 {
-            let o = (y - out.y0) as usize * w * n;
+    let (mut seg, mut pre, mut suf, mut mid) = (Vec::new(), Vec::new(), Vec::new(), Vec::new());
+    for y in out.y0..out.y1 {
+        let o = (y - out.y0) as usize * w * n;
+        let (lo, hi) = ((s.y0 - y).max(-ri), (s.y1 - 1 - y).min(ri));
+        for dy in lo..=hi {
+            // Half-width of the disc on this row (the epsilon keeps exact squares, e.g. r 5, dy 3 → 4).
+            let hw = ((r * r - (dy * dy) as f32).max(0.0).sqrt() + 1e-4).floor() as i32;
+            let (a, b) = ((out.x0 - hw).max(s.x0), (out.x1 + hw).min(s.x1));
             for c in 0..n {
-                row.clear();
-                row.extend((out.x0 - hw..out.x1 + hw).map(|x| src.get(x, y + dy, c)));
-                running_extreme(&row, (2 * hw + 1) as usize, max, &mut ext);
-                for (x, v) in ext.iter().enumerate() {
-                    let i = o + x * n + c;
-                    res[i] = pick(res[i], *v);
+                seg.clear();
+                seg.extend((a..b).map(|x| src.get(x, y + dy, c)));
+                pre.clear();
+                pre.extend(seg.iter().scan(None, |m: &mut Option<f32>, &v| {
+                    *m = Some(m.map_or(v, |m| pick(m, v)));
+                    *m
+                }));
+                suf.clear();
+                suf.extend(seg.iter().rev().scan(None, |m: &mut Option<f32>, &v| {
+                    *m = Some(m.map_or(v, |m| pick(m, v)));
+                    *m
+                }));
+                suf.reverse();
+                running_extreme(&seg, (2 * hw + 1) as usize, max, &mut mid);
+                for x in out.x0..out.x1 {
+                    let (l, h) = (x - hw, x + hw);
+                    let inside = if a >= b || l.max(a) > h.min(b - 1) {
+                        None
+                    } else if l < a && h >= b {
+                        pre.last()
+                    } else if l < a {
+                        pre.get((h - a) as usize)
+                    } else if h >= b {
+                        suf.get((l - a) as usize)
+                    } else {
+                        mid.get((l - a) as usize)
+                    };
+                    if let Some(&v) = inside {
+                        let i = o + (x - out.x0) as usize * n + c;
+                        res[i] = pick(res[i], v);
+                    }
                 }
             }
         }
@@ -182,6 +213,54 @@ mod tests {
             }
         }
         res
+    }
+
+    /// The disc scanned directly, the reference for [`min_max_round`].
+    fn round_direct(src: &Image, out: Rect, r: f32, max: bool) -> Vec<f32> {
+        let ri = r.floor() as i32;
+        let mut res = Vec::new();
+        for y in out.y0..out.y1 {
+            for x in out.x0..out.x1 {
+                for c in 0..src.ch {
+                    let mut m = if max { f32::MIN } else { f32::MAX };
+                    for dy in -ri..=ri {
+                        let hw = ((r * r - (dy * dy) as f32).max(0.0).sqrt() + 1e-4).floor() as i32;
+                        for dx in (-hw..=hw).filter(|dx| src.rect.contains(x + dx, y + dy)) {
+                            let v = src.get(x + dx, y + dy, c);
+                            m = if max { m.max(v) } else { m.min(v) };
+                        }
+                    }
+                    res.push(m);
+                }
+            }
+        }
+        res
+    }
+
+    #[test]
+    fn round_min_max_matches_the_direct_disc_and_needs_no_repeated_edges() {
+        let inner = Rect::new(-6, -4, 13, 21);
+        let mut img = Image::new(inner, 2);
+        let mut s = 0x9e37_79b9u32;
+        for v in img.data.iter_mut() {
+            s ^= s << 13;
+            s ^= s >> 17;
+            s ^= s << 5;
+            *v = (s % 1000) as f32 / 999.0;
+        }
+        let mut surf = photocraft_raster::Surface::new(photocraft_color::PixelFormat::new(photocraft_color::ColorMode::Grayscale, photocraft_color::SampleType::F32, true));
+        surf.write_region(inner, &img.data);
+        // Discs inside the image, reaching past it, and much bigger than it.
+        for out in [Rect::new(0, 0, 9, 17), Rect::new(-6, -4, 4, 21)] {
+            for r in [1.0, 2.5, 5.0, 11.0, 60.0] {
+                let padded = Image::read_clamped(&surf, out.inflate(r as i32 + 1), inner);
+                for max in [false, true] {
+                    let fast = min_max_round(&img, out, r, max);
+                    assert_eq!(fast, round_direct(&img, out, r, max), "r {r} max {max} out {out:?}");
+                    assert_eq!(fast, min_max_round(&padded, out, r, max), "repeated edges: r {r} max {max} out {out:?}");
+                }
+            }
+        }
     }
 
     #[test]

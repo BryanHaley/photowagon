@@ -144,7 +144,7 @@ struct TutorialOverlay: View {
                         p.addRoundedRect(in: r, cornerSize: CGSize(width: 10, height: 10))
                     }
                     dim.fill(Color.black.opacity(0.6), style: FillStyle(eoFill: true))
-                        .contentShape(step.touchesTarget ? dim : Path(CGRect(origin: .zero, size: g.size)), eoFill: step.touchesTarget)
+                        .contentShape(step.touchesTarget ? Self.around(r, in: g.size) : Path(CGRect(origin: .zero, size: g.size)))
                         .onTapGesture {}
                     RoundedRectangle(cornerRadius: 10).stroke(.white, lineWidth: 2)
                         .frame(width: r.width, height: r.height)
@@ -164,6 +164,20 @@ struct TutorialOverlay: View {
         }
         .ignoresSafeArea()
         .animation(.easeOut(duration: 0.2), value: model.tutorialStep)
+    }
+
+    /// The screen but `hole`, as four rectangles: iOS 18 doesn't let touches through an
+    /// even-odd content shape's hole.
+    static func around(_ hole: CGRect, in size: CGSize) -> Path {
+        let screen = CGRect(origin: .zero, size: size)
+        let h = hole.intersection(screen)
+        guard !h.isNull else { return Path(screen) }
+        return Path { p in
+            p.addRect(CGRect(x: 0, y: 0, width: size.width, height: h.minY))
+            p.addRect(CGRect(x: 0, y: h.maxY, width: size.width, height: size.height - h.maxY))
+            p.addRect(CGRect(x: 0, y: h.minY, width: h.minX, height: h.height))
+            p.addRect(CGRect(x: h.maxX, y: h.minY, width: size.width - h.maxX, height: h.height))
+        }
     }
 
     private func note(_ step: TutorialStep) -> some View {

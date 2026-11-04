@@ -43,7 +43,7 @@ struct LayersPanel: View {
                     Grid(horizontalSpacing: 0, verticalSpacing: 6) {
                         GridRow {
                             layerButton("New Layer", "plus", id: "layers.new") { model.run("layer.new.layer") }
-                            layerButton("New Group", "folder.badge.plus", id: "layers.group") { group() }
+                            layerButton("New Group", "folder.badge.plus", id: "layers.group") { model.newGroup() }
                             styleMenu
                             adjustmentsMenu
                             maskMenu
@@ -56,9 +56,7 @@ struct LayersPanel: View {
                             layerButton("New Layer from Photos", "photo.on.rectangle", id: "layers.fromPhotos") { model.request = .layerFromPhotos }
                             layerButton("New Layer from Files", "doc.badge.plus", id: "layers.fromFiles") { model.request = .layerFromFiles }
                             layerButton("Duplicate Layer", "plus.square.on.square", id: "layers.duplicate") { model.run("layer.duplicate") }
-                            layerButton("Merge Down", "square.stack.3d.down.right", id: "layers.mergeDown") {
-                                model.run(model.selectedLayers.count > 1 ? "layer.mergeLayers" : "layer.mergeDown")
-                            }
+                            layerButton("Merge Down", "square.stack.3d.down.right", id: "layers.mergeDown") { model.mergeDown() }
                             layerButton("Move Up", "arrow.up", id: "layers.up") { model.run("layer.arrange.bringForward") }
                             layerButton("Move Down", "arrow.down", id: "layers.down") { model.run("layer.arrange.sendBackward") }
                         }
@@ -69,7 +67,7 @@ struct LayersPanel: View {
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack {
                                 chip("Merge", "square.stack.3d.down.right", "layers.merge") { model.run("layer.mergeLayers") }
-                                chip("Group", "folder", "layers.groupSelected") { group() }
+                                chip("Group", "folder", "layers.groupSelected") { model.newGroup() }
                                 chip("Clip", "arrow.turn.left.down", "layers.clip") { model.run("layer.createClippingMask") }
                                 chip("Embedded Layer", "square.on.square.squareshape.controlhandles", "layers.smart") { model.run("layer.smartObjects.convertToSmartObject") }
                                 chip("Fit", "arrow.up.left.and.arrow.down.right", "layers.fit") { model.fitLayers() }
@@ -161,10 +159,6 @@ struct LayersPanel: View {
                     } footer: {
                         if !short { Text("Drag a layer to reorder, or just under a group to put it in. Double-tap a name to rename it, a thumbnail to edit the layer. Touch and hold a layer or a mask for more.") }
                     }
-    }
-
-    private func group() {
-        model.newGroup()
     }
 
     /// The mask button: a tap reveals the selection (or all); touch and hold for a mask that
@@ -271,8 +265,15 @@ struct LayersPanel: View {
     }
 
     /// List order is top first; the engine places a layer above or below another.
-    private func move(from: IndexSet, to: Int) {
+    func move(from: IndexSet, to: Int) {
         if let i = from.first { model.moveLayer(from: i, to: to) }
+    }
+}
+
+extension EditorModel {
+    /// The Layers panel's Merge Down: the selected layers, or the active one into the one below.
+    func mergeDown() {
+        run(selectedLayers.count > 1 ? "layer.mergeLayers" : "layer.mergeDown")
     }
 }
 
@@ -376,10 +377,12 @@ struct LayerRowView: View {
             if row.hasMask, thumbnails != .none {
                 // Photoshop's link between the layer and its mask: tap to unlink or link again.
                 Button { model.run("layer.layerMask.linked", ["layer": row.id]) } label: {
+                    // Narrow, but the row's height to touch.
                     Image(systemName: "link").font(.caption2).opacity(row.mask?.linked == false ? 0.2 : 1)
+                        .frame(width: 14, height: 40)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.borderless)
-                .frame(width: 14)
                 .accessibilityLabel("Link Mask")
                 .accessibilityValue(row.mask?.linked == false ? "unlinked" : "linked")
                 .accessibilityIdentifier("layer.link.\(row.name)")
@@ -579,23 +582,23 @@ struct LayerRowView: View {
         .clipShape(RoundedRectangle(cornerRadius: 5))
     }
 
-    private func openStyle(_ page: String) {
+    func openStyle(_ page: String) {
         target(mask: false)
         model.request = .layerStyle(page)
     }
 
     /// A tap: select this layer, or, while selecting several, add it or take it out.
-    private func tapped() {
+    func tapped() {
         if model.selectingLayers { select("toggle") } else { target(mask: false) }
     }
 
-    private func select(_ mode: String) {
+    func select(_ mode: String) {
         model.run("layer.select", ["layer": row.id, "mode": mode])
         model.reloadLayers()
     }
 
     /// Commands from the layer's own menu act on it, unless it's part of a multiple selection.
-    private func selectThis() {
+    func selectThis() {
         if !row.selected { target(mask: false) }
     }
 
@@ -605,7 +608,7 @@ struct LayerRowView: View {
     }
 
     /// Double-tapping a thumbnail edits what the layer holds, as in Photoshop.
-    private func editContent() {
+    func editContent() {
         switch row.kind {
         case "Type": editText()
         case "Embedded": editContents()
@@ -616,12 +619,12 @@ struct LayerRowView: View {
         }
     }
 
-    private func editContents() {
+    func editContents() {
         selectThis()
         model.runInBackground("layer.smartObjects.editContents", ["layer": row.id]) { _ in model.request = .closePanels }
     }
 
-    private func rename() {
+    func rename() {
         // As in Photoshop, editing a layer's name selects it.
         if !row.selected { target(mask: false) }
         if row.isBackground {
@@ -637,7 +640,7 @@ struct LayerRowView: View {
         }
     }
 
-    private func editText() {
+    func editText() {
         if !row.selected { target(mask: false) }
         guard row.kind == "Type",
               let info = try? model.editor.execute(id: "type.info", params: json(["layer": row.id])),
@@ -648,7 +651,7 @@ struct LayerRowView: View {
     }
 
     /// The Background unlocks into a normal layer; other layers drop their locks.
-    private func unlock() {
+    func unlock() {
         model.run("layer.select", ["layer": row.id])
         if row.isBackground {
             model.run("layer.new.layerFromBackground")
@@ -657,7 +660,7 @@ struct LayerRowView: View {
         }
     }
 
-    private func lock() {
+    func lock() {
         if row.locked || row.isBackground { unlock(); return }
         model.run("layer.select", ["layer": row.id])
         model.run("layer.lockLayers", ["all": true])
@@ -673,7 +676,7 @@ struct SmartFilterRows: View {
 
     /// Fluid Warp is changed on the canvas, Develop in its own full screen, the others in their
     /// settings.
-    private func edit(_ f: SmartFilterRow) {
+    func edit(_ f: SmartFilterRow) {
         if f.command == "filter.liquify" {
             model.request = .closePanels
             model.editFluidWarp(layer: row.id, filter: f)
@@ -810,7 +813,7 @@ struct EffectRows: View {
         .accessibilityIdentifier(id)
     }
 
-    private func edit(_ e: EffectRow) {
+    func edit(_ e: EffectRow) {
         model.run("layer.select", ["layer": row.id])
         model.request = .layerStyle(LayerStyle.kinds.first { $0.label == e.name }?.kind ?? "blendingOptions")
     }
@@ -874,15 +877,19 @@ struct NewLayerSheet: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("OK") {
-                        var p: [String: Any] = ["clipToPrevious": clip, "color": color, "mode": mode, "opacity": opacity, "fillNeutral": neutral && Self.hasNeutral(mode)]
-                        if !name.isEmpty { p["name"] = name }
-                        model.run("layer.new.layer", p)
+                        model.run("layer.new.layer", Self.params(name: name, clip: clip, color: color, mode: mode, opacity: opacity, neutral: neutral))
                         dismiss()
                     }
                     .accessibilityIdentifier("newLayer.ok")
                 }
             }
         }
+    }
+
+    static func params(name: String, clip: Bool, color: String, mode: String, opacity: Double, neutral: Bool) -> [String: Any] {
+        var p: [String: Any] = ["clipToPrevious": clip, "color": color, "mode": mode, "opacity": opacity, "fillNeutral": neutral && hasNeutral(mode)]
+        if !name.isEmpty { p["name"] = name }
+        return p
     }
 
     /// Modes with a colour that leaves what's below unchanged (Photoshop offers the fill only for these).

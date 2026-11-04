@@ -272,7 +272,7 @@ struct ShearGraph: View {
                 }
                 ctx.stroke(curve, with: .color(.white), lineWidth: 2)
                 for p in points {
-                    let v = view(p, size)
+                    let v = Self.view(p, size)
                     ctx.stroke(Path(CGRect(x: v.x - 6, y: v.y - 6, width: 12, height: 12)), with: .color(.white), lineWidth: 1.5)
                 }
             }
@@ -286,9 +286,15 @@ struct ShearGraph: View {
     }
 
     private func drag(_ start: CGPoint, _ location: CGPoint, _ s: CGSize) {
+        Self.drag(&points, &dragging, from: start, to: location, size: s)
+    }
+
+    /// Picks up the point near `start` (or adds one there) and moves it to `location`.
+    static func drag(_ points: inout [CGPoint], _ dragging: inout Int?, from start: CGPoint, to location: CGPoint, size s: CGSize) {
         if dragging == nil {
-            let distance = { (i: Int) in hypot(view(points[i], s).x - start.x, view(points[i], s).y - start.y) }
-            if let near = points.indices.min(by: { distance($0) < distance($1) }), distance(near) < 28 {
+            let pts = points
+            let distance = { (i: Int) in hypot(view(pts[i], s).x - start.x, view(pts[i], s).y - start.y) }
+            if let near = pts.indices.min(by: { distance($0) < distance($1) }), distance(near) < 28 {
                 dragging = near
             } else if points.count < 16 {
                 let m = model(start, s)
@@ -304,8 +310,8 @@ struct ShearGraph: View {
         points[i] = CGPoint(x: m.x, y: i == 0 ? 0 : i == points.count - 1 ? 1 : min(max(m.y, lo), hi))
     }
 
-    private func view(_ p: CGPoint, _ s: CGSize) -> CGPoint { CGPoint(x: (p.x + 1) / 2 * s.width, y: p.y * s.height) }
-    private func model(_ v: CGPoint, _ s: CGSize) -> CGPoint {
+    static func view(_ p: CGPoint, _ s: CGSize) -> CGPoint { CGPoint(x: (p.x + 1) / 2 * s.width, y: p.y * s.height) }
+    static func model(_ v: CGPoint, _ s: CGSize) -> CGPoint {
         CGPoint(x: min(max(v.x / max(s.width, 1) * 2 - 1, -1), 1), y: min(max(v.y / max(s.height, 1), 0), 1))
     }
 }
@@ -430,14 +436,18 @@ struct ColorRangeEditor: View {
 
     private func tap(_ at: CGPoint) {
         guard select == "sampledColors", let d = model.doc else { return }
-        let pt = PreviewSampler.docPoint(at, d)
+        set(Self.sample(p, picker: picker, at: PreviewSampler.docPoint(at, d)))
+    }
+
+    /// The sampled points after a tap at `pt` with the `picker` eyedropper (pick, add or subtract).
+    static func sample(_ p: [String: Any], picker: String, at pt: [Int]) -> [String: Any] {
         var points = p["points"] as? [[Int]] ?? [], minus = p["subtractPoints"] as? [[Int]] ?? [], order = p["order"] as? [String] ?? []
         switch picker {
         case "add": points.append(pt); order.append("+")
         case "subtract": minus.append(pt); order.append("-")
         default: (points, minus, order) = ([pt], [], ["+"])
         }
-        set(["points": points, "subtractPoints": minus, "order": order])
+        return ["points": points, "subtractPoints": minus, "order": order]
     }
 
     private func set(_ q: [String: Any]) {

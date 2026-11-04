@@ -248,6 +248,32 @@ pub fn add_fonts(paths: Vec<String>) -> u32 {
     .unwrap_or(0)
 }
 
+/// Omega's Rust coverage: writes the line counts so far to `path`, in a build with the `coverage`
+/// feature (and `-Cinstrument-coverage`); `false` in every other build.
+#[uniffi::export]
+pub fn coverage_write(path: String) -> bool {
+    #[cfg(feature = "coverage")]
+    {
+        #[allow(unsafe_code)]
+        unsafe extern "C" {
+            fn __llvm_profile_set_filename(name: *const std::ffi::c_char);
+            fn __llvm_profile_write_file() -> std::ffi::c_int;
+        }
+        let Ok(name) = std::ffi::CString::new(path) else { return false };
+        // SAFETY: the profile runtime is linked in with -Cinstrument-coverage; it copies the name.
+        #[allow(unsafe_code)]
+        unsafe {
+            __llvm_profile_set_filename(name.as_ptr());
+            __llvm_profile_write_file() == 0
+        }
+    }
+    #[cfg(not(feature = "coverage"))]
+    {
+        let _ = path;
+        false
+    }
+}
+
 #[derive(uniffi::Object)]
 pub struct Editor {
     inner: Mutex<Inner>,
@@ -891,17 +917,12 @@ impl Editor {
 
     /// Every command with a menu item.
     pub fn commands(&self) -> Vec<CommandInfo> {
-        self.with(|inner| {
-            Ok(photocraft_engine::commands::command_specs()
-                .iter()
-                .filter(|c| !c.menu.is_empty())
-                .map(|c| {
-                    let reason = inner.session.disabled_reason(c.id);
-                    CommandInfo { id: c.id.into(), label: c.label.into(), menu: c.menu.join(" > "), enabled: reason.is_none(), reason, params: c.params.into() }
-                })
-                .collect())
-        })
-        .unwrap_or_default()
+        self.command_infos(true)
+    }
+
+    /// Every command, menu or not (tools, panels, scripting), for tests that cover them all.
+    pub fn all_commands(&self) -> Vec<CommandInfo> {
+        self.command_infos(false)
     }
 
     /// Every key binding in effect.
@@ -961,6 +982,20 @@ impl Editor {
             symmetry: sym.map(|s| s.inspect()["mode"].as_str().unwrap_or_default().to_string()).unwrap_or_default(),
             symmetry_lines: lines,
         }
+    }
+
+    fn command_infos(&self, menus_only: bool) -> Vec<CommandInfo> {
+        self.with(|inner| {
+            Ok(photocraft_engine::commands::command_specs()
+                .iter()
+                .filter(|c| !menus_only || !c.menu.is_empty())
+                .map(|c| {
+                    let reason = inner.session.disabled_reason(c.id);
+                    CommandInfo { id: c.id.into(), label: c.label.into(), menu: c.menu.join(" > "), enabled: reason.is_none(), reason, params: c.params.into() }
+                })
+                .collect())
+        })
+        .unwrap_or_default()
     }
 
     fn lock(&self) -> MutexGuard<'_, Inner> {

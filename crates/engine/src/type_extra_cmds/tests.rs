@@ -302,6 +302,8 @@ fn type_attaches_to_a_path_and_releases_it() {
     assert!(s.execute("type.attachToPath", json!({"start": "far"})).is_err());
     assert!(s.execute("type.attachToPath", json!({"shape": u64::MAX})).is_err());
     s.execute("type.attachToPath", json!({"start": 4})).unwrap();
+    // The Type box's scale would grow the letters but not the path.
+    assert!(s.execute("type.edit", json!({"layer": id.0, "scale": 2})).is_err());
     assert!(matches!(text(&s, id).shape, TextShape::Path { start, .. } if start == 4.0));
     let on_path = ink(&s, id);
     assert!(on_path.height() > on_path.width(), "the type runs down the vertical path: {on_path:?}");

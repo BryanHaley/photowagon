@@ -6,7 +6,7 @@ Home is the first screen you see. It's where you start a new image, open one, or
 
 ![The Home screen](images/home.jpg)
 
-**New file** starts a blank image. Pick a **Preset** (Photo, Print, Art & Illustration, Web, Mobile, Film & Video) or choose Custom and set it up yourself, then tap Create. Options: *Name*, *Units* (Pixels, Inches or Centimeters), *Width* and *Height*, *Resolution (pixels/inch)*, *Colour Mode* (RGB Color, Grayscale, CMYK Color, Lab Color), *Colour Profile*, *Bit Depth* (8, 16 or 32 bit), *Background* (White, Black, Background Color, Transparent).
+**New file** starts a blank image. Pick a **Preset** (Photo, Print, Art & Illustration, Web, Mobile, Film & Video) or choose Custom and set it up yourself, then tap Create. Options: *Name*, *Units* (Pixels, Inches or Centimeters), *Width* and *Height*, *Resolution (pixels/inch)*, *Color Mode* (RGB Color, Grayscale, CMYK Color, Lab Color), *Color Profile*, *Bit Depth* (8, 16 or 32 bit), *Background* (White, Black, Background Color, Transparent).
 
 **Open** shows the images in PhotoWagon's own folder (On My iPhone › PhotoWagon in the Files app). Tap one to open it, or tap **Browse Files…** to look anywhere in Files, or **Photos…** to pick from your photo library. PhotoWagon opens JPEG, PNG, HEIC, JPEG XL, TIFF, PSD, WebP, GIF, camera raw files and its own layered files, among others.
 
@@ -62,9 +62,9 @@ In portrait, the screen has the top bar, the canvas (your image), the options ba
 
 With a trackpad or mouse, scroll to move the image, and hold ⌥ or ⌘ while you scroll to zoom. Trackpad pinch and twist work too.
 
-## Colours
+## Colors
 
-**The colour well** sits at the end of the toolbar. The front square is the foreground colour (what you paint with). The square behind it is the background colour, a second colour some tools and fills use. Tap the front square to choose a new foreground colour. Tap the back square to swap the two. To pick a colour from your image, use the Eyedropper tool.
+**The color well** sits at the end of the toolbar. The front square is the foreground color (what you paint with). The square behind it is the background color, a second color some tools and fills use. Tap the front square to choose a new foreground color. Tap the back square to swap the two. To pick a color from your image, use the Eyedropper tool.
 
 ## Search Commands
 
@@ -74,7 +74,7 @@ With a trackpad or mouse, scroll to move the image, and hold ⌥ or ⌘ while yo
 
 **Help › Manual** opens this manual.
 
-**Help › Tutorial** runs a short tour of 11 tips: the tools, a group's tools, tool options, the top bar buttons and the colours. Tap **Next** to move on, or **Skip Tutorial** to stop. The tour starts by itself the first time you open an image, and once you finish or skip it, it only comes back from the Help menu. It needs an open image.
+**Help › Tutorial** runs a short tour of 11 tips: the tools, a group's tools, tool options, the top bar buttons and the colors. Tap **Next** to move on, or **Skip Tutorial** to stop. The tour starts by itself the first time you open an image, and once you finish or skip it, it only comes back from the Help menu. It needs an open image.
 
 **Help › Acknowledgements** (also at the bottom of Settings on the Home screen) lists the open-source software inside PhotoWagon, with each licence.
 
@@ -104,7 +104,7 @@ PhotoWagon reads your Pencil's **pressure**, **tilt** and, on Apple Pencil Pro, 
 
 **Double-tap** and **squeeze** run the actions you chose in Preferences. *As in Settings* follows your iPad's own Apple Pencil settings.
 
-**The palette** appears beside your Pencil when you squeeze (with Squeeze set to Show Palette). It has the Brush, Eraser, Smudge and Eyedropper, your foreground colour, Size and Opacity sliders, and Undo and Redo. Tap anywhere else to close it.
+**The palette** appears beside your Pencil when you squeeze (with Squeeze set to Show Palette). It has the Brush, Eraser, Smudge and Eyedropper, your foreground color, Size and Opacity sliders, and Undo and Redo. Tap anywhere else to close it.
 
 ## Keyboard shortcuts
 
@@ -120,6 +120,6 @@ With a hardware keyboard attached, these are the most useful keys.
 
 **Painting**: [ and ] make the brush smaller and bigger, and ⇧[ and ⇧] make it softer and harder. Number keys set opacity (1 is 10%, 0 is 100%, or type two quickly, like 4 then 5 for 45%); add ⇧ to set flow. Hold \` to erase with the brush until you let go. ← and → turn the brush tip. Caps Lock swaps the brush outline for a small crosshair.
 
-**Colours**: X swaps foreground and background, D resets them to black and white.
+**Colors**: X swaps foreground and background, D resets them to black and white.
 
 **Finishing**: Return commits a crop, transform or shape in progress, and Esc cancels it.

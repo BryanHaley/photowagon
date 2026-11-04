@@ -185,31 +185,26 @@ struct CropRotateView: View {
     @ObservedObject var model: EditorModel
     @Environment(\.dismiss) private var dismiss
     @State private var image: UIImage?
-    @State private var docSize = CGSize(width: 1, height: 1)
-    @State private var frame = CropFrame(width: 1, height: 1)
+    @State private var edit = CropEdit(size: CGSize(width: 1, height: 1))
     @State private var start: CropFrame?
     /// Points per document pixel, kept while a drag lasts so the box doesn't jump.
     @State private var heldScale: Double?
-    @State private var aspect = CropAspect.freeform
-    /// Lock Current Ratio: the box's shape when it was locked.
-    @State private var lockedRatio: Double?
     @State private var fill = CropFill.color
     /// The Colour fill's colour (the background colour to start with).
     @State private var fillColor: UIColor?
-    /// Turning keeps the box on the image (shrinking it), so it adds no canvas.
-    @State private var keepInside = true
-    @State private var turnFrom: CropFrame?
-    /// The box's size before turning shrank it onto the image.
-    @State private var unshrunk: CGSize?
 
-    private var moving: Bool { start != nil || turnFrom != nil }
-    private var ratio: Double? { lockedRatio ?? aspect.ratio(image: docSize) }
+    private var frame: CropFrame {
+        get { edit.frame }
+        nonmutating set { edit.frame = newValue }
+    }
+    private var docSize: CGSize { edit.docSize }
+    private var moving: Bool { start != nil || edit.turnFrom != nil }
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
                 GeometryReader { g in workArea(g.size) }
-                AngleRuler(angle: frame.angle, begin: { turnFrom = frame; unshrunk = unshrunk ?? frame.size }, turn: { turn(to: $0) }, end: { turnFrom = nil })
+                AngleRuler(angle: frame.angle, begin: { edit.beginTurn() }, turn: { edit.turn(to: $0) }, end: { edit.turnFrom = nil })
                     .frame(height: 64)
                     .padding(.horizontal)
                 controls
@@ -226,20 +221,6 @@ struct CropRotateView: View {
             }
         }
         .task { await load() }
-    }
-
-    /// The image turned to `angle` degrees: from the box as the turn began, kept on the image.
-    private func turn(to angle: Double) {
-        let f = turnFrom ?? frame
-        frame = f.turned(to: angle, size: unshrunk ?? f.size, inside: keepInside ? docSize : nil)
-    }
-
-    private func turnQuarter(clockwise: Bool) {
-        let size = unshrunk ?? frame.size
-        unshrunk = CGSize(width: size.height, height: size.width)
-        withAnimation {
-            frame = frame.turned(to: frame.angle + (clockwise ? -90 : 90), size: unshrunk ?? size, inside: keepInside ? docSize : nil)
-        }
     }
 
     private func scale(_ area: CGSize) -> Double {
@@ -305,8 +286,8 @@ struct CropRotateView: View {
                     let s = start ?? frame
                     start = s
                     heldScale = k
-                    unshrunk = nil
-                    frame = s.resized(h, by: CGVector(dx: d.translation.width, dy: d.translation.height), scale: k, aspect: ratio)
+                    edit.unshrunk = nil
+                    frame = s.resized(h, by: CGVector(dx: d.translation.width, dy: d.translation.height), scale: k, aspect: edit.ratio)
                 }
                 .onEnded { _ in endDrag() })
             .accessibilityIdentifier("crop.handle.\(h.x).\(h.y)")
@@ -320,14 +301,13 @@ struct CropRotateView: View {
     /// Icons only: touch and hold one for its name.
     private var controls: some View {
         HStack(spacing: 18) {
-            icon("Reset", "arrow.counterclockwise", id: "crop.reset") { reset() }
-            icon("Rotate 90° Left", "rotate.left", id: "crop.rotateLeft") { turnQuarter(clockwise: false) }
-            icon("Rotate 90° Right", "rotate.right", id: "crop.rotateRight") { turnQuarter(clockwise: true) }
-            icon(keepInside ? "Keep Inside Image: On" : "Keep Inside Image: Off", keepInside ? "square.dashed.inset.filled" : "square.dashed", id: "crop.keepInside") {
-                keepInside.toggle()
-                withAnimation { frame = frame.turned(to: frame.angle, size: unshrunk ?? frame.size, inside: keepInside ? docSize : nil) }
+            icon("Reset", "arrow.counterclockwise", id: "crop.reset") { withAnimation { edit.reset() } }
+            icon("Rotate 90° Left", "rotate.left", id: "crop.rotateLeft") { withAnimation { edit.turnQuarter(clockwise: false) } }
+            icon("Rotate 90° Right", "rotate.right", id: "crop.rotateRight") { withAnimation { edit.turnQuarter(clockwise: true) } }
+            icon(edit.keepInside ? "Keep Inside Image: On" : "Keep Inside Image: Off", edit.keepInside ? "square.dashed.inset.filled" : "square.dashed", id: "crop.keepInside") {
+                withAnimation { edit.toggleKeepInside() }
             }
-            .accessibilityValue(keepInside ? "on" : "off")
+            .accessibilityValue(edit.keepInside ? "on" : "off")
             Menu {
                 Picker("Fill Added Canvas", selection: Binding(get: { fill }, set: { f in
                     fill = f
@@ -349,16 +329,15 @@ struct CropRotateView: View {
             .accessibilityValue(fill.title)
             .accessibilityIdentifier("crop.fill")
             Menu {
-                Picker("Ratio", selection: Binding(get: { lockedRatio == nil ? aspect : nil }, set: { if let a = $0 { setAspect(a) } })) {
+                Picker("Ratio", selection: Binding(get: { edit.lockedRatio == nil ? edit.aspect : nil }, set: { a in
+                    if let a { withAnimation { edit.setAspect(a) } }
+                })) {
                     ForEach(CropAspect.allCases) { Text($0.title).tag(Optional($0)) }
                 }
-                Toggle("Lock Current Ratio", isOn: Binding(get: { lockedRatio != nil }, set: { on in
-                    lockedRatio = on ? frame.size.width / frame.size.height : nil
-                    if !on { aspect = .freeform }
-                }))
-            } label: { Image(systemName: lockedRatio == nil ? "aspectratio" : "lock.rectangle") }
+                Toggle("Lock Current Ratio", isOn: Binding(get: { edit.lockedRatio != nil }, set: { edit.lockRatio($0) }))
+            } label: { Image(systemName: edit.lockedRatio == nil ? "aspectratio" : "lock.rectangle") }
                 .accessibilityLabel("Ratio")
-                .accessibilityValue(lockedRatio == nil ? aspect.title : "Locked")
+                .accessibilityValue(edit.lockedRatio == nil ? edit.aspect.title : "Locked")
                 .accessibilityIdentifier("crop.ratio")
         }
         .font(.title3)
@@ -383,26 +362,9 @@ struct CropRotateView: View {
         }
     }
 
-    private func setAspect(_ a: CropAspect) {
-        aspect = a
-        lockedRatio = nil
-        unshrunk = nil
-        if let r = a.ratio(image: docSize) { withAnimation { frame = frame.fitted(to: r) } }
-    }
-
-    private func reset() {
-        withAnimation {
-            frame = CropFrame(width: docSize.width, height: docSize.height)
-            unshrunk = nil
-            aspect = .freeform
-            lockedRatio = nil
-        }
-    }
-
     private func load() async {
         guard let d = model.doc else { return }
-        docSize = CGSize(width: Double(d.width), height: Double(d.height))
-        frame = CropFrame(width: docSize.width, height: docSize.height)
+        edit = CropEdit(size: CGSize(width: Double(d.width), height: Double(d.height)))
         let editor = model.editor
         let png = await Task.detached(priority: .userInitiated) { try? editor.previewImage(maxSide: 2048) }.value
         if let png { image = UIImage(data: png) }
@@ -410,13 +372,82 @@ struct CropRotateView: View {
 
     private func apply() {
         dismiss()
-        guard frame != CropFrame(width: docSize.width, height: docSize.height) else { return }
-        let adds = frame.addsCanvas(width: docSize.width, height: docSize.height)
-        model.cropRotate(frame, fill: adds ? fill : .color, color: fillColor, image: docSize)
+        model.cropRotate(edit, fill: fill, color: fillColor)
+    }
+}
+
+/// Crop and Rotate's box: the turns, the ratio and Keep Inside Image.
+struct CropEdit {
+    let docSize: CGSize
+    var frame: CropFrame
+    private(set) var aspect = CropAspect.freeform
+    /// Lock Current Ratio: the box's shape when it was locked.
+    private(set) var lockedRatio: Double?
+    /// Turning keeps the box on the image (shrinking it), so it adds no canvas.
+    private(set) var keepInside = true
+    var turnFrom: CropFrame?
+    /// The box's size before turning shrank it onto the image.
+    var unshrunk: CGSize?
+
+    init(size: CGSize) {
+        docSize = size
+        frame = CropFrame(width: size.width, height: size.height)
+    }
+
+    var ratio: Double? { lockedRatio ?? aspect.ratio(image: docSize) }
+    var changed: Bool { frame != CropFrame(width: docSize.width, height: docSize.height) }
+    private var inside: CGSize? { keepInside ? docSize : nil }
+
+    mutating func beginTurn() {
+        turnFrom = frame
+        unshrunk = unshrunk ?? frame.size
+    }
+
+    /// The image turned to `angle` degrees: from the box as the turn began, kept on the image.
+    mutating func turn(to angle: Double) {
+        let f = turnFrom ?? frame
+        frame = f.turned(to: angle, size: unshrunk ?? f.size, inside: inside)
+    }
+
+    mutating func turnQuarter(clockwise: Bool) {
+        let size = unshrunk ?? frame.size
+        unshrunk = CGSize(width: size.height, height: size.width)
+        frame = frame.turned(to: frame.angle + (clockwise ? -90 : 90), size: unshrunk ?? size, inside: inside)
+    }
+
+    mutating func toggleKeepInside() {
+        keepInside.toggle()
+        frame = frame.turned(to: frame.angle, size: unshrunk ?? frame.size, inside: inside)
+    }
+
+    mutating func setAspect(_ a: CropAspect) {
+        aspect = a
+        lockedRatio = nil
+        unshrunk = nil
+        if let r = a.ratio(image: docSize) { frame = frame.fitted(to: r) }
+    }
+
+    mutating func lockRatio(_ on: Bool) {
+        lockedRatio = on ? frame.size.width / frame.size.height : nil
+        if !on { aspect = .freeform }
+    }
+
+    mutating func reset() {
+        frame = CropFrame(width: docSize.width, height: docSize.height)
+        unshrunk = nil
+        aspect = .freeform
+        lockedRatio = nil
     }
 }
 
 extension EditorModel {
+    /// Crop and Rotate's Done, when the box changed; `fill` only where it adds canvas.
+    func cropRotate(_ edit: CropEdit, fill: CropFill, color: UIColor?) {
+        guard edit.changed else { return }
+        let (f, size) = (edit.frame, edit.docSize)
+        cropRotate(f, fill: f.addsCanvas(width: size.width, height: size.height) ? fill : .color, color: color, image: size)
+    }
+
     /// Crop and Rotate's Done: the crop, and what fills the canvas it adds.
     func cropRotate(_ frame: CropFrame, fill: CropFill, color: UIColor? = nil, image: CGSize) {
         var p = frame.params

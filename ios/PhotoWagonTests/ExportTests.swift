@@ -21,6 +21,22 @@ final class ExportTests: XCTestCase {
         XCTAssertEqual(EditorModel.exportFileName("logo", scale: 0.5, ext: "jpg"), "logo@0.5x.jpg")
     }
 
+    func testEachShareGetsANewFileAndOldOnesGo() throws {
+        let fm = FileManager.default
+        let root = fm.temporaryDirectory.appendingPathComponent("ShareTest-\(UUID().uuidString)")
+        addTeardownBlock { try? FileManager.default.removeItem(at: root) }
+        let first = try EditorModel.shareFile(Data("first".utf8), name: "photo.png", in: root)
+        let second = try EditorModel.shareFile(Data("second".utf8), name: "photo.png", in: root)
+        XCTAssertNotEqual(first, second)
+        XCTAssertEqual(second.lastPathComponent, "photo.png")
+        XCTAssertEqual(try Data(contentsOf: second), Data("second".utf8))
+        XCTAssertTrue(fm.fileExists(atPath: first.path), "a recent share may still be sending")
+        try fm.setAttributes([.modificationDate: Date().addingTimeInterval(-3600)], ofItemAtPath: first.deletingLastPathComponent().path)
+        _ = try EditorModel.shareFile(Data("third".utf8), name: "photo.png", in: root)
+        XCTAssertFalse(fm.fileExists(atPath: first.path), "an old one goes")
+        XCTAssertTrue(fm.fileExists(atPath: second.path))
+    }
+
     func testExportAsWritesOneFilePerSize() {
         let model = makeModel(width: 200, height: 100)
         let files = ["sizes-test.png", "sizes-test@2x.png", "sizes-test@0.5x.png"]

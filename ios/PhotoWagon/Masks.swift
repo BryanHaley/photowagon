@@ -21,19 +21,19 @@ struct MaskProperties: View {
                     Text("Density fades the whole mask; Feather softens its edges. Neither changes what you painted, so you can change them later.")
                 }
                 Section {
-                    Button { model.targetLayer(layer, mask: true); model.run("image.adjustments.invert") } label: { Label("Invert", systemImage: "circle.righthalf.filled") }
+                    Button { model.maskAction(.invert, layer: layer) } label: { Label("Invert", systemImage: "circle.righthalf.filled") }
                         .accessibilityIdentifier("mask.invert")
-                    Button { model.run("layer.layerMask.enabled", ["layer": layer]) } label: {
+                    Button { model.maskAction(.enabled, layer: layer) } label: {
                         Label(m.enabled ? "Disable Mask" : "Enable Mask", systemImage: m.enabled ? "eye.slash" : "eye")
                     }
                     .accessibilityIdentifier("mask.enabled")
-                    Button { model.run("layer.layerMask.linked", ["layer": layer]) } label: {
+                    Button { model.maskAction(.linked, layer: layer) } label: {
                         Label(m.linked ? "Unlink from Layer" : "Link to Layer", systemImage: "link")
                     }
                     .accessibilityIdentifier("mask.linked")
-                    Button { model.run("layer.layerMask.apply", ["layer": layer]) } label: { Label("Apply Mask", systemImage: "checkmark.circle") }
+                    Button { model.maskAction(.apply, layer: layer) } label: { Label("Apply Mask", systemImage: "checkmark.circle") }
                         .disabled(row.kind != "Pixel")
-                    Button(role: .destructive) { model.run("layer.layerMask.delete", ["layer": layer]) } label: { Label("Delete Mask", systemImage: "trash") }
+                    Button(role: .destructive) { model.maskAction(.delete, layer: layer) } label: { Label("Delete Mask", systemImage: "trash") }
                 }
             } else {
                 Text("This layer has no mask.").foregroundStyle(.secondary)
@@ -41,6 +41,23 @@ struct MaskProperties: View {
         }
         .navigationTitle("Mask Properties")
         .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+/// What Mask Properties' buttons do.
+enum MaskAction { case invert, enabled, linked, apply, delete }
+
+extension EditorModel {
+    func maskAction(_ action: MaskAction, layer: UInt64) {
+        switch action {
+        case .invert:
+            targetLayer(layer, mask: true)
+            run("image.adjustments.invert")
+        case .enabled: run("layer.layerMask.enabled", ["layer": layer])
+        case .linked: run("layer.layerMask.linked", ["layer": layer])
+        case .apply: run("layer.layerMask.apply", ["layer": layer])
+        case .delete: run("layer.layerMask.delete", ["layer": layer])
+        }
     }
 }
 

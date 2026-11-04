@@ -52,7 +52,7 @@ Each layer has a row. From left to right:
 
 **The thumbnail** shows the layer's contents. Type layers show a "T", groups a folder. Embedded layers and shape layers carry a small badge. Tap the thumbnail to select the layer. Double-tap it to edit what the layer holds: the text of a type layer, the contents of an embedded layer, the Properties of a fill or adjustment layer, or the name of a pixel layer or group.
 
-**The link and the mask thumbnail** appear when the layer has a mask. Tap the link to unlink the mask (so the layer and mask move on their own) or link it again. Tap the mask thumbnail to select the mask, so painting goes on it; it gets a coloured outline. Double-tap it for Mask Properties. A red cross on it means the mask is turned off.
+**The link and the mask thumbnail** appear when the layer has a mask. Tap the link to unlink the mask (so the layer and mask move on their own) or link it again. Tap the mask thumbnail to select the mask, so painting goes on it; it gets a colored outline. Double-tap it for Mask Properties. A red cross on it means the mask is turned off.
 
 **The name** and, under it, the blend mode and opacity (if they aren't the usual ones) or what kind of layer it is. Double-tap the name to rename the layer. Double-tap the empty space to the right of the name to open Layer Style at Blending Options.
 
@@ -94,13 +94,13 @@ Embedded layers with filters show a **Live Filters** row and a row for each filt
 
 Properties shows the settings of the selected layer. Open it from ☰ › Window › Properties, by double-tapping a fill or adjustment layer's thumbnail, or with **Properties…** in its touch-and-hold menu. Opened from the Window menu it sits beside the picture, so you can keep working on the canvas. Changes show as you make them.
 
-**Adjustment layers** show the same settings screens as ☰ › Image › Adjustments, so you can change the adjustment at any time without touching the pixels underneath. Hue/Saturation has extras here: *Edit* (Master or one colour range), *Drag in the image to adjust* (drag sideways on a colour in the picture to change it), *Dragging changes* (Saturation or Hue), *Colorize*, and for a colour range the *Range* sliders (*Fade from*, *From*, *To*, *Fade to*).
+**Adjustment layers** show the same settings screens as ☰ › Image › Adjustments, so you can change the adjustment at any time without touching the pixels underneath. Hue/Saturation has extras here: *Edit* (Master or one color range), *Drag in the image to adjust* (drag sideways on a color in the picture to change it), *Dragging changes* (Saturation or Hue), *Colorize*, and for a color range the *Range* sliders (*Fade from*, *From*, *To*, *Fade to*).
 
-**Solid colour fill layers** have **Pick Colour…** and **Pick from Image**, which samples a colour by tapping the picture (using the Eyedropper's sample settings).
+**Solid color fill layers** have **Pick Color…** and **Pick from Image**, which samples a color by tapping the picture (using the Eyedropper's sample settings).
 
-**Gradient fill layers** show the gradient and these options: *Style* (Linear, Radial, Angle, Reflected, Diamond), *Angle*, *Scale*, *Reverse*, and a section of *Colour Stops* (tap a swatch to change its colour, slide to move it, swipe to delete, **Add Stop**), *Presets*, and *Opacity Stops* (each stop's opacity and location). In the Properties panel you can drag in the picture to move the gradient; from the Layers panel, tap **Move It in the Image** to get there.
+**Gradient fill layers** show the gradient and these options: *Style* (Linear, Radial, Angle, Reflected, Diamond), *Angle*, *Scale*, *Reverse*, and a section of *Color Stops* (tap a swatch to change its color, slide to move it, swipe to delete, **Add Stop**), *Presets*, and *Opacity Stops* (each stop's opacity and location). In the Properties panel you can drag in the picture to move the gradient; from the Layers panel, tap **Move It in the Image** to get there.
 
-**Shape layers** have **Pick Colour…** for the fill and, for rectangles, a *Corners* slider for rounding.
+**Shape layers** have **Pick Color…** for the fill and, for rectangles, a *Corners* slider for rounding.
 
 Under fill and adjustment layers' settings is a row of three buttons: **Clip to Layer Below** (the bent arrow, so the adjustment only affects that layer), **Reset to Defaults** (adjustment layers) and **Visibility** (the eye).
 
@@ -126,11 +126,11 @@ A row of buttons at the top lists **Blending Options** and each effect the layer
 
 *Transparency Shapes Layer* (under Advanced Blending) decides whether the layer's see-through parts limit its effects and blending. Leave it on unless you want effects to fill the whole layer.
 
-**Blend If** fades the layer out where it, or what's under it, is dark or bright. Pick *Gray* or a single colour channel, then drag the black and white handles on the *This Layer* and *Underlying Layer* bars. For example, drag the white handle of This Layer to the left to drop out the bright parts. Turn on *Split* to move each half of a handle on its own, which gives a soft fade instead of a hard edge.
+**Blend If** fades the layer out where it, or what's under it, is dark or bright. Pick *Gray* or a single color channel, then drag the black and white handles on the *This Layer* and *Underlying Layer* bars. For example, drag the white handle of This Layer to the left to drop out the bright parts. Turn on *Split* to move each half of a handle on its own, which gives a soft fade instead of a hard edge.
 
 ### The effects
 
-Each effect page has a switch to turn it on or off, its settings, and **Delete Effect**. Stroke, Inner Shadow, Color Overlay, Gradient Overlay and Drop Shadow can be added more than once with **Add Another**. Every slider has a box where you can type the value. Colours open the colour picker.
+Each effect page has a switch to turn it on or off, its settings, and **Delete Effect**. Stroke, Inner Shadow, Color Overlay, Gradient Overlay and Drop Shadow can be added more than once with **Add Another**. Every slider has a box where you can type the value. Colors open the color picker.
 
 **Drop Shadow** casts a shadow behind the layer. Options: *Blend Mode*, *Color*, *Opacity*, *Angle*, *Use Global Light*, *Distance*, *Spread* (makes the edge harder), *Size* (blur), *Noise*, *Layer Knocks Out Drop Shadow* (hides the shadow under see-through parts of the layer). While its page is open, drag in the picture to move the shadow.
 
@@ -142,9 +142,9 @@ Each effect page has a switch to turn it on or off, its settings, and **Delete E
 
 **Stroke** draws an outline. Options: *Position* (Outside, Inside, Center), *Blend Mode*, *Color*, *Opacity*, *Size*.
 
-**Color Overlay** covers the layer with one colour. Options: *Blend Mode*, *Color*, *Opacity*.
+**Color Overlay** covers the layer with one color. Options: *Blend Mode*, *Color*, *Opacity*.
 
-**Gradient Overlay** covers the layer with a two-colour gradient. Options: *Style* (Linear, Radial, Angle, Reflected, Diamond), *Blend Mode*, *From*, *To*, *Opacity*, *Angle*, *Scale*, *Reverse*.
+**Gradient Overlay** covers the layer with a two-color gradient. Options: *Style* (Linear, Radial, Angle, Reflected, Diamond), *Blend Mode*, *From*, *To*, *Opacity*, *Angle*, *Scale*, *Reverse*.
 
 **Pattern Overlay** covers the layer with a pattern. Options: *Blend Mode*, *Opacity*, *Angle*, *Scale*.
 
@@ -160,7 +160,7 @@ A mask hides parts of a layer without erasing them. Where the mask is white the 
 
 **Adding a mask.** Tap **Add Mask** in the Layers panel, or use ☰ › Layer › Layer Mask. With a selection, the new mask shows only the selected area; touch and hold the button to hide the selected area instead.
 
-**Painting on the mask.** Tap the mask thumbnail in the layer's row. It gets a coloured outline, and painting, filling and filters now work on the mask. Tap the layer thumbnail to go back to the pixels.
+**Painting on the mask.** Tap the mask thumbnail in the layer's row. It gets a colored outline, and painting, filling and filters now work on the mask. Tap the layer thumbnail to go back to the pixels.
 
 **The mask's touch-and-hold menu.** Touch and hold the mask thumbnail for these:
 
@@ -204,7 +204,7 @@ Choose ☰ › Layer. Items that can't be used right now are greyed out, with th
 
 ### New
 
-**Layer…** opens New Layer. Options: *Name*, *Use Previous Layer to Create Clipping Mask*, *Color* (a colour label for the row), *Mode*, *Opacity*, and *Fill with (mode)-neutral color*, which fills the layer with the colour that changes nothing in that mode (for example 50% grey for Overlay), ready to paint light and shade on.
+**Layer…** opens New Layer. Options: *Name*, *Use Previous Layer to Create Clipping Mask*, *Color* (a color label for the row), *Mode*, *Opacity*, and *Fill with (mode)-neutral color*, which fills the layer with the color that changes nothing in that mode (for example 50% grey for Overlay), ready to paint light and shade on.
 
 **Group…** adds an empty group. Options: *Name*.
 
@@ -240,7 +240,7 @@ Choose ☰ › Layer. Items that can't be used right now are greyed out, with th
 
 ### New Fill Layer
 
-A fill layer is a layer filled with a colour, gradient or pattern that you can change later. If you have a selection, it becomes the layer's mask.
+A fill layer is a layer filled with a color, gradient or pattern that you can change later. If you have a selection, it becomes the layer's mask.
 
 **Solid Color…** Options: *Color*.
 **Gradient…** Options: *From*, *To*, *Angle*, *Style*, *Reverse*.
@@ -248,7 +248,7 @@ A fill layer is a layer filled with a colour, gradient or pattern that you can c
 
 ### New Adjustment Layer
 
-An adjustment layer changes the colours and tones of everything under it, without changing any pixels, so you can tweak or remove it at any time. If you have a selection, it becomes the layer's mask. Clip the adjustment layer to the layer below if you want it to affect only that one.
+An adjustment layer changes the colors and tones of everything under it, without changing any pixels, so you can tweak or remove it at any time. If you have a selection, it becomes the layer's mask. Clip the adjustment layer to the layer below if you want it to affect only that one.
 
 **Brightness/Contrast…, Levels…, Curves…, Exposure…, Vibrance…, Hue/Saturation…, Color Balance…, Black & White…, Photo Filter…, Channel Mixer…, Invert, Posterize…, Threshold…, Gradient Map…, Selective Color…, Color Lookup…** each add that adjustment. From this menu they first ask for a few starting settings (for example *Levels* for Posterize, *Level* for Threshold, *Brightness* and *Contrast* for Brightness/Contrast). For the full settings, open the new layer's Properties. The New Fill or Adjustment Layer button in the Layers panel skips the first step and opens Properties straight away.
 
@@ -310,11 +310,11 @@ Rasterizing turns a special layer into plain pixels, so you can paint on it. You
 
 These clean up the edges of a cut-out layer.
 
-**Defringe…** replaces the colour of edge pixels with colours from right inside, which removes a halo of the old background. Options: *Width* (in pixels).
+**Defringe…** replaces the color of edge pixels with colors from right inside, which removes a halo of the old background. Options: *Width* (in pixels).
 
 **Remove Black Matte** and **Remove White Matte** fix soft edges that were cut out from a black or white background.
 
-**Color Decontaminate…** pulls edge colours towards the nearby solid colours. Options: *Amount*, *Radius*.
+**Color Decontaminate…** pulls edge colors towards the nearby solid colors. Options: *Amount*, *Radius*.
 
 ### Video Layers
 

@@ -1231,7 +1231,7 @@ mod tests {
         // moved onto the edge silently.
         for pts in [json!([[0, 0], [300, 255]]), json!([[0, -1], [255, 255]]), json!([[0, 0]])] {
             let e = from_params("curves", &json!({ "points": pts }), None, ColorMode::Rgb).unwrap_err().to_string();
-            assert!(e.contains("[input, output] pairs in 0..255") && e.contains("`curves adjustment`"), "{e}");
+            assert!(e.contains("[input, output] pairs in 0..255") && e.starts_with("curves adjustment: "), "{e}");
         }
         assert!(from_params("curves", &json!({"points": [[0, 0], [128.5, 140], [255, 255]]}), None, ColorMode::Rgb).is_ok());
     }

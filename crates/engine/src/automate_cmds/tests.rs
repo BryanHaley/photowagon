@@ -61,13 +61,13 @@ fn browse_rejects_photoshop_extendscript() {
     std::fs::write(&jsx, "alert('hi');\n").unwrap();
     let mut s = Session::new();
     let err = s.execute("file.scripts.browse", json!({"path": jsx})).unwrap_err().to_string();
-    assert!(err.contains("not Photoshop ExtendScript"), "{err}");
+    assert!(err.contains("not .js or .jsx"), "{err}");
     assert!(err.contains("JSON"), "{err}");
     let js = format!("{dir}/hello.js");
     std::fs::write(&js, "alert('hi');\n").unwrap();
     assert!(s.execute("file.scripts.browse", json!({"path": js})).is_err());
     let err = s.execute("file.scripts.browse", json!({"name": "Resize.jsx", "script": "alert(1);"})).unwrap_err().to_string();
-    assert!(err.contains(".js/.jsx"), "{err}");
+    assert!(err.contains(".js or .jsx"), "{err}");
     // A JSON script still runs even if the file name is not a Photoshop suffix.
     let json = format!("{dir}/rotate.json");
     std::fs::write(&json, r#"[["file.new", {"width": 8, "height": 8}]]"#).unwrap();

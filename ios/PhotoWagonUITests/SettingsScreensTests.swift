@@ -304,7 +304,7 @@ final class SelectAndFilterScreensTests: SettingsScreensTests {
             open("Image", "Mode", "Duotone…", title: "Duotone")
             XCTAssertEqual(app.textFields["duotone.name.1"].value as? String, "Warm Brown")
             pick(app.buttons["duotone.type"], "Tritone")
-            XCTAssert(app.textFields["duotone.name.2"].waitForExistence(timeout: 5))
+            XCTAssert(show(app.textFields["duotone.name.2"], "the third ink").exists)
             app.buttons["settings.run"].tap()
             waitIdle()
             XCTAssertEqual(inspect["mode"] as? String, "Duotone")

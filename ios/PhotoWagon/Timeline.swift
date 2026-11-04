@@ -42,6 +42,9 @@ struct AnimationInfo: Equatable {
     /// The delay menu. No "no delay": viewers play a GIF's shortest delays at 0.1 s anyway.
     static let delays: [Double] = [0.1, 0.2, 0.5, 1, 2, 5, 10]
 
+    /// Times typed in Looping › Other: at least once, at most a GIF's limit.
+    static func typedLoops(_ v: Double) -> Int { v.isFinite ? Int(min(max(v.rounded(), 1), 65_535)) : 1 }
+
     static func loopsLabel(_ n: Int) -> String {
         switch n {
         case 0: "Forever"
@@ -87,6 +90,17 @@ extension EditorModel {
     }
 
     func setLoops(_ n: Int) { run("animation.setLoops", ["loops": n == 0 ? "forever" as Any : n]) }
+
+    /// The frame before or after the current one, stopping at the ends.
+    func stepFrame(by d: Int) {
+        guard let a = animation, a.count > 0 else { return }
+        selectFrame(min(max(a.current + d, 0), a.count - 1))
+    }
+
+    func deleteAnimation() {
+        stopPlaying()
+        run("animation.delete")
+    }
 
     func togglePlay() { playing ? stopPlaying() : startPlaying() }
 
@@ -165,7 +179,7 @@ struct TimelinePanel: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("timeline")
         .task(id: thumbKey) { await loadThumbs() }
-        .alert("Looping", isPresented: $otherLoops) { NumberPrompt(title: "Times") { model.setLoops(max(Int($0), 1)) } } message: { Text("How many times it plays.") }
+        .alert("Looping", isPresented: $otherLoops) { NumberPrompt(title: "Times") { model.setLoops(AnimationInfo.typedLoops($0)) } } message: { Text("How many times it plays.") }
         .alert("Frame Delay", isPresented: $otherDelay) { NumberPrompt(title: "Seconds") { model.setDelay(min(max($0, 0), 600)) } }
     }
 
@@ -180,9 +194,9 @@ struct TimelinePanel: View {
             .accessibilityIdentifier("timeline.loops")
             Spacer(minLength: 0)
             button("backward.end.fill", "First Frame", "timeline.first") { model.selectFrame(0) }
-            button("backward.frame.fill", "Previous Frame", "timeline.previous") { model.selectFrame(max(a.current - 1, 0)) }
+            button("backward.frame.fill", "Previous Frame", "timeline.previous") { model.stepFrame(by: -1) }
             button(model.playing ? "stop.fill" : "play.fill", model.playing ? "Stop" : "Play", "timeline.play") { model.togglePlay() }
-            button("forward.frame.fill", "Next Frame", "timeline.next") { model.selectFrame(min(a.current + 1, a.count - 1)) }
+            button("forward.frame.fill", "Next Frame", "timeline.next") { model.stepFrame(by: 1) }
             Spacer(minLength: 0)
             button("plus.square.on.square", "Duplicate Frame", "timeline.new") { model.newFrame() }
             button("trash", "Delete Frame", "timeline.delete", enabled: a.count > model.framesToChange.count) { model.deleteFrames() }
@@ -191,7 +205,7 @@ struct TimelinePanel: View {
                 Button("Select All Frames") { model.selectedFrames = Set(0..<a.count) }
                 Button("Reverse Frames") { model.run("animation.reverseFrames") }
                 Divider()
-                Button("Delete Animation", role: .destructive) { model.stopPlaying(); model.run("animation.delete") }
+                Button("Delete Animation", role: .destructive) { model.deleteAnimation() }
                 Button("Close Timeline") { model.showTimeline = false }
             } label: { Image(systemName: "ellipsis.circle") }
             .accessibilityLabel("Timeline Menu")
@@ -265,14 +279,14 @@ struct TimelinePanel: View {
 }
 
 /// A number typed in an alert.
-private struct NumberPrompt: View {
+struct NumberPrompt: View {
     let title: String
     let done: (Double) -> Void
     @State private var text = ""
 
     var body: some View {
         TextField(title, text: $text).keyboardType(.numbersAndPunctuation)
-        Button("OK") { if let v = Double(text) { done(v) } }
+        Button("OK") { if let v = Double(text), v.isFinite { done(v) } }
         Button("Cancel", role: .cancel) {}
     }
 }

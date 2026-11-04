@@ -48,13 +48,21 @@ final class LayerStyleState: ObservableObject {
                 StyleEffect(kind: $0["kind"] as? String ?? "", enabled: $0["enabled"] as? Bool ?? true, params: $0["params"] as? [String: Any] ?? [:], fx: $0["fx"])
             }
         }
-        if start != "blendingOptions" {
-            if let e = effects.first(where: { $0.kind == start }) {
-                page = e.id.uuidString
-                if !e.enabled { set(e.id, enabled: true) }
-            } else {
-                add(start)
-            }
+        self.start = start
+    }
+
+    private var start: String?
+
+    /// Shows the effect the sheet was opened on, adding it or turning it on. Not in `init`: SwiftUI
+    /// makes the state while drawing, and this changes the document.
+    func open() {
+        guard let start, start != "blendingOptions" else { return }
+        self.start = nil
+        if let e = effects.first(where: { $0.kind == start }) {
+            page = e.id.uuidString
+            if !e.enabled { set(e.id, enabled: true) }
+        } else {
+            add(start)
         }
     }
 
@@ -200,7 +208,10 @@ struct LayerStyleSheet: View {
                 }
             }
         }
-        .onAppear { style.updateDrag() }
+        .onAppear {
+            style.open()
+            style.updateDrag()
+        }
         .interactiveDismissDisabled()
         .onChange(of: style.page) { _, _ in style.updateDrag() }
         .onDisappear { model.sheetDrag = nil }

@@ -84,7 +84,7 @@ pub fn warp_from_params(cmd: &str, p: &Value, rect: [f64; 4]) -> Result<Warp> {
     let style = match p.get("style").and_then(Value::as_str) {
         Some(st) => WarpStyle::parse(st).ok_or_else(|| bad(cmd, format!("unknown warp style \"{st}\"")))?,
         None if p.get("mesh").is_some() || p.get("grid").is_some() => WarpStyle::Custom,
-        None => return Err(bad(cmd, "pass `style` (arc, flag, …, custom), `mesh` or `warp`")),
+        None => return Err(bad(cmd, "pick a warp style")),
     };
     let mut w = Warp::preset(style, num("bend", 50.0), rect);
     w.h_distort = num("hDistort", 0.0);
@@ -458,7 +458,7 @@ fn split(s: &mut Session, p: &Value, cmd: &str, how: Split) -> Result<Value> {
     let id = st.active_layer.ok_or(EngineError::Other("no active layer".into()))?;
     let layer = st.doc.layer(id).ok_or(EngineError::NoLayer(id))?;
     let LayerContent::Smart(sm) = &layer.content else {
-        return Err(bad(cmd, "pass the warp being edited (`warp`), or select a warped embedded layer"));
+        return Err(bad(cmd, "select a warped embedded layer"));
     };
     let w = sm.warp.clone().unwrap_or_else(|| {
         let b = layer.surface().map_or(Rect::EMPTY, Surface::content_bounds);
@@ -521,7 +521,7 @@ fn grid(s: &mut Session, p: &Value) -> Result<Value> {
     let id = st.active_layer.ok_or(EngineError::Other("no active layer".into()))?;
     let layer = st.doc.layer(id).ok_or(EngineError::NoLayer(id))?;
     let LayerContent::Smart(sm) = &layer.content else {
-        return Err(bad(CMD, "pass the warp being edited (`warp`), or select an embedded layer"));
+        return Err(bad(CMD, "select an embedded layer"));
     };
     let w = sm.warp.clone().unwrap_or_else(|| {
         let b = layer.surface().map_or(Rect::EMPTY, Surface::content_bounds);

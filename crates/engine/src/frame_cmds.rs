@@ -158,6 +158,72 @@ fn new_frame(s: &mut Session, p: &Value) -> Result<Value> {
     Ok(json!({"layer": gid.0, "frame": [x, y, w, h], "shape": if ellipse { "ellipse" } else { "rectangle" }}))
 }
 
+/// A group with an enabled mask, which is what a frame is: its box (the mask's shown area).
+fn frame_box(l: &Layer) -> Option<Rect> {
+    let mask = l.mask.as_ref().filter(|m| m.enabled)?;
+    matches!(l.content, LayerContent::Group(_)).then(|| mask.surface.content_bounds()).filter(|r| !r.is_empty())
+}
+
+/// The visible frames, topmost first: id, box and whether it's an ellipse (its corner hidden).
+fn visible_frames(doc: &photocraft_doc::Document) -> Vec<(LayerId, Rect, bool)> {
+    let rows = doc.walk();
+    rows.iter()
+        .rev()
+        .filter(|(path, _, _)| (1..=path.len()).all(|n| doc.layer_at(&path[..n]).is_some_and(|a| a.visible)))
+        .filter_map(|(_, _, l)| {
+            let r = frame_box(l)?;
+            let ellipse = l.mask.as_ref().is_some_and(|m| m.value(r.x0, r.y0) < 0.5);
+            Some((l.id, r, ellipse))
+        })
+        .collect()
+}
+
+fn frame_json(id: LayerId, r: Rect, ellipse: bool) -> Value {
+    json!({"layer": id.0, "frame": [r.x0, r.y0, r.width(), r.height()], "shape": if ellipse { "ellipse" } else { "rectangle" }})
+}
+
+/// The topmost visible frame whose box holds (x, y), for the Frame tool's tap.
+fn frame_at(s: &mut Session, p: &Value) -> Result<Value> {
+    const CMD: &str = "layer.frame.at";
+    let get = |k: &str| crate::commands::int_i32(CMD, p, k)?.ok_or_else(|| EngineError::BadParams { cmd: CMD.into(), msg: format!("missing `{k}`") });
+    let (x, y) = (get("x")?, get("y")?);
+    let doc = &s.active().ok_or(EngineError::NoDocument)?.doc;
+    Ok(visible_frames(doc).into_iter().find(|(_, r, _)| r.contains(x, y)).map_or_else(|| json!({}), |(id, r, e)| frame_json(id, r, e)))
+}
+
+/// Every visible frame, for the Frame tool's outlines.
+fn frame_list(s: &mut Session, _: &Value) -> Result<Value> {
+    let doc = &s.active().ok_or(EngineError::NoDocument)?.doc;
+    Ok(json!({"frames": visible_frames(doc).into_iter().map(|(id, r, e)| frame_json(id, r, e)).collect::<Vec<_>>()}))
+}
+
+/// Puts `layer` in `frame` in place of what the frame held, as one history step.
+fn fill_frame(s: &mut Session, p: &Value) -> Result<Value> {
+    const CMD: &str = "layer.frame.fill";
+    let bad = |msg: &str| EngineError::BadParams { cmd: CMD.into(), msg: msg.into() };
+    let id = |k: &str| p.get(k).and_then(Value::as_u64).map(LayerId).ok_or_else(|| bad(&format!("`{k}` must be a layer id")));
+    let (fid, lid) = (id("frame")?, id("layer")?);
+    s.edit("Fill Frame", |doc, active| {
+        if frame_box(doc.layer(fid).ok_or(EngineError::NoLayer(fid))?).is_none() {
+            return Err(bad("`frame` is not a frame"));
+        }
+        let l = doc.layer(lid).ok_or(EngineError::NoLayer(lid))?;
+        let framable = matches!(l.content, LayerContent::Raster(_) | LayerContent::Text(_) | LayerContent::Shape(_) | LayerContent::Smart(_));
+        if !framable || doc.is_background(lid) {
+            return Err(bad("only a pixel, type, shape or embedded layer (not the Background) can go in a frame"));
+        }
+        let child = doc.remove(lid).ok_or(EngineError::NoLayer(lid))?;
+        let children = doc.layer_mut(fid).and_then(Layer::children_mut).ok_or(EngineError::NoLayer(fid))?;
+        children.clear();
+        children.push(child);
+        crate::layer_multi_cmds::check_group_depth(doc, "Fill Frame")?;
+        *active = Some(fid);
+        Ok(())
+    })?;
+    crate::layer_multi_cmds::reselect(s, vec![fid], Some(fid));
+    Ok(json!({"layer": fid.0}))
+}
+
 pub fn specs() -> Vec<CommandSpec> {
     vec![
         CommandSpec {
@@ -169,6 +235,36 @@ pub fn specs() -> Vec<CommandSpec> {
             enabled: |s| s.active().map(|_| ()).ok_or_else(|| "no document open".into()),
             journal: true,
             run: new_frame,
+        },
+        CommandSpec {
+            id: "layer.frame.at",
+            label: "Frame at Point",
+            menu: &[],
+            shortcut: None,
+            params: r#"{"x":i32,"y":i32} → {layer, frame:[x,y,w,h], shape} | {}: the topmost visible frame whose box holds the point"#,
+            enabled: |s| s.active().map(|_| ()).ok_or_else(|| "no document open".into()),
+            journal: false,
+            run: frame_at,
+        },
+        CommandSpec {
+            id: "layer.frame.list",
+            label: "Frames",
+            menu: &[],
+            shortcut: None,
+            params: r#"{} → {frames:[{layer, frame:[x,y,w,h], shape}]}: the visible frames, topmost first"#,
+            enabled: |s| s.active().map(|_| ()).ok_or_else(|| "no document open".into()),
+            journal: false,
+            run: frame_list,
+        },
+        CommandSpec {
+            id: "layer.frame.fill",
+            label: "Fill Frame",
+            menu: &[],
+            shortcut: None,
+            params: r#"{"frame":id,"layer":id} → {layer}: pixel, type, shape or embedded layer `layer` goes in frame `frame`, in place of what it held"#,
+            enabled: |s| s.active().map(|_| ()).ok_or_else(|| "no document open".into()),
+            journal: true,
+            run: fill_frame,
         },
         CommandSpec {
             id: "layer.new.frameFromLayers",
@@ -295,6 +391,29 @@ mod tests {
         assert!(matches!(&g.content, LayerContent::Group(c) if c.children.iter().map(|l| l.id).eq([tid])), "the frame holds the type layer");
         assert!(s.undo());
         assert!(s.active().unwrap().doc.layer(tid).is_some(), "undo gives the type layer back");
+    }
+
+    /// The Frame tool's tap finds a frame by its box, and a picture put in it replaces what it held.
+    #[test]
+    fn a_frame_is_found_by_its_box_and_refilled() {
+        let (mut s, a, b) = session();
+        let fid = s.execute("layer.new.frame", json!({"x": 10, "y": 10, "width": 40, "height": 30, "layer": a.0})).unwrap()["layer"].as_u64().unwrap();
+        let found = json!({"layer": fid, "frame": [10, 10, 40, 30], "shape": "rectangle"});
+        assert_eq!(s.execute("layer.frame.at", json!({"x": 20, "y": 20})).unwrap(), found);
+        let oval = s.execute("layer.new.frame", json!({"x": 60, "y": 40, "width": 10, "height": 10, "shape": "ellipse"})).unwrap()["layer"].clone();
+        let list = s.execute("layer.frame.list", json!({})).unwrap();
+        assert_eq!(list["frames"], json!([{"layer": oval, "frame": [60, 40, 10, 10], "shape": "ellipse"}, found]), "topmost first");
+        assert_eq!(s.execute("layer.frame.at", json!({"x": 5, "y": 5})).unwrap(), json!({}));
+        s.execute("layer.frame.fill", json!({"frame": fid, "layer": b.0})).unwrap();
+        let ids = |s: &Session| s.active().unwrap().doc.layer(LayerId(fid)).and_then(|g| g.children()).unwrap().iter().map(|l| l.id).collect::<Vec<_>>();
+        assert_eq!(ids(&s), [b], "B replaces A");
+        assert!(s.active().unwrap().doc.layer(a).is_none());
+        assert!(s.undo());
+        assert_eq!(ids(&s), [a], "one undo puts A back");
+        let bg = s.active().unwrap().doc.layers[0].id;
+        assert!(s.execute("layer.frame.fill", json!({"frame": b.0, "layer": a.0})).is_err(), "B isn't a frame");
+        assert!(s.execute("layer.frame.fill", json!({"frame": fid, "layer": bg.0})).is_err(), "not the Background");
+        assert!(s.execute("layer.frame.at", json!({"x": "a"})).is_err());
     }
 
     #[test]

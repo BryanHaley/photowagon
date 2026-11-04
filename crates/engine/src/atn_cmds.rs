@@ -3123,7 +3123,7 @@ pub fn export(
                     skipped.push(Skipped { action: a.name.clone(), step: i, id: id.clone() });
                     continue;
                 }
-                return Err(format!("step {} of `{}` (`{id}`) has no Photoshop equivalent; pass \"skipUnsupported\": true to leave it out", i + 1, a.name));
+                return Err(format!("step {} of `{}` (`{id}`) can't be written to an actions file; pass \"skipUnsupported\": true to leave it out", i + 1, a.name));
             };
             item.enabled = a.step_enabled(i);
             item.with_dialog = a.dialogs.contains(&i);
@@ -3288,7 +3288,7 @@ fn stop_message(_: &mut Session, p: &Value) -> Result<Value> {
 fn photoshop_step_run(_: &mut Session, p: &Value) -> Result<Value> {
     let name = jstr(p, "name").filter(|n| !n.is_empty()).unwrap_or("this step");
     let event = jstr(p, "event").unwrap_or("?");
-    Err(EngineError::Other(format!("Photoshop step \"{name}\" ({event}) has no PhotoCraft equivalent yet; switch it off in the Actions panel to skip it")))
+    Err(EngineError::Other(format!("The action's step \"{name}\" ({event}) can't play here yet; switch it off in the Actions panel to skip it")))
 }
 
 pub fn specs() -> Vec<CommandSpec> {

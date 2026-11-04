@@ -132,6 +132,61 @@ struct TransformBox: Equatable {
     }
 }
 
+/// The Type tool's box around a text layer: drag inside to move it, a corner to change its font
+/// size, outside a corner or the knob to turn it, without opening Free Transform.
+struct TypeBox: Equatable {
+    var box: TransformBox
+    /// The text's anchor (text-space origin) and its linear part, in document pixels.
+    let anchor: Point
+    let linear: [Double]
+
+    /// From `type.info`: the laid-out lines, turned and placed as the layer is; the upright layer
+    /// bounds when it's vertical, warped, scaled or skewed. None for text on a path.
+    init?(info: [String: Any]) {
+        guard let m = (info["transform"] as? [NSNumber])?.map(\.doubleValue), m.count == 6,
+              (info["shape"] as? [String: Any])?["Path"] == nil else { return nil }
+        anchor = Point(x: Float(m[4]), y: Float(m[5]))
+        let lines = info["lines"] as? [[String: Any]] ?? []
+        let turnOnly = abs(m[0] - m[3]) < 1e-6 && abs(m[1] + m[2]) < 1e-6 && abs(m[0] * m[3] - m[1] * m[2] - 1) < 1e-3
+        let plain = info["orientation"] as? String != "Vertical" && (info["warp"] == nil || info["warp"] is NSNull)
+        let v = { (l: [String: Any], k: String) in (l[k] as? NSNumber)?.doubleValue ?? 0 }
+        if turnOnly, plain, !lines.isEmpty {
+            let (u0, u1) = (lines.map { v($0, "x0") }.min() ?? 0, lines.map { v($0, "x1") }.max() ?? 0)
+            let v0 = lines.map { v($0, "baseline") - abs(v($0, "ascent")) }.min() ?? 0
+            let v1 = lines.map { v($0, "baseline") + abs(v($0, "descent")) }.max() ?? 0
+            guard u1 > u0, v1 > v0 else { return nil }
+            // The text, unturned, at its anchor; turned about its centre to where the layer has it.
+            var b = TransformBox(x0: Float(u0) + anchor.x, y0: Float(v0) + anchor.y, x1: Float(u1) + anchor.x, y1: Float(v1) + anchor.y)
+            b.angle = Float(atan2(m[1], m[0]))
+            let c = b.center
+            let (cs, sn) = (cos(b.angle), sin(b.angle))
+            let (rx, ry) = (c.x - anchor.x, c.y - anchor.y)
+            (b.dx, b.dy) = (rx * cs - ry * sn + anchor.x - c.x, rx * sn + ry * cs + anchor.y - c.y)
+            box = b
+            linear = [1, 0, 0, 1]
+        } else {
+            guard let r = (info["bounds"] as? [NSNumber])?.map(\.floatValue), r.count == 4, r[2] > r[0], r[3] > r[1] else { return nil }
+            box = TransformBox(x0: r[0], y0: r[1], x1: r[2], y1: r[3])
+            linear = Array(m[0..<4])
+        }
+    }
+
+    /// `type.edit` for the text after its box became `t`: the scale goes into the font size
+    /// (uniform; `nil` for a flip or no change).
+    func edit(_ t: TransformBox) -> [String: Any]? {
+        let s = Double(t.sx)
+        guard s > 0, abs(t.sx - t.sy) < 1e-4, t != box else { return nil }
+        let (cs, sn) = (cos(Double(t.angle)), sin(Double(t.angle)))
+        let l = linear
+        let lin = [cs * l[0] - sn * l[1], sn * l[0] + cs * l[1], cs * l[2] - sn * l[3], sn * l[2] + cs * l[3]]
+        let p = t.origin
+        let (ox, oy) = (Double(anchor.x - p.x), Double(anchor.y - p.y))
+        let tx = Double(p.x + t.dx) + s * (cs * ox - sn * oy)
+        let ty = Double(p.y + t.dy) + s * (sn * ox + cs * oy)
+        return ["scale": s, "transform": lin + [tx, ty]]
+    }
+}
+
 extension EditorModel {
     /// Free Transform: turn the box by `degrees` (positive clockwise, as on screen).
     func rotateTransform(by degrees: Float) {
@@ -149,6 +204,8 @@ struct TextPrompt: Identifiable {
     let id = UUID()
     let title: String
     var text: String
+    /// Return starts a new line; OK finishes (type).
+    var multiline = false
     let done: (String) -> Void
 }
 
@@ -268,10 +325,13 @@ final class EditorModel: ObservableObject {
             if oldValue == .crop { cropRect = nil }
             if oldValue == .perspectiveCrop || oldValue == .polygonLasso { quad = [] }
             if oldValue == .ruler { ruler = nil }
+            if oldValue == .frame { pendingFrame = nil }
             marqueeBox = nil
             if tool.pathTool || tool.shapeTool { loadWorkPath() }
             if let g = pickingGroup, !Tool.groups[g].contains(tool) { pickingGroup = nil }
             if tool == .objectSelect { showObjects(at: nil) } else { clearObjectHighlight() }
+            refreshTypeBox()
+            refreshFrames()
         }
     }
     /// The tool before this one (a Pencil double-tap's Previous Tool), and before the Eraser.
@@ -379,6 +439,8 @@ final class EditorModel: ObservableObject {
     /// Free Transform: corners scale about the reference point (⌥ in Photoshop).
     @Published var scaleFromPivot = false
     // Type tool
+    /// The selected text layer's colour (RGB documents), shown in the Type options.
+    @Published var typeColor: [Float]?
     @Published var typeFont = ""
     @Published var typeSize = 0.0
     @Published var typeAlign = "left"
@@ -400,6 +462,8 @@ final class EditorModel: ObservableObject {
             typeSize = c["size_pt"] as? Double ?? typeSize
             typeTracking = c["tracking"] as? Double ?? 0
             typeLeading = c["leading_pt"] as? Double ?? 0
+            let color = c["color"] as? [String: Any]
+            typeColor = color?["mode"] as? String == "Rgb" ? (color?["c"] as? [Double])?.prefix(3).map(Float.init) : nil
         }
         if let p = ((i["paragraphs"] as? [[String: Any]])?.first?["style"]) as? [String: Any], let a = p["align"] as? String {
             typeAlign = a.hasSuffix("Center") || a == "Center" ? "center" : a.hasSuffix("Right") || a == "Right" ? "right" : "left"
@@ -491,6 +555,63 @@ final class EditorModel: ObservableObject {
             if transform != oldValue { previewTransform() }
         }
     }
+    /// With a Type tool, the selected text layer's box (`refreshTypeBox`); while one of its handles
+    /// is dragged, `transform` holds the moving box and `typeDrag` is on.
+    @Published var typeBox: TypeBox? {
+        didSet { if typeBox != oldValue { overlayDirty = true } }
+    }
+    var typeDrag = false
+    /// The text layer the Type options' Done let go of: no box, and the options are for new text.
+    @Published var typeDone: UInt64? {
+        didSet { if typeDone != oldValue { refreshTypeBox() } }
+    }
+
+    /// The selected text layer, unless Done let go of it.
+    var editingText: UInt64? {
+        guard let l = activeLayer, l.kind == "Type", l.id != typeDone else { return nil }
+        return l.id
+    }
+
+    /// The Type options' Done: stop working on the selected text.
+    func finishEditingText() {
+        typeDone = activeLayer?.id
+        typeColor = nil
+    }
+
+    /// The layer and document revision `typeBox` was made from: `type.info` lays out all the text.
+    private var typeBoxFor: (layer: UInt64, revision: UInt64)?
+
+    func refreshTypeBox() {
+        guard [.type, .verticalType].contains(tool), transform == nil, let id = editingText, let revision = doc?.revision else {
+            if !typeDrag { typeBox = nil }
+            typeBoxFor = nil
+            return
+        }
+        if let f = typeBoxFor, f.layer == id, f.revision == revision { return }
+        typeBoxFor = (id, revision)
+        guard let out = try? editor.execute(id: "type.info", params: json(["layer": id])),
+              let info = try? JSONSerialization.jsonObject(with: Data(out.utf8)) as? [String: Any] else {
+            typeBox = nil
+            return
+        }
+        typeBox = TypeBox(info: info)
+    }
+
+    /// The Type box let go: the text moves, turns and takes the new size in one step.
+    func commitTypeBox() {
+        guard typeDrag else { return }
+        typeDrag = false
+        let t = transform
+        transform = nil
+        editor.endPreview()
+        if let t, let b = typeBox, let l = activeLayer, var p = b.edit(t) {
+            p["layer"] = l.id
+            run("type.edit", p)
+            loadTypeOptions(layer: l.id)
+        }
+        refreshTypeBox()
+        needsDraw = true
+    }
     /// Edit › Puppet Warp while it is open: pins and options.
     @Published var puppet: Puppet? {
         didSet {
@@ -533,7 +654,7 @@ final class EditorModel: ObservableObject {
     }()
 
     /// Something waits for Commit (Return) or Cancel (Esc).
-    var hasPending: Bool { cropRect != nil || !quad.isEmpty || transform != nil || puppet != nil || !removeStrokes.isEmpty || fluidWarp != nil }
+    var hasPending: Bool { cropRect != nil || !quad.isEmpty || (transform != nil && !typeDrag) || puppet != nil || !removeStrokes.isEmpty || fluidWarp != nil }
 
     /// Something the app shell shows or does, asked for from a menu, key or button.
     enum Request: Equatable {
@@ -547,6 +668,9 @@ final class EditorModel: ObservableObject {
         case cropRotate
         /// Layer Style, at Blending Options or an effect kind.
         case layerStyle(String)
+        /// Ask for a folder, then run the command that writes files into it.
+        case exportToFolder(String)
+        case commandFile(String)
     }
 
     enum Panel: String, Identifiable {
@@ -574,6 +698,9 @@ final class EditorModel: ObservableObject {
         case "window.toggle.actions": .panel(.actions)
         case "filter.cameraRaw": .cameraRaw
         case "layer.new.layer": .newLayer
+        case "file.export.renderVideo", "file.export.dataSetsAsFiles": .exportToFolder(id)
+        case "file.import.notes", "file.import.variableDataSets", "file.import.videoFramesToLayers", "layer.videoLayers.newVideoLayerFromFile",
+             "layer.videoLayers.replaceFootage", "plugin.install", "file.scripts.browse": .commandFile(id)
         case _ where id.hasPrefix("layer.layerStyle.") && (LayerStyle.kinds.contains { $0.kind == id.dropFirst(17) } || id.hasSuffix(".blendingOptions")):
             .layerStyle(String(id.dropFirst(17)))
         default: nil
@@ -722,11 +849,85 @@ final class EditorModel: ObservableObject {
         } catch { show(error); return }
         var params: [String: Any] = ["path": url.path]
         if let embedded { params["smartObject"] = embedded }
+        if let f = pendingFrame { params["coalesce"] = f.key }
         let p = json(params)
         whileBusy({ editor in _ = try editor.execute(id: "file.placeEmbedded", params: p) }, then: { [weak self] in
             try? FileManager.default.removeItem(at: dir)
-            self?.beginTransform()
+            guard let self else { return }
+            if let frame = self.pendingFrame {
+                self.pendingFrame = nil
+                self.fillFrame(frame)
+            } else {
+                self.beginTransform()
+            }
         })
+    }
+
+    /// A frame waiting for the picture the Place sheet brings: its layer and box. Making the
+    /// frame, placing the picture and putting it in share one undo step (`key`).
+    struct PendingFrame: Equatable {
+        var layer: Int
+        var rect: [Int]
+        var key = "frame-\(UUID().uuidString)"
+    }
+    var pendingFrame: PendingFrame?
+
+    /// The Frame tool's box: an empty frame, then pick a picture to go in it.
+    func drewFrame(_ rect: [Int]) {
+        let key = "frame-\(UUID().uuidString)"
+        guard rect.count == 4, rect[2] > 0, rect[3] > 0,
+              let out = run("layer.new.frame", ["x": rect[0], "y": rect[1], "width": rect[2], "height": rect[3], "coalesce": key]) as? [String: Any],
+              let layer = out["layer"] as? Int else { return }
+        pendingFrame = PendingFrame(layer: layer, rect: rect, key: key)
+        request = .placeFiles
+    }
+
+    /// A frame's box and shape, outlined while the Frame tool is on.
+    struct FrameOutline: Equatable {
+        var rect: [Int]
+        var ellipse: Bool
+    }
+    @Published var frameOutlines: [FrameOutline] = [] {
+        didSet { if frameOutlines != oldValue { overlayDirty = true } }
+    }
+
+    func refreshFrames() {
+        guard tool == .frame, let out = try? editor.execute(id: "layer.frame.list", params: "{}"),
+              let obj = try? JSONSerialization.jsonObject(with: Data(out.utf8)) as? [String: Any],
+              let frames = obj["frames"] as? [[String: Any]] else {
+            frameOutlines = []
+            return
+        }
+        frameOutlines = frames.compactMap { f in
+            guard let r = f["frame"] as? [Int], r.count == 4 else { return nil }
+            return FrameOutline(rect: r, ellipse: f["shape"] as? String == "ellipse")
+        }
+    }
+
+    /// The Frame tool's tap: on a frame, pick a new picture for it. False when there's none there.
+    @discardableResult
+    func tappedFrame(at x: Int, _ y: Int) -> Bool {
+        guard let raw = try? editor.execute(id: "layer.frame.at", params: json(["x": x, "y": y])),
+              let out = try? JSONSerialization.jsonObject(with: Data(raw.utf8)) as? [String: Any], let layer = out["layer"] as? Int,
+              let rect = out["frame"] as? [Int], rect.count == 4 else { return false }
+        pendingFrame = PendingFrame(layer: layer, rect: rect)
+        request = .placeFiles
+        return true
+    }
+
+    /// The layer just placed, scaled to cover the frame's box (keeping its shape) and centred on
+    /// it, then put in the frame in place of what it held.
+    func fillFrame(_ frame: PendingFrame) {
+        sync()
+        let rect = frame.rect
+        guard let layer = activeLayer, let b = layer.bounds, b.count == 4, b[2] > 0, b[3] > 0, rect.count == 4 else { return }
+        let (fx, fy, fw, fh) = (Double(rect[0]), Double(rect[1]), Double(rect[2]), Double(rect[3]))
+        let scale = max(fw / b[2], fh / b[3])
+        let (w, h) = (b[2] * scale, b[3] * scale)
+        let (x0, y0) = (fx + (fw - w) / 2, fy + (fh - h) / 2)
+        run("edit.transform", ["layer": layer.id, "rect": [b[0], b[1], b[0] + b[2], b[1] + b[3]],
+                               "quad": [[x0, y0], [x0 + w, y0], [x0 + w, y0 + h], [x0, y0 + h]], "coalesce": frame.key])
+        run("layer.frame.fill", ["frame": frame.layer, "layer": layer.id, "coalesce": frame.key])
     }
 
     /// Several files placed at once, each a layer named after it, committed as they land (no
@@ -747,6 +948,7 @@ final class EditorModel: ObservableObject {
         let ps = paths.map { p -> String in
             var params: [String: Any] = ["path": p]
             if let embedded { params["smartObject"] = embedded }
+            if let f = pendingFrame { params["coalesce"] = f.key }
             return json(params)
         }
         let box = ResultBox()
@@ -756,7 +958,14 @@ final class EditorModel: ObservableObject {
         }, then: { [weak self] in
             try? FileManager.default.removeItem(at: dir)
             // A failure has shown its own message.
-            if box.out != nil { self?.toast = "Placed \(ps.count) files" }
+            guard let self, box.out != nil else { return }
+            if let frame = self.pendingFrame {
+                // Several picked for one frame: the last one goes in it.
+                self.pendingFrame = nil
+                self.fillFrame(frame)
+            } else {
+                self.toast = "Placed \(ps.count) files"
+            }
         })
     }
 
@@ -967,6 +1176,7 @@ final class EditorModel: ObservableObject {
     }
 
     func run(_ id: String, _ params: [String: Any] = [:]) -> Any? {
+        noteDispatched(id, params)
         do {
             let out = try editor.execute(id: id, params: json(params))
             sync()
@@ -976,6 +1186,15 @@ final class EditorModel: ObservableObject {
             sync()
             return nil
         }
+    }
+
+    /// UI tests only: the commands sent lately, newest last, for Omega's touch tier.
+    private(set) var dispatched: [String] = []
+
+    private func noteDispatched(_ id: String, _ params: [String: Any]) {
+        guard TestProbe.enabled else { return }
+        dispatched.append(params.isEmpty ? id : "\(id) \(json(params))")
+        if dispatched.count > 50 { dispatched.removeFirst() }
     }
 
     /// Run slow work off the main thread; the canvas waits.
@@ -1143,6 +1362,7 @@ final class EditorModel: ObservableObject {
 
     /// Run a slow command off the main thread; `then` gets its JSON result.
     func runInBackground(_ id: String, _ params: [String: Any] = [:], then: (([String: Any]?) -> Void)? = nil) {
+        noteDispatched(id, params)
         let p = json(params)
         let box = ResultBox()
         whileBusy({ editor in box.out = try editor.execute(id: id, params: p) }, then: {
@@ -1411,6 +1631,10 @@ final class EditorModel: ObservableObject {
         }
         foreground = UIColor(rgba: t.foreground)
         backgroundColor = UIColor(rgba: t.background)
+        // Done lets go of one text layer; another one selected is worked on again.
+        if typeDone != nil, activeLayer?.id != typeDone { typeDone = nil }
+        refreshTypeBox()
+        refreshFrames()
         needsDraw = true
         overlayDirty = true
     }
@@ -1446,8 +1670,8 @@ final class EditorModel: ObservableObject {
 
     /// Settings that start from the document: a width and height marked `=current` (Image Size,
     /// Canvas Size) start at its size, a layer name at the active layer's.
-    func startingValues(_ fields: [ParamField]) -> [String: Any] {
-        guard let d = doc else { return [:] }
+    func startingValues(_ fields: [ParamField], for id: String = "") -> [String: Any] {
+        guard let d = doc, id != "select.findLayers" else { return [:] }
         var out: [String: Any] = [:]
         for f in fields {
             switch f.kind {
@@ -1476,6 +1700,7 @@ final class EditorModel: ObservableObject {
     /// A menu item: Puppet Warp's pins, one of the app's own screens, the settings of an item
     /// that has them ("…"), or the command itself.
     func perform(_ c: CommandInfo) {
+        noteDispatched(c.id, [:])
         if c.id == "edit.puppetWarp" {
             beginPuppet()
         } else if c.id == "filter.liquify" {
@@ -1750,6 +1975,22 @@ final class EditorModel: ObservableObject {
         }
     }
 
+    /// Writes `data` as `name` for the share sheet, in a new folder each time: share targets cache
+    /// by URL, and a reused path can send the image shared before. Shares older than ten minutes
+    /// go (a newer one may still be sending).
+    nonisolated static func shareFile(_ data: Data, name: String, in root: URL = FileManager.default.temporaryDirectory.appendingPathComponent("Share")) throws -> URL {
+        let fm = FileManager.default
+        for old in (try? fm.contentsOfDirectory(at: root, includingPropertiesForKeys: [.contentModificationDateKey])) ?? [] {
+            let date = (try? old.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? .distantPast
+            if date < Date().addingTimeInterval(-600) { try? fm.removeItem(at: old) }
+        }
+        let dir = root.appendingPathComponent(UUID().uuidString)
+        try fm.createDirectory(at: dir, withIntermediateDirectories: true)
+        let url = dir.appendingPathComponent(name)
+        try data.write(to: url, options: .atomic)
+        return url
+    }
+
     var fileStem: String {
         let name = doc?.name ?? "Untitled"
         return (name as NSString).deletingPathExtension
@@ -1759,6 +2000,17 @@ final class EditorModel: ObservableObject {
 
     func setForeground(_ c: UIColor) {
         run("tools.setColors", ["foreground": c.hex])
+    }
+
+    /// The Type options' colour: the selected text layer's (one undo step per `edit`), else the
+    /// foreground, which new text takes.
+    func setTypeColor(_ rgb: [Float], edit: Int) {
+        guard let id = editingText else {
+            setForeground(UIColor(red: CGFloat(rgb[safe: 0] ?? 0), green: CGFloat(rgb[safe: 1] ?? 0), blue: CGFloat(rgb[safe: 2] ?? 0), alpha: 1))
+            return
+        }
+        run("type.setStyle", ["layer": id, "color": ColorRow.hex(rgb), "coalesce": "type-color-\(edit)"])
+        typeColor = rgb
     }
 
     func swapColors() {
@@ -1933,6 +2185,8 @@ final class EditorModel: ObservableObject {
             } else if pts.count >= 3 {
                 run("select.lasso", ["points": pts.map { [Double($0.x), Double($0.y)] }, "mode": selectionMode.rawValue].merging(edgeParams) { a, _ in a })
             }
+        } else if typeDrag {
+            commitTypeBox()
         } else if let t = transform {
             transform = nil
             run("edit.transform", transformParams(t))
@@ -1952,6 +2206,7 @@ final class EditorModel: ObservableObject {
         cropAngle = 0
         straightening = false
         quad = []
+        typeDrag = false
         transform = nil
         if puppet != nil {
             puppet = nil

@@ -1477,6 +1477,7 @@ fn build() -> Vec<CommandSpec> {
     v.extend(crate::eraser_cmds::specs());
     v.extend(crate::preset_import_cmds::specs());
     v.extend(crate::stats_cmds::specs());
+    v.extend(crate::fingerprint_cmds::specs());
     v.extend(crate::visibility_cmds::specs());
     v.extend(crate::atn_cmds::specs());
     v.extend(crate::actions_edit_cmds::specs());

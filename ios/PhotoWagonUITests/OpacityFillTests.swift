@@ -133,6 +133,7 @@ final class FakeSunTests: OpacityFillTests {
     func testFakeSun() {
         let (sx, sy) = (450.0, 450.0)
         let around = [Int(sx) - 150, Int(sy) - 150, Int(sx) + 150, Int(sy) + 150]
+        var radius = 175.0
 
         step("Open the dog photo; a new layer, the Soft Round brush, bigger, a bright yellow; dab in the middle") {
             app.buttons["home.open"].tap()
@@ -141,9 +142,11 @@ final class FakeSunTests: OpacityFillTests {
             newLayer()
             tool(group: "Brush", pick: "Brush")
             brushTip("General", "Soft Round")
-            // About 350 px.
-            option("Size", 0.85)
+            slide(app.sliders["option.Size"].firstMatch, to: 350, value: { self.brushSize }, position: sizePosition, tolerance: 50)
+            XCTAssertGreaterThan(brushSize, 150, "a big brush")
+            radius = brushSize / 2
             pickColor(containing: "yellow")
+            XCTAssertGreaterThan(colors.fg.first ?? 0, 0.8, "a bright yellow: \(colors.fg)")
             at(sx, sy).tap()
             waitIdle()
             let dab = stats([Int(sx) - 20, Int(sy) - 20, Int(sx) + 20, Int(sy) + 20], of: "pixels", layer: "Layer 1").mean
@@ -156,7 +159,7 @@ final class FakeSunTests: OpacityFillTests {
             pick(app.buttons["layers.blend"], "Color Dodge")
             XCTAssertEqual(layer(named: "Layer 1")?["blend"] as? String, "Color Dodge")
             // The dab's fading edge, where its transparency now acts as Fill.
-            let edge = [Int(sx) + 110, Int(sy) - 40, Int(sx) + 190, Int(sy) + 40]
+            let edge = [Int(sx + radius * 0.6), Int(sy - radius * 0.2), Int(sx + radius), Int(sy + radius * 0.2)]
             let before = stats(edge).mean
             openStyle("Layer 1")
             flip("style.transparencyShapesLayer")
@@ -214,7 +217,7 @@ final class LayerStylesTests: OpacityFillTests {
             pickColor(containing: "orange")
             tool(group: "Horizontal Type", pick: "Horizontal Type")
             at(w * 0.3, h * 0.4).tap()
-            replace(app.textFields["prompt.field"], with: "CONCRETE")
+            replace(promptField, with: "CONCRETE")
             app.buttons["prompt.ok"].firstMatch.tap()
             replace(app.textFields["type.size"], with: "260")
             tool(group: "Move", pick: "Move")

@@ -17,6 +17,8 @@ required-features = ["bindgen"]
 [features]
 # The Swift binding generator (`cargo xtask ios`).
 bindgen = ["uniffi/cli"]
+# Omega's Rust coverage: `coverage_write` writes the line counts (with -Cinstrument-coverage).
+coverage = []
 
 # UniFFI's generated glue exports C functions, the canvas surface is made from a raw
 # CAMetalLayer pointer (one `unsafe` call in canvas.rs), and LibRaw is called through C (libraw.rs).

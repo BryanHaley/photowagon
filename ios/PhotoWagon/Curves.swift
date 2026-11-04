@@ -364,7 +364,7 @@ struct CurveGraph: View {
                     ctx.stroke(Self.path(outs, size), with: .color(tint == .primary ? .white : tint), lineWidth: 2)
                     guard map == nil else { return }
                     for (i, p) in points.enumerated() {
-                        let v = view(p, size)
+                        let v = Self.view(p, size)
                         let r = CGRect(x: v.x - 6, y: v.y - 6, width: 12, height: 12)
                         if i == selected { ctx.fill(Path(r), with: .color(.white)) } else { ctx.stroke(Path(r), with: .color(.white), lineWidth: 1.5) }
                     }
@@ -381,8 +381,8 @@ struct CurveGraph: View {
         .accessibilityValue(points.map { "\(Int($0.x)),\(Int($0.y))" }.joined(separator: " "))
     }
 
-    private func view(_ p: CGPoint, _ s: CGSize) -> CGPoint { CGPoint(x: p.x / 255 * s.width, y: (1 - p.y / 255) * s.height) }
-    private func curve(_ v: CGPoint, _ s: CGSize) -> CGPoint { CGPoint(x: v.x / max(s.width, 1) * 255, y: (1 - v.y / max(s.height, 1)) * 255) }
+    static func view(_ p: CGPoint, _ s: CGSize) -> CGPoint { CGPoint(x: p.x / 255 * s.width, y: (1 - p.y / 255) * s.height) }
+    static func curve(_ v: CGPoint, _ s: CGSize) -> CGPoint { CGPoint(x: v.x / max(s.width, 1) * 255, y: (1 - v.y / max(s.height, 1)) * 255) }
 
     private static func path(_ outs: [Double], _ s: CGSize) -> Path {
         Path { p in
@@ -394,15 +394,22 @@ struct CurveGraph: View {
     }
 
     private func drag(_ start: CGPoint, _ location: CGPoint, _ s: CGSize) {
-        let c = curve(location, s)
+        let c = Self.curve(location, s)
         if let map {
-            draw(map, from: lastDraw ?? c, to: c)
+            if let m = Self.draw(map.wrappedValue, from: lastDraw ?? c, to: c) { map.wrappedValue = m }
             lastDraw = c
             return
         }
+        Self.drag(&points, &dragging, &selected, from: start, to: location, size: s)
+    }
+
+    /// A drag on a graph of size `s`: picks up the point near `start` (or adds one there) and
+    /// moves it to `location`.
+    static func drag(_ points: inout [CGPoint], _ dragging: inout Int?, _ selected: inout Int?, from start: CGPoint, to location: CGPoint, size s: CGSize) {
         if dragging == nil {
-            let distance = { (i: Int) in hypot(view(points[i], s).x - start.x, view(points[i], s).y - start.y) }
-            if let near = points.indices.min(by: { distance($0) < distance($1) }), distance(near) < 28 {
+            let pts = points
+            let distance = { (i: Int) in hypot(view(pts[i], s).x - start.x, view(pts[i], s).y - start.y) }
+            if let near = pts.indices.min(by: { distance($0) < distance($1) }), distance(near) < 28 {
                 dragging = near
             } else {
                 dragging = CurvesValues.insert(&points, curve(start, s))
@@ -418,18 +425,19 @@ struct CurveGraph: View {
             selected = nil
             return
         }
-        CurvesValues.move(&points, i, to: c)
+        CurvesValues.move(&points, i, to: curve(location, s))
     }
 
-    private func draw(_ map: Binding<[Double]>, from a: CGPoint, to b: CGPoint) {
-        var m = map.wrappedValue
-        guard m.count == 256 else { return }
+    /// The pencil's line from `a` to `b` (curve points) drawn into `m`; `nil` unless `m` has 256 levels.
+    static func draw(_ m: [Double], from a: CGPoint, to b: CGPoint) -> [Double]? {
+        guard m.count == 256 else { return nil }
+        var m = m
         let (x0, x1) = (Int(min(max(a.x, 0), 255)), Int(min(max(b.x, 0), 255)))
         for x in min(x0, x1)...max(x0, x1) {
             let t = x1 == x0 ? 1 : Double(x - x0) / Double(x1 - x0)
             m[x] = min(max(Double(a.y) + (Double(b.y) - Double(a.y)) * t, 0), 255)
         }
-        map.wrappedValue = m
+        return m
     }
 }
 

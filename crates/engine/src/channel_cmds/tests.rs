@@ -915,3 +915,14 @@ fn layers_panel_mask_target_isolates_the_curve_channel() {
     let row = isolated_curve_channel_for(s.active().unwrap(), true).expect("quick mask wins");
     assert_eq!((row.name.as_str(), row.gray), ("Quick Mask", Some(GraySurface::QuickMask)));
 }
+
+#[test]
+fn split_and_merge_keep_the_look_at_32_bits() {
+    let mut s = Session::new();
+    s.execute("file.new", json!({"width": 4, "height": 4, "depth": 32})).unwrap();
+    s.execute("channel.split", json!({})).unwrap();
+    assert!(s.active().unwrap().doc.icc_profile.is_some(), "a split channel says it is linear");
+    s.execute("channel.merge", json!({"mode": "rgb"})).unwrap();
+    let p = crate::color_cmds::document_profile(&s.active().unwrap().doc);
+    assert!(!p.same_colors(photocraft_cms::Builtin::Srgb.profile()), "the merged document says it is linear");
+}

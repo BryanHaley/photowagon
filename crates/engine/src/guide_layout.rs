@@ -151,7 +151,7 @@ pub fn calculate(s: &Session, p: &Value) -> Result<Layout> {
         axis(y0, y1, rows, height, row_gap, center, &mut added.horizontal)?;
     }
     if added.vertical.is_empty() && added.horizontal.is_empty() {
-        return Err(bad("give \"columns\", \"rows\" or a \"margin\""));
+        return Err(bad("set columns, rows or a margin"));
     }
     let mut guides = st.doc.guides.clone();
     if clear {

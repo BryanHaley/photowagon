@@ -507,3 +507,17 @@ fn liquify_preview_warps_a_copy_like_the_command() {
     assert!(worst(&before, &preview, Rect::new(10, 10, 60, 40)) > 0.1, "the preview moved pixels");
     assert!(worst(&preview, &active_surface(&s), Rect::new(0, 0, 80, 60)) < 1e-4, "as the command does");
 }
+
+#[test]
+fn perspective_refuses_corners_that_throw_the_content_too_far() {
+    let mut s = Session::new();
+    s.execute("file.new", json!({"width": 2000, "height": 2000})).unwrap();
+    let p = json!({"planes": [{"src": [[0, 0], [9, 0], [9, 300], [0, 300]], "dst": [[0, 30], [8, 45], [7, 270], [1, 255]]}]});
+    let start = std::time::Instant::now();
+    assert!(s.execute(PERSPECTIVE, p).is_err());
+    // 20 times bigger each way: no vanishing line, but still 400 MP to make.
+    s.execute("file.new", json!({"width": 1000, "height": 1000})).unwrap();
+    let p = json!({"planes": [{"src": [[0, 0], [100, 0], [100, 100], [0, 100]], "dst": [[0, 0], [2000, 0], [2000, 2000], [0, 2000]]}]});
+    assert!(s.execute(PERSPECTIVE, p).is_err());
+    assert!(start.elapsed().as_secs() < 10, "refused quickly");
+}

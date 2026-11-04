@@ -43,6 +43,20 @@ fn with_timeline(s: &mut Session, f: impl FnOnce(&mut Option<Timeline>)) -> Resu
     info(s)
 }
 
+/// [`with_timeline`] as an undo step.
+fn edit_timeline(s: &mut Session, label: &str, f: impl FnOnce(&mut Option<Timeline>)) -> Result<Value> {
+    s.edit(label, |doc, _| {
+        crate::video_cmds::store(doc);
+        f(&mut doc.timeline);
+        if let Some(t) = &mut doc.timeline {
+            t.clamp();
+        }
+        crate::video_cmds::sync(doc);
+        Ok(())
+    })?;
+    info(s)
+}
+
 fn bad(cmd: &str, msg: String) -> EngineError {
     EngineError::BadParams { cmd: cmd.into(), msg }
 }
@@ -70,11 +84,11 @@ fn fps_param(cmd: &str, p: &Value) -> Result<Option<f32>> {
 fn create(s: &mut Session, p: &Value) -> Result<Value> {
     let duration = duration_param("timeline.create", p)?.unwrap_or(30);
     let fps = fps_param("timeline.create", p)?.unwrap_or(30.0);
-    with_timeline(s, |t| *t = Some(Timeline::new(duration, fps)))
+    edit_timeline(s, "Create Video Timeline", |t| *t = Some(Timeline::new(duration, fps)))
 }
 
 fn delete(s: &mut Session) -> Result<Value> {
-    with_timeline(s, |t| *t = None)
+    edit_timeline(s, "Delete Timeline", |t| *t = None)
 }
 
 fn set_frame(s: &mut Session, p: &Value) -> Result<Value> {
@@ -98,7 +112,7 @@ fn step(s: &mut Session, delta: i64) -> Result<Value> {
 fn set_props(s: &mut Session, p: &Value) -> Result<Value> {
     let fps = fps_param("timeline.setProps", p)?;
     let duration = duration_param("timeline.setProps", p)?;
-    with_timeline(s, |t| {
+    edit_timeline(s, "Timeline Settings", |t| {
         if let Some(t) = t {
             if let Some(fps) = fps {
                 t.fps = fps;
@@ -185,6 +199,21 @@ mod tests {
 
     /// #1009: `timeline.create` kept any `duration` (even `u64::MAX`) and `fps`, and stepping then
     /// panicked in `i64::clamp`. Bad values are now rejected before anything changes.
+    #[test]
+    fn create_delete_and_settings_undo() {
+        let mut s = Session::new();
+        s.execute("file.new", json!({"width": 8, "height": 8})).unwrap();
+        s.execute("timeline.create", json!({"duration": 24, "fps": 24.0})).unwrap();
+        s.execute("timeline.setProps", json!({"duration": 48})).unwrap();
+        s.execute("timeline.delete", json!({})).unwrap();
+        assert!(s.undo());
+        assert_eq!(s.active().unwrap().doc.timeline.as_ref().unwrap().duration, 48);
+        assert!(s.undo());
+        assert_eq!(s.active().unwrap().doc.timeline.as_ref().unwrap().duration, 24);
+        assert!(s.undo());
+        assert!(s.active().unwrap().doc.timeline.is_none());
+    }
+
     #[test]
     fn create_rejects_out_of_range_params() {
         let mut s = Session::new();

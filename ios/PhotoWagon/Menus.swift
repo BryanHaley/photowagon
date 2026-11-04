@@ -59,7 +59,16 @@ struct MainMenu: UIViewRepresentable {
     func items(_ menu: String) -> [UIMenuElement] {
         let tree = MenuTree(model.editor.commands())
         guard let node = tree.top.first(where: { $0.name == menu }) else { return [] }
-        return extras(menu) + elements(node, in: menu)
+        // A submenu the app has too (File › Export) shows once: the app's items, then the engine's.
+        var mine = extras(menu)
+        for (i, e) in mine.enumerated() {
+            guard let section = e as? UIMenu else { continue }
+            mine[i] = section.replacingChildren(section.children.map { item in
+                guard let sub = item as? UIMenu, let j = node.children.firstIndex(where: { $0.name == sub.title }) else { return item }
+                return sub.replacingChildren(sub.children + elements(node.children.remove(at: j), in: menu))
+            })
+        }
+        return mine + elements(node, in: menu)
     }
 
     @MainActor
@@ -226,12 +235,26 @@ struct MenuTree {
         top = root.children
     }
 
+    /// Commands a person can't finish on iOS: no Finder or printer page, and no screen gives them
+    /// their file. Scripts can still run them.
+    static let notOnIOS: Set<String> = [
+        "layer.smartObjects.revealInFinder", "file.revealInFinder", "file.print.page", "file.automate.runDroplet",
+        "edit.presets.migratePresets", "file.exrParts", "file.openExrParts",
+        // No screen yet gives these what they need, so they could only refuse.
+        "edit.transform.warp", "edit.transform.splitWarpCrosswise", "edit.transform.splitWarpHorizontally", "edit.transform.splitWarpVertically",
+        "edit.transform.removeWarpSplit", "edit.perspectiveWarp", "image.variables.define", "image.variables.dataSets", "image.applyDataSet",
+        "shape.create", "filter.vanishingPoint",
+    ]
+
     /// Hidden: the app's own File items, and commands that need a desktop file or folder path.
     static func shows(_ c: CommandInfo) -> Bool {
+        if notOnIOS.contains(c.id) { return false }
         // Screens of the app's own that it lists among its items; Camera Raw, New Layer, Layer
         // Style and Preferences › General keep their place in the engine's menus.
         if let r = EditorModel.request(for: c.id), r != .cameraRaw, r != .newLayer, r != .generalPreferences {
             if case .layerStyle = r { return true }
+            if case .exportToFolder = r { return true }
+            if case .commandFile = r { return true }
             return false
         }
         // Load Selection is a submenu of the saved selections (MenuBar).

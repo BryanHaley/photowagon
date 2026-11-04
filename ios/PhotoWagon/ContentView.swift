@@ -3,7 +3,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct ContentView: View {
-    @StateObject private var model = EditorModel()
+    @StateObject private var model: EditorModel
     @Environment(\.scenePhase) private var scenePhase
     @State private var photosPurpose: Purpose?
     @State private var filesPurpose: Purpose?
@@ -29,8 +29,12 @@ struct ContentView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     /// What a picked file is for.
-    enum Purpose { case open, place, layer, brushTips, actions }
+    enum Purpose: Equatable { case open, place, layer, brushTips, actions, folder(String), commandFile(String) }
     enum SaveKind: Identifiable { case saveAs, copy; var id: Self { self } }
+
+    init(model: EditorModel? = nil) {
+        _model = StateObject(wrappedValue: model ?? EditorModel())
+    }
 
     var body: some View {
         sheets(pickers(ZStack {
@@ -93,6 +97,7 @@ struct ContentView: View {
         }))
         .overlay(alignment: .bottomLeading) {
             if TestProbe.enabled { TestProbe(model: model).ignoresSafeArea() }
+            if DeviceProbe.enabled { DeviceProbe(model: model) }
         }
     }
 
@@ -102,29 +107,17 @@ struct ContentView: View {
         .photosPicker(isPresented: Binding(get: { photosFor != nil }, set: { if !$0 { photosPurpose = photosFor; photosFor = nil } }), selection: $photo, matching: .images)
         .onChange(of: photo) { _, item in load(item) }
         .fileImporter(isPresented: Binding(get: { filesFor != nil }, set: { if !$0 { filesPurpose = filesFor ?? filesPurpose; filesFor = nil } }),
-                      allowedContentTypes: [.image, .rawImage, .psd, .pcraft, .data]) { result in
+                      allowedContentTypes: (filesFor ?? filesPurpose)?.contentTypes ?? [.image, .rawImage, .psd, .pcraft, .data]) { result in
             let purpose = filesFor ?? filesPurpose ?? .open
             (filesFor, filesPurpose) = (nil, nil)
             guard case let .success(url) = result else { return }
-            switch purpose {
-            case .open: model.open(url: url)
-            case .place: place(url: url)
-            case .layer: place(url: url, embedded: false)
-            case .brushTips: model.importBrushTips(url)
-            case .actions: model.loadActions(url)
-            }
+            model.picked(url, for: purpose)
         }
         .fileExporter(isPresented: Binding(get: { exporting != nil }, set: { if !$0 { exporting = nil } }),
                       document: exporting?.file, contentType: exporting?.type ?? .data, defaultFilename: exporting?.name) { result in
             let job = exporting
             exporting = nil
-            switch result {
-            case let .success(url):
-                if job?.kind == .saveAs { model.savedAs(url) } else { model.toast = "Saved \(url.lastPathComponent)" }
-            case let .failure(error):
-                model.closeAfterSave = false
-                model.show(error)
-            }
+            model.exported(result, kind: job?.kind)
         }
         .onChange(of: model.request) { _, r in
             if let r { handle(r) }
@@ -177,11 +170,7 @@ struct ContentView: View {
         .alert("Brush Name", isPresented: Binding(get: { brushName != nil }, set: { if !$0 { brushName = nil } })) {
             TextField("Name", text: Binding(get: { brushName ?? "" }, set: { brushName = $0 }))
             Button("Cancel", role: .cancel) {}
-            Button("OK") {
-                let name = (brushName ?? "").trimmingCharacters(in: .whitespaces)
-                model.run("brush.defineFromSelection", ["name": name.isEmpty ? "Brush" : name])
-                model.reloadBrushPresets()
-            }
+            Button("OK") { model.defineBrush(named: brushName ?? "") }
         } message: {
             Text("The selection becomes a brush tip: black paints, white is clear.")
         }
@@ -216,13 +205,7 @@ struct ContentView: View {
             let many: (([URL]) -> Void)? = purpose == .place || purpose == .layer
                 ? { urls in model.placeAll(urls, embedded: purpose == .layer ? false : nil) } : nil
             FileBrowser(title: purpose.title, kinds: purpose.kinds, showPhotos: purpose == .open || purpose == .place || purpose == .layer, pick: { url in
-                switch purpose {
-                case .open: model.open(url: url)
-                case .place: place(url: url)
-                case .layer: place(url: url, embedded: false)
-                case .brushTips: model.importBrushTips(url)
-                case .actions: model.loadActions(url)
-                }
+                model.picked(url, for: purpose)
             }, browse: {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { filesFor = purpose }
             }, photos: {
@@ -247,15 +230,8 @@ struct ContentView: View {
         .confirmationDialog("Save changes to “\(model.confirmClose?.name ?? "")” before closing?",
                             isPresented: Binding(get: { model.confirmClose != nil }, set: { if !$0 { model.confirmClose = nil } }),
                             titleVisibility: .visible) {
-            Button("Save") {
-                model.confirmClose = nil
-                model.closeAfterSave = true
-                if !model.save() { saveSheet = .saveAs }
-            }
-            Button("Don't Save", role: .destructive) {
-                model.confirmClose = nil
-                model.closeActive()
-            }
+            Button("Save") { if !model.saveBeforeClose() { saveSheet = .saveAs } }
+            Button("Don't Save", role: .destructive) { model.closeWithoutSaving() }
             Button("Cancel", role: .cancel) { model.confirmClose = nil }
         }
     }
@@ -378,20 +354,17 @@ struct ContentView: View {
                 }
                 let fields = model.editor.commandFields(id: c.id)
                 if let kind = AdjustmentEditor.kind(for: c.id) {
-                    AdjustmentEditor(model: model, kind: kind, layer: nil, initial: [:], surface: wide ? .canvas : .preview, change: { model.live(c.id, $0) }) { params in
-                        model.commandSettings = nil
-                        model.liveFinish(c.id, params)
+                    AdjustmentEditor(model: model, kind: kind, layer: nil, initial: [:], surface: wide ? .canvas : .preview, change: { model.live(c.id, $0) }) {
+                        model.settingsDone(c.id, $0, live: true)
                     }
                 } else if CommandEditor.handled.contains(c.id) {
-                    CommandEditor(model: model, command: c, surface: wide ? .canvas : .preview, change: live ? { model.live(c.id, $0) } : nil) { params in
-                        model.commandSettings = nil
-                        if live { model.liveFinish(c.id, params) } else { model.runInBackground(c.id, params) }
+                    CommandEditor(model: model, command: c, surface: wide ? .canvas : .preview, change: live ? { model.live(c.id, $0) } : nil) {
+                        model.settingsDone(c.id, $0, live: live)
                     }
                 } else {
-                    CommandSettings(title: c.label.replacingOccurrences(of: "…", with: ""), fields: fields, initial: model.startingValues(fields),
-                                    runTitle: "OK", change: live ? { model.live(c.id, $0) } : nil, changeOnAppear: live) { params in
-                        model.commandSettings = nil
-                        if live { model.liveFinish(c.id, params) } else { model.runInBackground(c.id, params) }
+                    CommandSettings(title: c.label.replacingOccurrences(of: "…", with: ""), fields: fields, initial: model.startingValues(fields, for: c.id),
+                                    runTitle: "OK", change: live ? { model.live(c.id, $0) } : nil, changeOnAppear: live) {
+                        model.settingsDone(c.id, $0, live: live)
                     }
                 }
             }
@@ -489,6 +462,8 @@ struct ContentView: View {
         case .saveForWeb: showSaveForWeb = true
         case .generalPreferences: showGeneralPreferences = true
         case .defineBrush: brushName = "Brush"
+        case let .exportToFolder(id): filesFor = .folder(id)
+        case let .commandFile(id): filesFor = .commandFile(id)
         case let .layerStyle(page):
             // It opens beside the canvas, not over the Layers sheet.
             if panel != nil {
@@ -526,13 +501,6 @@ struct ContentView: View {
         }
     }
 
-    private func place(url: URL, embedded: Bool? = nil) {
-        let access = url.startAccessingSecurityScopedResource()
-        defer { if access { url.stopAccessingSecurityScopedResource() } }
-        guard let data = try? Data(contentsOf: url) else { return }
-        model.place(data: data, name: url.lastPathComponent, embedded: embedded)
-    }
-
     /// A file dropped on the canvas becomes a layer; dropped anywhere else it opens.
     private func saveToPhotos() {
         guard let data = model.export("png"), let image = UIImage(data: data) else { return }
@@ -543,14 +511,89 @@ struct ContentView: View {
 
     private func share(_ format: String) {
         guard let data = model.export(format) else { return }
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("\(model.fileStem).\(format)")
-        do { try data.write(to: url) } catch { model.show(error); return }
+        let url: URL
+        do { url = try EditorModel.shareFile(data, name: "\(model.fileStem).\(format)") } catch { model.show(error); return }
         let sheet = UIActivityViewController(activityItems: [url], applicationActivities: nil)
         let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene
         guard let root = scene?.keyWindow?.rootViewController else { return }
         sheet.popoverPresentationController?.sourceView = root.view
         sheet.popoverPresentationController?.sourceRect = CGRect(x: root.view.bounds.midX, y: root.view.bounds.midY, width: 1, height: 1)
         root.present(sheet, animated: true)
+    }
+}
+
+extension EditorModel {
+    /// A file picked in the Files picker or the app's own browser, used for `purpose`.
+    func picked(_ url: URL, for purpose: ContentView.Purpose) {
+        switch purpose {
+        case .open: open(url: url)
+        case .place: placeFile(url)
+        case .layer: placeFile(url, embedded: false)
+        case .brushTips: importBrushTips(url)
+        case .actions: loadActions(url)
+        case let .folder(id): exportToFolder(id, url)
+        case let .commandFile(id): runWithFile(id, url)
+        }
+    }
+
+    /// The Files picker's access to a folder lasts until the command has written into it.
+    func exportToFolder(_ id: String, _ url: URL) {
+        let access = url.startAccessingSecurityScopedResource()
+        runInBackground(id, ["dir": url.path]) { [weak self] out in
+            if access { url.stopAccessingSecurityScopedResource() }
+            if out != nil { self?.toast = "Saved to \(url.lastPathComponent)" }
+        }
+    }
+
+    /// A command that reads a file the Files picker chose.
+    func runWithFile(_ id: String, _ url: URL) {
+        let access = url.startAccessingSecurityScopedResource()
+        runInBackground(id, ["path": url.path]) { _ in
+            if access { url.stopAccessingSecurityScopedResource() }
+        }
+    }
+
+    func placeFile(_ url: URL, embedded: Bool? = nil) {
+        let access = url.startAccessingSecurityScopedResource()
+        defer { if access { url.stopAccessingSecurityScopedResource() } }
+        guard let data = try? Data(contentsOf: url) else { return }
+        place(data: data, name: url.lastPathComponent, embedded: embedded)
+    }
+
+    /// The Files exporter finished: after Save As the document is that file.
+    func exported(_ result: Result<URL, Error>, kind: ContentView.SaveKind?) {
+        switch result {
+        case let .success(url):
+            if kind == .saveAs { savedAs(url) } else { toast = "Saved \(url.lastPathComponent)" }
+        case let .failure(error):
+            closeAfterSave = false
+            show(error)
+        }
+    }
+
+    /// Define Brush Preset's OK.
+    func defineBrush(named name: String) {
+        let name = name.trimmingCharacters(in: .whitespaces)
+        run("brush.defineFromSelection", ["name": name.isEmpty ? "Brush" : name])
+        reloadBrushPresets()
+    }
+
+    /// Save before closing; false when it needs Save As first.
+    func saveBeforeClose() -> Bool {
+        confirmClose = nil
+        closeAfterSave = true
+        return save()
+    }
+
+    func closeWithoutSaving() {
+        confirmClose = nil
+        closeActive()
+    }
+
+    /// A settings screen's OK: a live one keeps its last try, the others run now.
+    func settingsDone(_ id: String, _ params: [String: Any], live: Bool) {
+        commandSettings = nil
+        if live { liveFinish(id, params) } else { runInBackground(id, params) }
     }
 }
 
@@ -593,23 +636,32 @@ struct PromptSheet: View {
 
     var body: some View {
         NavigationStack {
-            TextField("Text", text: $text)
+            field
                 .textFieldStyle(.roundedBorder)
                 .accessibilityIdentifier("prompt.field")
                 .focused($focused)
-                .submitLabel(.done)
-                .onSubmit(finish)
                 .padding()
                 .navigationTitle(prompt.title)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) { Button("Cancel", action: close) }
-                    ToolbarItem(placement: .confirmationAction) { Button("OK", action: finish).accessibilityIdentifier("prompt.ok") }
+                    // ⌘Return: Return starts a new line in type.
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("OK", action: finish).keyboardShortcut(.return, modifiers: .command).accessibilityIdentifier("prompt.ok")
+                    }
                 }
         }
         .onAppear {
             text = prompt.text
             focused = true
+        }
+    }
+
+    @ViewBuilder private var field: some View {
+        if prompt.multiline {
+            TextField("Text", text: $text, axis: .vertical).lineLimit(1...8)
+        } else {
+            TextField("Text", text: $text).submitLabel(.done).onSubmit(finish)
         }
     }
 
@@ -715,14 +767,19 @@ struct HintBubble: View {
 enum SystemColorPicker {
     private static var delegate: Delegate?
 
-    static func present(title: String, rgb: [Float], changed: @escaping ([Float]) -> Void) {
+    static func present(title: String, rgb: [Float], tries: Int = 5, changed: @escaping ([Float]) -> Void) {
         let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
         let window = scenes.first { $0.activationState == .foregroundActive }?.keyWindow ?? scenes.compactMap(\.keyWindow).first
         guard var top = window?.rootViewController else { return }
         while let next = top.presentedViewController { top = next }
         // One picker at a time (a Pencil double-tapped twice), and not onto a screen that's still
         // coming or going.
-        guard !(top is UIColorPickerViewController), !top.isBeingPresented, !top.isBeingDismissed else { return }
+        guard !(top is UIColorPickerViewController) else { return }
+        // A menu still closing would swallow the picker.
+        if top.isBeingPresented || top.isBeingDismissed {
+            if tries > 0 { DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { present(title: title, rgb: rgb, tries: tries - 1, changed: changed) } }
+            return
+        }
         let c = UIColorPickerViewController()
         c.title = title
         c.supportsAlpha = false
@@ -775,35 +832,140 @@ struct TestProbe: View {
         guard let dir = Self.folder, let data = try? Data(contentsOf: dir.appendingPathComponent("query.json")),
               let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any], let seq = obj["seq"] as? Int, seq != answered else { return }
         answered = seq
-        var out: Any = ["error": "bad query"]
-        let params = obj["params"] as? [String: Any] ?? [:]
-        if obj["id"] as? String == "app.docToCanvas", let x = params["x"] as? Double, let y = params["y"] as? Double {
-            // Where a document pixel is on the canvas, in points from its top left.
-            let p = docToScreen(view: model.view, x: Float(x), y: Float(y))
-            let ppp = Double(max(model.view.pixelsPerPoint, 1))
-            out = ["x": Double(p.x) / ppp, "y": Double(p.y) / ppp]
-        } else if obj["id"] as? String == "app.documents" {
-            // The open documents' names, as their tabs show them (the tab row hides with one).
-            out = ["names": model.documents.map(\.name), "active": model.doc.map(\.name) ?? NSNull()]
-        } else if obj["id"] as? String == "app.objectHighlight" {
-            // The last Object Finder highlight, in document pixels [x0, y0, x1, y1].
-            out = ["shown": model.objectHighlight != nil, "last": model.lastObjectHighlight.map { $0.map(Double.init) as Any } ?? NSNull()]
-        } else if obj["id"] as? String == "app.toasts" {
-            out = ["toasts": model.toasts]
-        } else if let id = obj["id"] as? String, Self.allowed.contains(id) {
-            let params = (obj["params"]).flatMap { try? JSONSerialization.data(withJSONObject: $0) }.map { String(decoding: $0, as: UTF8.self) } ?? "{}"
-            do {
-                let r = try model.editor.execute(id: id, params: params)
-                out = (try? JSONSerialization.jsonObject(with: Data(r.utf8), options: [.fragmentsAllowed])) ?? r
-            } catch { out = ["error": error.localizedDescription] }
-        }
+        let out = Self.answer(obj["id"] as? String ?? "", obj["params"] as? [String: Any] ?? [:], model: model)
         if let data = try? JSONSerialization.data(withJSONObject: ["seq": seq, "result": out], options: [.fragmentsAllowed]) {
             try? data.write(to: dir.appendingPathComponent("result.json"))
         }
     }
+
+    /// The answer to query `id`.
+    static func answer(_ id: String, _ params: [String: Any], model: EditorModel) -> Any {
+        var out: Any = ["error": "bad query"]
+        if id == "app.docToCanvas", let x = params["x"] as? Double, let y = params["y"] as? Double {
+            // Where a document pixel is on the canvas, in points from its top left.
+            let p = docToScreen(view: model.view, x: Float(x), y: Float(y))
+            let ppp = Double(max(model.view.pixelsPerPoint, 1))
+            out = ["x": Double(p.x) / ppp, "y": Double(p.y) / ppp]
+        } else if id == "app.documents" {
+            // The open documents' names, as their tabs show them (the tab row hides with one).
+            out = ["names": model.documents.map(\.name), "active": model.doc.map(\.name) ?? NSNull()]
+        } else if id == "app.objectHighlight" {
+            // The last Object Finder highlight, in document pixels [x0, y0, x1, y1].
+            out = ["shown": model.objectHighlight != nil, "last": model.lastObjectHighlight.map { $0.map(Double.init) as Any } ?? NSNull()]
+        } else if id == "app.toasts" {
+            out = ["toasts": model.toasts]
+        } else if id == "app.state" {
+            let mode: String? = model.transform != nil ? "transform" : model.puppet != nil ? "puppet" : model.fluidWarp != nil ? "fluidWarp" : nil
+            var state: [String: Any] = ["history": model.history.past.count, "dispatched": model.dispatched, "tool": model.tool.rawValue]
+            state["request"] = model.request.map { String(describing: $0) } ?? NSNull()
+            state["settings"] = model.commandSettings?.id ?? NSNull()
+            state["toast"] = model.toast ?? NSNull()
+            state["documents"] = model.documents.count
+            state["busy"] = model.busy || model.liveBusy
+            state["hint"] = model.hint ?? NSNull()
+            state["mode"] = mode ?? NSNull()
+            // Changes that aren't history steps: any document change, the view, the canvas, the
+            // session's own settings (proofing, guides), a screen over the app.
+            state["revision"] = model.doc.map { Int($0.revision) } ?? -1
+            state["view"] = "\(model.view.zoom) \(model.view.centerX) \(model.view.centerY) \(model.view.rotation)"
+            state["canvas"] = model.canvasColor.rawValue
+            state["session"] = (try? model.editor.execute(id: "session.inspect", params: "{}")).map { String($0.hashValue) } ?? ""
+            let root = UIApplication.shared.connectedScenes.compactMap { ($0 as? UIWindowScene)?.keyWindow?.rootViewController }.first
+            state["presented"] = root?.presentedViewController.map { String(describing: type(of: $0)) } ?? ""
+            state["timeline"] = model.showTimeline
+            state["snap"] = model.snap
+            state["tutorial"] = model.tutorialStep != nil
+            out = state
+        } else if id == "app.menuTree" {
+            out = ["items": Self.menuTree(model)]
+        } else if id == "app.tools" {
+            out = ["groups": Tool.groups.map { $0.map { ["id": $0.rawValue, "title": $0.title] } }]
+        } else if id == "app.coverage" {
+            // Omega's Rust coverage: the line counts so far, before the test ends the app.
+            out = ["written": coverageWrite(path: params["path"] as? String ?? "")]
+        } else if id == "app.reset" {
+            // Omega's touch tier: the same document before every item it tries.
+            model.cancelPending()
+            model.endTutorial()
+            model.toast = nil
+            _ = try? model.editor.execute(id: "file.closeAll", params: "{}")
+            model.newDocument(["width": 400, "height": 300, "name": "Omega"])
+            for (id, p) in [("select.rect", ["x": 40, "y": 30, "width": 220, "height": 150]), ("edit.fill", ["color": "#c04020"]),
+                            ("select.deselect", [:]), ("layer.new.layer", [:]),
+                            ("paint.stroke", ["points": [[20, 260], [380, 40]], "color": "#2060d0", "size": 20])] as [(String, [String: Any])] {
+                _ = try? model.editor.execute(id: id, params: json(p))
+            }
+            model.sync()
+            out = ["ok": true]
+        } else if Self.allowed.contains(id) {
+            let text = (try? JSONSerialization.data(withJSONObject: params)).map { String(decoding: $0, as: UTF8.self) } ?? "{}"
+            do {
+                let r = try model.editor.execute(id: id, params: text)
+                out = (try? JSONSerialization.jsonObject(with: Data(r.utf8), options: [.fragmentsAllowed])) ?? r
+            } catch { out = ["error": error.localizedDescription] }
+        }
+        return out
+    }
+}
+
+/// Omega on a real device (`-omegaDeviceProbe YES`): a UI test there can't read the app's files,
+/// so the app shows its state as the label of a hidden element, `omega.state`.
+struct DeviceProbe: View {
+    static let enabled = UserDefaults.standard.bool(forKey: "omegaDeviceProbe")
+    @ObservedObject var model: EditorModel
+    @State private var label = "{}"
+    private static let tick = Timer.publish(every: 0.3, on: .main, in: .common).autoconnect()
+
+    var body: some View {
+        Color.clear.frame(width: 1, height: 1)
+            .accessibilityElement()
+            .accessibilityIdentifier("omega.state")
+            .accessibilityLabel(label)
+            .onReceive(Self.tick) { _ in
+                let state: [String: Any] = [
+                    "history": model.history.past.count, "toast": model.toast ?? NSNull(), "documents": model.documents.count,
+                    "tutorial": model.tutorialStep != nil, "tool": model.tool.rawValue, "busy": model.busy || model.liveBusy, "selection": model.doc?.hasSelection ?? false,
+                    "layers": model.layerCount, "width": model.doc?.width ?? 0, "height": model.doc?.height ?? 0,
+                ]
+                label = (try? JSONSerialization.data(withJSONObject: state)).map { String(decoding: $0, as: UTF8.self) } ?? "{}"
+            }
+    }
+}
+
+extension TestProbe {
+    /// Every item of the ☰ menu as the app builds it: its path, title and whether it's enabled.
+    @MainActor
+    static func menuTree(_ model: EditorModel) -> [[String: Any]] {
+        let menu = MainMenu(model: model)
+        var out: [[String: Any]] = []
+        func walk(_ elements: [UIMenuElement], _ path: [String]) {
+            for e in elements {
+                if let m = e as? UIMenu {
+                    walk(m.children, m.title.isEmpty ? path : path + [m.title])
+                } else if let a = e as? UIAction {
+                    out.append(["path": path, "title": a.title, "enabled": !a.attributes.contains(.disabled)])
+                } else {
+                    out.append(["path": path, "title": "", "enabled": false, "deferred": true])
+                }
+            }
+        }
+        walk(menu.quickActions(), ["Quick Actions"])
+        for name in MenuTree.order { walk(menu.items(name), [name]) }
+        return out
+    }
 }
 
 extension ContentView.Purpose {
+    var isFolder: Bool { if case .folder = self { true } else { false } }
+
+    var contentTypes: [UTType] {
+        switch self {
+        case .folder: [.folder]
+        case .commandFile: [.item]
+        default: [.image, .rawImage, .psd, .pcraft, .data]
+        }
+    }
+
     var title: String {
         switch self {
         case .open: "Open"
@@ -811,6 +973,8 @@ extension ContentView.Purpose {
         case .layer: "New Layer from File"
         case .brushTips: "Import Brush Tips"
         case .actions: "Load Actions"
+        case .folder: "Choose a Folder"
+        case .commandFile: "Choose a File"
         }
     }
 
@@ -819,6 +983,7 @@ extension ContentView.Purpose {
         case .open, .place, .layer: AppFolder.openable
         case .brushTips: AppFolder.brushes
         case .actions: ["atn"]
+        case .folder, .commandFile: []
         }
     }
 }

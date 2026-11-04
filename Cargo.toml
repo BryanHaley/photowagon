@@ -68,6 +68,8 @@ opt-level = 1
 # CARGO_PROFILE_DEV_DEBUG (and no debuginfo at all for the Windows tests). To inspect locals in a
 # debugger, build with CARGO_PROFILE_DEV_DEBUG=true.
 debug = "line-tables-only"
+# No incremental cache: it grew to 45 GB in a few days of builds.
+incremental = false
 
 [profile.release]
 lto = "thin"

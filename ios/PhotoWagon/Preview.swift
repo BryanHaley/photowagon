@@ -141,7 +141,7 @@ struct FullScreenPreview: View {
 }
 
 /// The preview's magnifier: beside the finger, the image four times larger, a crosshair on the spot.
-private struct PreviewLoupe: View {
+struct PreviewLoupe: View {
     let image: UIImage
     let fit: CGRect
     let finger: CGPoint

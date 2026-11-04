@@ -64,7 +64,7 @@ pub fn effect_from_json(filter: GalleryFilter, p: &Value, fallback: &Value) -> G
 pub fn effects_from_json(p: &Value) -> std::result::Result<Vec<GalleryEffect>, String> {
     let Some(list) = p.get("effects").and_then(Value::as_array) else { return Ok(Vec::new()) };
     if list.len() > 32 {
-        return Err("too many effects in filterGallery stack (max 32)".into());
+        return Err("Filter Gallery takes at most 32 effects".into());
     }
     let mut out = Vec::new();
     for (k, item) in list.iter().enumerate() {
@@ -144,7 +144,7 @@ fn run_gallery(s: &mut Session, p: &Value) -> Result<Value> {
     let effects = effects_from_json(p).map_err(EngineError::Other)?;
     if effects.is_empty() {
         return Err(EngineError::Other(
-            "filter.filterGallery needs `effects`: [{\"filter\": \"<key>\", \"params\": {...}}] (pass {\"list\": true} for the catalogue)".into(),
+            "Filter Gallery needs at least one effect".into(),
         ));
     }
     // Normalize the recorded params (journal / smart filter) to the canonical form.

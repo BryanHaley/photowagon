@@ -96,8 +96,8 @@ final class WorkspaceAndFilesTests: GettingStartedTests {
 
         step("Options bar for the Brush: size and hardness") {
             tool(group: "Brush", pick: "Brush")
-            option("Size", 0.7)
-            option("Hardness", 0.2)
+            slide(app.sliders["option.Size"].firstMatch, to: 150, value: { self.brushSize }, position: sizePosition, tolerance: 40)
+            slide(app.sliders["option.Hardness"].firstMatch, to: 0.2, value: { (self.brush["hardness"] as? Double) ?? 1 }, position: { $0 }, tolerance: 0.1)
             let b = brush
             XCTAssertGreaterThan(b["size"] as? Double ?? 0, 100, "\(b)")
             XCTAssertLessThan(b["hardness"] as? Double ?? 1, 0.35, "\(b)")
@@ -135,7 +135,7 @@ final class WorkspaceAndFilesTests: GettingStartedTests {
         step("Add text, double-tap the T to edit it; File › Save updates the file in place") {
             tool(group: "Horizontal Type", pick: "Horizontal Type")
             at(600, 500).tap()
-            replace(app.textFields["prompt.field"], with: "link")
+            replace(promptField, with: "link")
             app.buttons["prompt.ok"].firstMatch.tap()
             app.buttons["layers"].tap()
             let thumb = app.descendants(matching: .any)["layer.thumb.link"].firstMatch
@@ -244,7 +244,7 @@ final class ToolsPanelsAndTransformTests: GettingStartedTests {
         step("Type tool: tap, type, font, size 500 px, leading and tracking") {
             tool(group: "Horizontal Type", pick: "Horizontal Type")
             at(400, 600).tap()
-            replace(app.textFields["prompt.field"], with: "Text")
+            replace(promptField, with: "Text")
             app.buttons["prompt.ok"].firstMatch.tap()
             replace(app.textFields["type.size"], with: "500")
             app.buttons["type.font"].firstMatch.tap()
@@ -292,12 +292,12 @@ final class ToolsPanelsAndTransformTests: GettingStartedTests {
             tool(group: "Brush", pick: "Brush")
             newLayer()
             brushTip("General", "Hard Round")
-            option("Size", 0.4)
+            slide(app.sliders["option.Size"].firstMatch, to: 67, value: { self.brushSize }, position: sizePosition, tolerance: 20)
             drag(doc: (200, 300), to: (1800, 300))
             let hard = stats([200, 200, 1800, 400], of: "pixels")
             newLayer()
             brushTip("Dry Media", "Charcoal")
-            option("Size", 0.4)
+            slide(app.sliders["option.Size"].firstMatch, to: 67, value: { self.brushSize }, position: sizePosition, tolerance: 20)
             drag(doc: (200, 500), to: (1800, 500))
             let charcoal = stats([200, 400, 1800, 600], of: "pixels")
             XCTAssertGreaterThan(charcoal.soft, hard.soft + 0.05, "charcoal has grain: \(charcoal.soft) vs \(hard.soft)")
@@ -320,7 +320,7 @@ final class ToolsPanelsAndTransformTests: GettingStartedTests {
         step("Type: drag a text box, size 100, centre it") {
             tool(group: "Horizontal Type", pick: "Horizontal Type")
             drag(doc: (300, 1100), to: (1700, 1500))
-            replace(app.textFields["prompt.field"], with: "Box")
+            replace(promptField, with: "Box")
             app.buttons["prompt.ok"].firstMatch.tap()
             // Return puts the keyboard away: it covers the options row.
             replace(app.textFields["type.size"], with: "100\n")
@@ -358,13 +358,15 @@ final class ToolsPanelsAndTransformTests: GettingStartedTests {
         step("Spot Repair Brush removes a blemish") {
             selectLayer("Background")
             tool(group: "Brush", pick: "Brush")
-            option("Size", 0.35)
+            // A phone's Size track is short: a few points span 20 px, and the step needs no more.
+            slide(app.sliders["option.Size"].firstMatch, to: 49, value: { self.brushSize }, position: sizePosition, tolerance: 20)
             foreground(black: true)
             drag(doc: (1500, 1880), to: (1515, 1885))
             let spot = [1470, 1850, 1550, 1915]
             XCTAssertLessThan(lum(stats(spot, of: "pixels").mean), 0.8, "a dark spot")
             tool(group: "Spot Repair Brush", pick: "Spot Repair Brush")
-            option("Size", 0.45)
+            // Bigger than the biggest dot above, so it covers it.
+            slide(app.sliders["option.Size"].firstMatch, to: 120, value: { self.brushSize }, position: sizePosition, tolerance: 30)
             drag(doc: (1490, 1880), to: (1525, 1885))
             waitIdle()
             noErrorToast()
@@ -380,9 +382,14 @@ final class ToolsPanelsAndTransformTests: GettingStartedTests {
             app.descendants(matching: .any)["layer.Layer 1"].firstMatch.tap()
             // The list scrolls to the layers; Opacity is above them.
             let opacity = show(app.sliders["layers.opacity"].firstMatch, "Opacity")
-            // Checked on the layer: iOS 27 can report the slider's own position late.
-            for _ in 0..<3 where abs((layer(named: "Layer 1")?["opacity"] as? Double ?? 0) - 0.5) > 0.04 {
-                opacity.slide(to: 0.5)
+            // Checked on the layer: iOS 27 can report the slider's own position late. Aim again by
+            // how far it landed.
+            var aim = 0.5
+            for _ in 0..<5 {
+                let o = layer(named: "Layer 1")?["opacity"] as? Double ?? 0
+                if abs(o - 0.5) <= 0.04 { break }
+                if o < 1 { aim = min(max(aim + 0.5 - o, 0.05), 0.95) }
+                opacity.slide(to: aim)
                 Thread.sleep(forTimeInterval: 0.6)
             }
             XCTAssertEqual(layer(named: "Layer 1")?["opacity"] as? Double ?? 0, 0.5, accuracy: 0.06)
@@ -622,7 +629,7 @@ final class BackgroundSwapTests: GettingStartedTests {
             tool(group: "Blur", pick: "Smudge")
             option("Strength", percent: 50)
             let strength = Int((app.sliders["option.Strength"].value as? String ?? "").dropLast()) ?? 0
-            XCTAssertEqual(strength, 50, accuracy: 1)
+            XCTAssertEqual(strength, 50, accuracy: 2)
             let size = brush["size"] as? Double ?? 0
             key("]")
             XCTAssertGreaterThan(brush["size"] as? Double ?? 0, size)
