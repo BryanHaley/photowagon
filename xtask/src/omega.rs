@@ -142,6 +142,7 @@ pub fn cmd(root: &Path, args: &[&str]) -> Result<(), String> {
     let code = code_hash(root)?;
     match args.first().copied() {
         Some("run") => {
+            crate::tidy::auto(root);
             let all = sections(root, &results)?;
             let named: Vec<&str> = args.windows(2).filter(|w| w[0] == "--section").map(|w| w[1]).collect();
             for n in &named {
@@ -507,9 +508,21 @@ fn device(root: &Path, dir: &Path, results: &Path, code: &str) -> Result<(), Str
     run(c, "sips (a 24 MP photo)")?;
     for (file, name) in [(samples.join("subject.jpg"), "subject.jpg"), (samples.join("seaside.jpg"), "seaside.jpg"), (big.clone(), "big.jpg")] {
         let mut c = Command::new("xcrun");
-        c.args(["devicectl", "device", "copy", "to", "--device", &udid, "--domain-type", "appDataContainer", "--domain-identifier", "net.bhaley.photowagon", "--source"])
-            .arg(&file)
-            .args(["--destination", &format!("Documents/{name}")]);
+        c.args([
+            "devicectl",
+            "device",
+            "copy",
+            "to",
+            "--device",
+            &udid,
+            "--domain-type",
+            "appDataContainer",
+            "--domain-identifier",
+            "net.bhaley.photowagon",
+            "--source",
+        ])
+        .arg(&file)
+        .args(["--destination", &format!("Documents/{name}")]);
         run(c, &format!("devicectl copy {name}"))?;
     }
 
@@ -636,9 +649,7 @@ const STALL: std::time::Duration = std::time::Duration::from_secs(15 * 60);
 
 /// Bytes of results written under a lane's folder, to see whether it's moving.
 fn written(lane: &Path) -> u64 {
-    std::fs::read_dir(lane)
-        .map(|d| d.flatten().filter_map(|e| std::fs::metadata(e.path().join("results.jsonl")).ok()).map(|m| m.len()).sum())
-        .unwrap_or(0)
+    std::fs::read_dir(lane).map(|d| d.flatten().filter_map(|e| std::fs::metadata(e.path().join("results.jsonl")).ok()).map(|m| m.len()).sum()).unwrap_or(0)
 }
 
 /// Dark mode and text size on a lane's simulator (booted first).
@@ -708,7 +719,8 @@ fn coverage(dir: &Path) -> Result<(), String> {
 /// and the files that miss most, in `coverage/rust.txt`. Read with the toolchain's own LLVM tools
 /// (`rustup component add llvm-tools`): the counters' format follows rustc's LLVM.
 fn rust_report(dir: &Path, bin: &Path, out: &Path) -> Result<(), String> {
-    let raws: Vec<PathBuf> = std::fs::read_dir(rust_raw(dir)).into_iter().flatten().flatten().map(|e| e.path()).filter(|p| p.extension().is_some_and(|x| x == "profraw")).collect();
+    let raws: Vec<PathBuf> =
+        std::fs::read_dir(rust_raw(dir)).into_iter().flatten().flatten().map(|e| e.path()).filter(|p| p.extension().is_some_and(|x| x == "profraw")).collect();
     if raws.is_empty() {
         eprintln!("omega: no Rust coverage (that takes `run --coverage`)");
         return Ok(());
@@ -740,7 +752,8 @@ fn rust_report(dir: &Path, bin: &Path, out: &Path) -> Result<(), String> {
         .filter_map(|f| {
             let name = f["filename"].as_str()?;
             let name = name.strip_prefix("./").unwrap_or(name);
-            name.starts_with("crates/").then(|| (name.to_string(), f["summary"]["lines"]["count"].as_u64().unwrap_or(0), f["summary"]["lines"]["covered"].as_u64().unwrap_or(0)))
+            name.starts_with("crates/")
+                .then(|| (name.to_string(), f["summary"]["lines"]["count"].as_u64().unwrap_or(0), f["summary"]["lines"]["covered"].as_u64().unwrap_or(0)))
         })
         .collect();
     let mut crates: std::collections::BTreeMap<String, (u64, u64)> = std::collections::BTreeMap::new();
@@ -783,16 +796,16 @@ fn shards(results: &Path) -> Vec<PathBuf> {
 }
 
 fn read(shard: &Path) -> Vec<Case> {
-    std::fs::read_to_string(shard.join("results.jsonl"))
-        .unwrap_or_default()
-        .lines()
-        .filter_map(|l| serde_json::from_str(l).ok())
-        .collect()
+    std::fs::read_to_string(shard.join("results.jsonl")).unwrap_or_default().lines().filter_map(|l| serde_json::from_str(l).ok()).collect()
 }
 
 /// Every command case on the tier B lanes.
 fn tier_b_cases(results: &Path) -> Vec<Case> {
-    shards(results).iter().filter(|s| LANES.iter().any(|l| l.tier == Tier::B && s.parent().is_some_and(|v| v.ends_with(l.name)))).flat_map(|s| read(s)).collect()
+    shards(results)
+        .iter()
+        .filter(|s| LANES.iter().any(|l| l.tier == Tier::B && s.parent().is_some_and(|v| v.ends_with(l.name))))
+        .flat_map(|s| read(s))
+        .collect()
 }
 
 /// Commands with no "ok" case that `NEVER_SUCCEED` doesn't excuse.
@@ -894,7 +907,11 @@ fn report(root: &Path, results: &Path, out: &Path, code: &str) -> Result<PathBuf
         }
         h.push_str("</table>");
 
-        let _ = write!(h, "<h3>Cases with problems ({})</h3><table><tr><th>Command</th><th>Document</th><th>Settings</th><th>Result</th><th>Problems</th></tr>", failed.len());
+        let _ = write!(
+            h,
+            "<h3>Cases with problems ({})</h3><table><tr><th>Command</th><th>Document</th><th>Settings</th><th>Result</th><th>Problems</th></tr>",
+            failed.len()
+        );
         for c in failed.iter().take(2000) {
             let _ = write!(
                 h,

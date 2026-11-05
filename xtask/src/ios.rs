@@ -12,6 +12,7 @@ const SIMULATOR: &str = "aarch64-apple-ios-sim";
 const DEPLOYMENT_TARGET: &str = "17.0";
 
 pub fn cmd(root: &Path, args: &[&str]) -> Result<(), String> {
+    crate::tidy::auto(root);
     let release = args.contains(&"--release");
     let targets = match (args.contains(&"--sim"), args.contains(&"--device")) {
         (true, false) => vec![SIMULATOR],
@@ -123,7 +124,8 @@ fn add_profiler(lib: &Path, target: &str) -> Result<(), String> {
     let mut c = Command::new("ar");
     c.arg("x").arg(&rlib).current_dir(&tmp);
     run(c, "ar x (profiler_builtins)")?;
-    let objects: Vec<PathBuf> = std::fs::read_dir(&tmp).into_iter().flatten().flatten().map(|e| e.path()).filter(|p| p.extension().is_some_and(|x| x == "o")).collect();
+    let objects: Vec<PathBuf> =
+        std::fs::read_dir(&tmp).into_iter().flatten().flatten().map(|e| e.path()).filter(|p| p.extension().is_some_and(|x| x == "o")).collect();
     let mut c = Command::new("ar");
     c.arg("rs").arg(lib).args(&objects);
     run(c, "ar rs (coverage runtime into the library)")?;

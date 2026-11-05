@@ -12,6 +12,7 @@ mod omega;
 mod pinned;
 mod sha256;
 mod stats;
+mod tidy;
 mod version;
 
 use std::path::{Path, PathBuf};
@@ -43,6 +44,9 @@ commands:
                   the long pre-release test (plan/omega-e2e.md), in sections that can be rerun on
                   their own: every command on every kind of document, on iOS 27 and 18; resumes
                   after a crash; report in target/omega/report
+  tidy            remove build output that only piles up: Cargo output untouched for 7 days, and
+                  agents' target dirs and one-run Xcode build folders unused for a day (`ios` and
+                  `omega run` do this first)
 ";
 
 fn main() -> ExitCode {
@@ -57,6 +61,7 @@ fn main() -> ExitCode {
         Some("version") => version::run(&root(), &rest),
         Some("ios") => ios::cmd(&root(), &rest),
         Some("omega") => omega::cmd(&root(), &rest),
+        Some("tidy") => tidy::cmd(&root()),
         Some("-h" | "--help" | "help") | None => {
             print!("{USAGE}");
             Ok(())

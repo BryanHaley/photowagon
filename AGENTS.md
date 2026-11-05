@@ -134,6 +134,10 @@ Then append a terse entry to `log/devlog.md` (what landed, numbers, what's still
 - If someone else's in-progress edit breaks the build, wait and retry; don't fix their files.
 - Keep every `Cargo.toml` valid at all times: the `crates/*` glob means one broken manifest breaks everyone's build. **Create or rewrite manifests atomically**: write to a temp file outside `crates/`, then `mv` it into place.
 - Disk space: each target dir is about 10 GB. Delete `target/agent-*` dirs of finished agents.
+- Xcode builds outside Omega all use one folder, `-derivedDataPath target/ios/dd`: each other
+  folder holds another copy of the 300-700 MB engine library. `cargo xtask tidy` (run first by
+  `cargo xtask ios` and `omega run`) removes Cargo output untouched for 7 days, and agents' target
+  dirs and other Xcode build folders unused for a day.
 
 ## 7. Where things are tracked
 
