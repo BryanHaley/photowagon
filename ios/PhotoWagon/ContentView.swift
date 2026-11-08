@@ -765,7 +765,10 @@ struct HintBubble: View {
 /// The system colour picker over the app, reporting each change.
 @MainActor
 enum SystemColorPicker {
+    /// Kept until the next picker opens: on a Mac the Colors window it opens keeps sending colours
+    /// after the picker itself has closed.
     private static var delegate: Delegate?
+    private static var picker: UIColorPickerViewController?
 
     static func present(title: String, rgb: [Float], tries: Int = 5, changed: @escaping ([Float]) -> Void) {
         let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
@@ -784,8 +787,8 @@ enum SystemColorPicker {
         c.title = title
         c.supportsAlpha = false
         if rgb.count == 3 { c.selectedColor = UIColor(red: CGFloat(rgb[0]), green: CGFloat(rgb[1]), blue: CGFloat(rgb[2]), alpha: 1) }
-        let d = Delegate(changed)
-        delegate = d
+        let d = Delegate(changed, from: Self.rgb(c.selectedColor))
+        (delegate, picker) = (d, c)
         c.delegate = d
         // Where iPadOS shows it as a popover, it needs something to point at.
         if let pop = c.popoverPresentationController {
@@ -798,15 +801,27 @@ enum SystemColorPicker {
 
     final class Delegate: NSObject, UIColorPickerViewControllerDelegate {
         let changed: ([Float]) -> Void
-        init(_ changed: @escaping ([Float]) -> Void) { self.changed = changed }
+        /// The colour last reported, the starting one at first: closing without a pick changes nothing.
+        private var last: [Float]?
+        init(_ changed: @escaping ([Float]) -> Void, from start: [Float]? = nil) { (self.changed, last) = (changed, start) }
 
-        func colorPickerViewController(_ c: UIColorPickerViewController, didSelect color: UIColor, continuously: Bool) {
-            var (r, g, b, a) = (CGFloat(0), CGFloat(0), CGFloat(0), CGFloat(0))
-            guard color.getRed(&r, green: &g, blue: &b, alpha: &a) else { return }
-            changed([r, g, b].map { Float(min(max($0, 0), 1)) })
+        // A Mac running the iPad app may report a colour only one of these ways.
+        func colorPickerViewController(_ c: UIColorPickerViewController, didSelect color: UIColor, continuously: Bool) { report(color) }
+        func colorPickerViewControllerDidSelectColor(_ c: UIColorPickerViewController) { report(c.selectedColor) }
+        func colorPickerViewControllerDidFinish(_ c: UIColorPickerViewController) { report(c.selectedColor) }
+
+        private func report(_ color: UIColor) {
+            guard let rgb = SystemColorPicker.rgb(color), rgb != last else { return }
+            last = rgb
+            changed(rgb)
         }
+    }
 
-        func colorPickerViewControllerDidFinish(_ c: UIColorPickerViewController) { SystemColorPicker.delegate = nil }
+    /// `color` as sRGB 0…1; colours in another space (a Mac's Colors window) are converted.
+    static func rgb(_ color: UIColor) -> [Float]? {
+        guard let srgb = CGColorSpace(name: CGColorSpace.sRGB),
+              let c = color.cgColor.converted(to: srgb, intent: .defaultIntent, options: nil)?.components, c.count >= 3 else { return nil }
+        return c.prefix(3).map { Float(min(max($0, 0), 1)) }
     }
 }
 

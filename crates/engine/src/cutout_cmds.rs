@@ -46,6 +46,11 @@ fn run(s: &mut Session, p: &Value) -> Result<Value> {
         Some(m) => Some(crate::smartselect_cmds::decode_mask(m, doc.bounds(), CMD)?.ok_or_else(|| EngineError::Other("no subject found".into()))?),
         None => None,
     };
+    // A photo placed on a bigger canvas: its own pixels, or its whole rectangle looks like the subject.
+    let area = move |d: &Document| {
+        let own = d.layer(id).and_then(Layer::surface).map(|surf| surf.content_bounds().intersect(&d.bounds()));
+        own.filter(|r| !sample_all && r.width() >= 4 && r.height() >= 4).unwrap_or_else(|| d.bounds())
+    };
     crate::jobs::edit_job(
         s,
         "Remove Background",
@@ -55,7 +60,7 @@ fn run(s: &mut Session, p: &Value) -> Result<Value> {
                 Some(r) => Some(r),
                 None => ctx
                     .stage(0.1, 0.6, "Finding subject", |ctl| {
-                        with_doc_sampler(doc, Some(id), sample_all, |smp, d| subject::select_subject_with(smp, d.bounds(), ctl))
+                        with_doc_sampler(doc, Some(id), sample_all, |smp, d| subject::select_subject_with(smp, area(d), ctl))
                     })
                     .map_err(|_| EngineError::Cancelled)?,
             };
@@ -285,6 +290,25 @@ mod tests {
         // Sampling all layers finds the subject in the composite.
         s.execute(CMD, json!({"sampleAllLayers": true})).unwrap();
         assert!(layer(&s, top).mask.is_some() && layer(&s, bottom).mask.is_none());
+    }
+
+    #[test]
+    fn a_photo_placed_on_a_bigger_canvas_keeps_its_subject_not_its_rectangle() {
+        let (photo, _) = disc(8);
+        let surf = photo.active().unwrap().doc.layers[0].surface().unwrap();
+        let (px, n) = (surf.read_region(Rect::new(0, 0, 200, 160)), surf.channels());
+        let mut s = Session::new();
+        s.execute("file.new", json!({"width": 300, "height": 240, "background": "white"})).unwrap();
+        s.execute("layer.new.layer", json!({"name": "photo"})).unwrap();
+        s.edit("place", |doc, active| {
+            let rgba: Vec<f32> = px.chunks(n).flat_map(|c| [c[0], c[1], c[2], 1.0]).collect();
+            doc.layer_mut(active.unwrap()).unwrap().surface_mut().unwrap().write_region(Rect::new(50, 40, 250, 200), &rgba);
+            Ok(())
+        })
+        .unwrap();
+        s.execute(CMD, json!({})).unwrap();
+        assert!(mask_cov(&s, 150, 120) >= 0.8, "the disc is kept");
+        assert!(mask_cov(&s, 55, 45) < 0.2, "the photo's own background is hidden");
     }
 
     #[test]

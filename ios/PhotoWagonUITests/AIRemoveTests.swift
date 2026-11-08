@@ -2,7 +2,7 @@ import XCTest
 
 /// AI Remove: painting over something and removing a selection, the model's download offer, and
 /// its row in Preferences.
-/// The download itself runs only with `TEST_RUNNER_AI_DOWNLOAD=1` (about 200 MB); without it the
+/// The download itself runs only with `TEST_RUNNER_AI_DOWNLOAD=1` (about 25 MB); without it the
 /// test says Not Now, unless the model is already on the simulator.
 final class AIRemoveTests: WalkthroughTestCase {
     func testAIRemove() {

@@ -475,10 +475,22 @@ final class ScreenCoverageTests: XCTestCase {
         XCTAssertTrue(model.closeAfterSave)
         XCTAssertNil(model.confirmClose)
 
-        var picked: [Float]?
-        let delegate = SystemColorPicker.Delegate { picked = $0 }
-        delegate.colorPickerViewController(UIColorPickerViewController(), didSelect: UIColor(red: 1, green: 0.5, blue: 0, alpha: 1), continuously: false)
-        XCTAssertEqual(picked, [1, 0.5, 0])
+        // Every way the picker reports a colour, once each; closing on the starting colour changes nothing.
+        var picked: [[Float]] = []
+        let delegate = SystemColorPicker.Delegate({ picked.append($0) }, from: [0, 0, 0])
+        let picker = UIColorPickerViewController()
+        delegate.colorPickerViewController(picker, didSelect: UIColor(red: 1, green: 0.5, blue: 0, alpha: 1), continuously: false)
+        picker.selectedColor = .red
+        delegate.colorPickerViewControllerDidSelectColor(picker)
+        delegate.colorPickerViewControllerDidFinish(picker)
+        XCTAssertEqual(picked, [[1, 0.5, 0], [1, 0, 0]])
+        let unchanged = SystemColorPicker.Delegate({ picked.append($0) }, from: [0, 0, 0])
+        picker.selectedColor = .black
+        unchanged.colorPickerViewControllerDidFinish(picker)
+        XCTAssertEqual(picked.count, 2, "closed without a pick")
+        let p3 = try XCTUnwrap(SystemColorPicker.rgb(UIColor(displayP3Red: 1, green: 0, blue: 0, alpha: 1)))
+        XCTAssertEqual(p3[0], 1, accuracy: 0.01, "another colour space is converted to sRGB")
+        XCTAssertEqual(SystemColorPicker.rgb(UIColor(white: 0.5, alpha: 1)).map { $0.map { ($0 * 100).rounded() } }, [50, 50, 50], "and gray")
         XCTAssertEqual(DataFile(data: Data([1, 2])).data, Data([1, 2]))
         render(CanvasPickBar(prompt: "Tap a color") {})
         render(DeviceProbe(model: model), for: 0.4)
