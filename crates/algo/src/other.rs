@@ -248,7 +248,11 @@ mod tests {
             s ^= s << 5;
             *v = (s % 1000) as f32 / 999.0;
         }
-        let mut surf = photocraft_raster::Surface::new(photocraft_color::PixelFormat::new(photocraft_color::ColorMode::Grayscale, photocraft_color::SampleType::F32, true));
+        let mut surf = photocraft_raster::Surface::new(photocraft_color::PixelFormat::new(
+            photocraft_color::ColorMode::Grayscale,
+            photocraft_color::SampleType::F32,
+            true,
+        ));
         surf.write_region(inner, &img.data);
         // Discs inside the image, reaching past it, and much bigger than it.
         for out in [Rect::new(0, 0, 9, 17), Rect::new(-6, -4, 4, 21)] {

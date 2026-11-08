@@ -278,7 +278,9 @@ pub fn apply_to_surface(id: &str, params: &Value, surf: &Surface, canvas: Rect) 
         }
         // A stored warp too far to render leaves the smart object as it is (#1019).
         PUPPET | PUPPET_SMART => Some(puppet_surface(surf, &puppet_params(id, params).ok()?, interp(params)).unwrap_or_else(|| surf.clone())),
-        PERSPECTIVE | PERSPECTIVE_SMART => Some(perspective_surface(surf, &perspective_params(id, params).ok()?, interp(params)).unwrap_or_else(|| surf.clone())),
+        PERSPECTIVE | PERSPECTIVE_SMART => {
+            Some(perspective_surface(surf, &perspective_params(id, params).ok()?, interp(params)).unwrap_or_else(|| surf.clone()))
+        }
         _ => None,
     }
 }

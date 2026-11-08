@@ -87,7 +87,23 @@ fn add_every_layer_kind(s: &mut Session) {
     step(s, "layer.layerStyle.blendingOptions", json!({"opacity": 30}));
     step(s, "layer.newFillLayer.gradient", json!({}));
     step(s, "layer.layerStyle.blendingOptions", json!({"opacity": 30}));
-    for adj in ["invert", "levels", "curves", "hueSaturation", "brightnessContrast", "colorBalance", "blackWhite", "photoFilter", "channelMixer", "posterize", "threshold", "selectiveColor", "gradientMap", "vibrance", "exposure"] {
+    for adj in [
+        "invert",
+        "levels",
+        "curves",
+        "hueSaturation",
+        "brightnessContrast",
+        "colorBalance",
+        "blackWhite",
+        "photoFilter",
+        "channelMixer",
+        "posterize",
+        "threshold",
+        "selectiveColor",
+        "gradientMap",
+        "vibrance",
+        "exposure",
+    ] {
         step(s, &format!("layer.newAdjustmentLayer.{adj}"), json!({}));
         step(s, "layer.layerStyle.blendingOptions", json!({"opacity": 10}));
     }
@@ -167,14 +183,34 @@ fn flat_formats(out: &Out) {
 
     out.put("lossless.webp", &export(&rgb8, "webp", &with(|o| o.encode.webp_lossless = true)));
     for q in [20u8, 80] {
-        out.put(&format!("lossy-q{q}.webp"), &export(&rgb8, "webp", &with(|o| { o.encode.webp_lossless = false; o.encode.webp_quality = q; })));
+        out.put(
+            &format!("lossy-q{q}.webp"),
+            &export(
+                &rgb8,
+                "webp",
+                &with(|o| {
+                    o.encode.webp_lossless = false;
+                    o.encode.webp_quality = q;
+                }),
+            ),
+        );
     }
     let mut cutout = picture(W, H, "rgb", 8);
     step(&mut cutout, "layer.new.layer", json!({}));
     step(&mut cutout, "paint.stroke", json!({"points": [[8, 8], [50, 40]], "color": "#30a040", "size": 9}));
     step(&mut cutout, "select.all", json!({}));
     step(&mut cutout, "layer.mergeDown", json!({}));
-    out.put("transparent-lossy.webp", &export(&cutout, "webp", &with(|o| { o.encode.webp_lossless = false; o.encode.webp_quality = 70; })));
+    out.put(
+        "transparent-lossy.webp",
+        &export(
+            &cutout,
+            "webp",
+            &with(|o| {
+                o.encode.webp_lossless = false;
+                o.encode.webp_quality = 70;
+            }),
+        ),
+    );
 
     out.put("rgb8.png", &export(&rgb8, "png", &ExportOptions::default()));
     out.put("rgb16-interlaced.png", &export(&rgb16, "png", &with(|o| o.encode.png_interlaced = true)));
@@ -368,9 +404,29 @@ fn layered_formats(out: &Out) {
     let mut every = picture(W, H, "rgb", 8);
     add_every_layer_kind(&mut every);
     out.put("every-layer.psd", &export(&every, "psd", &ExportOptions::default()));
-    out.put("every-layer-small.psd", &export(&every, "psd", &with(|o| { o.image_previews = false; o.psd_maximize_compatibility = false; })));
+    out.put(
+        "every-layer-small.psd",
+        &export(
+            &every,
+            "psd",
+            &with(|o| {
+                o.image_previews = false;
+                o.psd_maximize_compatibility = false;
+            }),
+        ),
+    );
     out.put("every-layer.psb", &export(&every, "psb", &ExportOptions::default()));
-    out.put("every-layer.tif", &export(&every, "tif", &with(|o| { o.tiff_layers = true; o.encode.tiff_compression = TiffCompression::Lzw; })));
+    out.put(
+        "every-layer.tif",
+        &export(
+            &every,
+            "tif",
+            &with(|o| {
+                o.tiff_layers = true;
+                o.encode.tiff_compression = TiffCompression::Lzw;
+            }),
+        ),
+    );
     out.put("every-layer.ora", &export(&every, "ora", &ExportOptions::default()));
     let opened = every.active().unwrap();
     out.put("every-layer.pcraft", &photocraft_format::save_to_bytes(&opened.doc, &photocraft_format::SaveOptions::default()).unwrap());
@@ -450,7 +506,15 @@ fn raw_formats(out: &Out) {
     );
     out.put(
         "cfa-lossy.dng",
-        &DngSpec { storage: DngStorage::LossyJpegStrips { rows: 16 }, bits: 8, white: 255, data: cfa.iter().map(|v| v >> 6).collect(), black: vec![1], ..DngSpec::cfa(w, h, cfa.clone()) }.build(),
+        &DngSpec {
+            storage: DngStorage::LossyJpegStrips { rows: 16 },
+            bits: 8,
+            white: 255,
+            data: cfa.iter().map(|v| v >> 6).collect(),
+            black: vec![1],
+            ..DngSpec::cfa(w, h, cfa.clone())
+        }
+        .build(),
     );
     let gray: Vec<u16> = rgb.iter().map(|p| (p[1] * 60000.0) as u16).collect();
     out.put("mono.dng", &DngSpec::monochrome(w, h, gray).build());
@@ -558,7 +622,14 @@ fn presets(out: &Out) {
     };
     out.put(
         "patterns.pat",
-        &write_pat_file(&[pattern("RGB", 3, 8, 3, true), pattern("Gray", 1, 8, 1, false), pattern("RGB16", 3, 16, 3, false), pattern("CMYK", 4, 8, 4, false), pattern("Lab", 9, 8, 3, false)]).unwrap(),
+        &write_pat_file(&[
+            pattern("RGB", 3, 8, 3, true),
+            pattern("Gray", 1, 8, 1, false),
+            pattern("RGB16", 3, 16, 3, false),
+            pattern("CMYK", 4, 8, 4, false),
+            pattern("Lab", 9, 8, 3, false),
+        ])
+        .unwrap(),
     );
 
     let tip = |id: &str, depth: u16| {
@@ -579,7 +650,12 @@ fn presets(out: &Out) {
             version,
             &[
                 LegacyBrush { name: sampled.into(), spacing: 25, anti_alias: true, tip: LegacyTip::Sampled(AbrSample { id: String::new(), ..tip("", 8) }) },
-                LegacyBrush { name: String::new(), spacing: 10, anti_alias: true, tip: LegacyTip::Computed { diameter: 19, hardness: 60, angle: 30, roundness: 70 } },
+                LegacyBrush {
+                    name: String::new(),
+                    spacing: 10,
+                    anti_alias: true,
+                    tip: LegacyTip::Computed { diameter: 19, hardness: 60, angle: 30, roundness: 70 },
+                },
             ],
             rle,
         )
@@ -591,25 +667,33 @@ fn presets(out: &Out) {
     let text = |s: &str| D::Text(UnicodeString::new_nul(s));
     let preset = Descriptor::new("brushPreset")
         .with("Nm  ", text("Omega Sampled"))
-        .with("Brsh", D::Descriptor(Descriptor::new("sampledBrush").with("Dmtr", unit(24.0, b"#Pxl")).with("Spcn", unit(20.0, b"#Prc")).with("sampledData", text("$tip8"))))
-        .with("useTipDynamics", D::Boolean(true))
-        .with("useScatter", D::Boolean(true))
-        .with("dualBrush", D::Descriptor(Descriptor::new("dualBrush").with("useDualBrush", D::Boolean(false))));
-    let computed = Descriptor::new("brushPreset")
-        .with("Nm  ", text("Omega Computed"))
         .with(
             "Brsh",
             D::Descriptor(
-                Descriptor::new("computedBrush")
-                    .with("Dmtr", unit(30.0, b"#Pxl"))
-                    .with("Hrdn", unit(50.0, b"#Prc"))
-                    .with("Angl", unit(45.0, b"#Ang"))
-                    .with("Rndn", unit(60.0, b"#Prc"))
-                    .with("Spcn", unit(15.0, b"#Prc")),
+                Descriptor::new("sampledBrush").with("Dmtr", unit(24.0, b"#Pxl")).with("Spcn", unit(20.0, b"#Prc")).with("sampledData", text("$tip8")),
             ),
-        );
-    let sampled16 = Descriptor::new("brushPreset").with("Nm  ", text("Omega 16")).with("Brsh", D::Descriptor(Descriptor::new("sampledBrush").with("sampledData", text("$tip16"))));
-    out.put("brushes-v6.abr", &write_v6(2, &[tip("$tip8", 8), tip("$tip16", 16)], &[pattern("Grit", 1, 8, 1, false)], &[preset, computed, sampled16], true).unwrap());
+        )
+        .with("useTipDynamics", D::Boolean(true))
+        .with("useScatter", D::Boolean(true))
+        .with("dualBrush", D::Descriptor(Descriptor::new("dualBrush").with("useDualBrush", D::Boolean(false))));
+    let computed = Descriptor::new("brushPreset").with("Nm  ", text("Omega Computed")).with(
+        "Brsh",
+        D::Descriptor(
+            Descriptor::new("computedBrush")
+                .with("Dmtr", unit(30.0, b"#Pxl"))
+                .with("Hrdn", unit(50.0, b"#Prc"))
+                .with("Angl", unit(45.0, b"#Ang"))
+                .with("Rndn", unit(60.0, b"#Prc"))
+                .with("Spcn", unit(15.0, b"#Prc")),
+        ),
+    );
+    let sampled16 = Descriptor::new("brushPreset")
+        .with("Nm  ", text("Omega 16"))
+        .with("Brsh", D::Descriptor(Descriptor::new("sampledBrush").with("sampledData", text("$tip16"))));
+    out.put(
+        "brushes-v6.abr",
+        &write_v6(2, &[tip("$tip8", 8), tip("$tip16", 16)], &[pattern("Grit", 1, 8, 1, false)], &[preset, computed, sampled16], true).unwrap(),
+    );
 
     out.put(
         "contours.shc",
@@ -631,9 +715,21 @@ fn actions(out: &Out) {
     let mut s = Session::new();
     s.execute("file.new", json!({"width": 32, "height": 24})).unwrap();
     let wanted = |id: &str| {
-        ["filter.", "image.adjustments.", "layer.newAdjustmentLayer.", "layer.newFillLayer.", "select.", "layer.new.", "image.rotate", "image.imageSize", "image.canvasSize", "image.trim", "image.crop"]
-            .iter()
-            .any(|p| id.starts_with(p))
+        [
+            "filter.",
+            "image.adjustments.",
+            "layer.newAdjustmentLayer.",
+            "layer.newFillLayer.",
+            "select.",
+            "layer.new.",
+            "image.rotate",
+            "image.imageSize",
+            "image.canvasSize",
+            "image.trim",
+            "image.crop",
+        ]
+        .iter()
+        .any(|p| id.starts_with(p))
     };
     let ids: Vec<&str> = photocraft_engine::commands::command_specs().iter().map(|c| c.id).filter(|id| wanted(id)).collect();
     let extra = [
@@ -679,7 +775,10 @@ fn actions(out: &Out) {
     let item = |event: AtnEvent, label: &str, desc: Option<Descriptor>| AtnItem { event, dictionary: label.into(), descriptor: desc, ..Default::default() };
     let code = |c: &[u8; 4]| AtnEvent::Code(*c);
     let stop = d("null").with("Msge", D::Text(UnicodeString::new_nul("Check the result"))).with("Cntn", D::Boolean(true));
-    let tool = d("null").with("null", D::Reference(vec![ReferenceItem::Class(photocraft_psd::descriptor::Class { name: UnicodeString::new_nul(""), class_id: Id::new("MvTl") })]));
+    let tool = d("null").with(
+        "null",
+        D::Reference(vec![ReferenceItem::Class(photocraft_psd::descriptor::Class { name: UnicodeString::new_nul(""), class_id: Id::new("MvTl") })]),
+    );
     let odd = AtnFile {
         name: UnicodeString::new_nul("Odd Steps"),
         expanded: true,
@@ -747,12 +846,7 @@ fn gif_clip() -> Vec<u8> {
     let (w, h) = (24u32, 16u32);
     let palette: Vec<[u8; 3]> = (0..4u8).map(|i| [i * 80, 200 - i * 50, i * 30]).collect();
     let frames: Vec<GifFrame> = (0..3u32)
-        .map(|n| GifFrame {
-            indices: (0..w * h).map(|i| (((i % w) / 6 + n) % 4) as u8).collect(),
-            palette: palette.clone(),
-            transparent: None,
-            delay_cs: 10,
-        })
+        .map(|n| GifFrame { indices: (0..w * h).map(|i| (((i % w) / 6 + n) % 4) as u8).collect(), palette: palette.clone(), transparent: None, delay_cs: 10 })
         .collect();
     encode_gif_animated(w, h, &frames, true).unwrap()
 }

@@ -416,7 +416,8 @@ fn frames_to_layers(s: &mut Session, p: &Value) -> Result<Value> {
 /// Export › Render Video: composite the whole document at each timeline frame and write an image
 /// sequence (`{dir}/{stem}_NNNN.{format}`). Clean-room; no proprietary codec.
 fn render_video(s: &mut Session, p: &Value) -> Result<Value> {
-    let dir = p.get("dir").and_then(Value::as_str).ok_or_else(|| EngineError::BadParams { cmd: "file.export.renderVideo".into(), msg: "pick a folder".into() })?;
+    let dir =
+        p.get("dir").and_then(Value::as_str).ok_or_else(|| EngineError::BadParams { cmd: "file.export.renderVideo".into(), msg: "pick a folder".into() })?;
     std::fs::create_dir_all(dir).map_err(|e| EngineError::Other(format!("mkdir `{dir}`: {e}")))?;
     render_video_with(s, p, |name, bytes| crate::file_cmds::write_file(&format!("{dir}/{name}"), bytes), |_, _| true)
 }

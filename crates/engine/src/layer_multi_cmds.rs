@@ -227,7 +227,12 @@ fn select_all_layers(s: &mut Session) -> Result<Value> {
 }
 
 fn find_layers(s: &mut Session, p: &Value) -> Result<Value> {
-    let needle = p.get("name").and_then(Value::as_str).filter(|n| !n.trim().is_empty()).ok_or_else(|| bad("select.findLayers", "type part of a layer's name"))?.to_lowercase();
+    let needle = p
+        .get("name")
+        .and_then(Value::as_str)
+        .filter(|n| !n.trim().is_empty())
+        .ok_or_else(|| bad("select.findLayers", "type part of a layer's name"))?
+        .to_lowercase();
     let d = s.active().ok_or(EngineError::NoDocument)?;
     let ids: Vec<LayerId> = d.doc.walk().into_iter().filter(|(_, _, l)| l.name.to_lowercase().contains(&needle)).map(|(_, _, l)| l.id).collect();
     if ids.is_empty() {
@@ -1453,7 +1458,15 @@ pub fn specs() -> Vec<CommandSpec> {
             }
             Ok(Value::Null)
         }),
-        spec!("select.findLayers", "Find Layers…", &["Select"], Some("Cmd+Alt+Shift+F"), r##"{"name":str (case-insensitive substring)}"##, has_doc, find_layers),
+        spec!(
+            "select.findLayers",
+            "Find Layers…",
+            &["Select"],
+            Some("Cmd+Alt+Shift+F"),
+            r##"{"name":str (case-insensitive substring)}"##,
+            has_doc,
+            find_layers
+        ),
         spec!("layer.selectLinkedLayers", "Select Linked Layers", &["Layer"], None, "{}", has_linked, |s, _| select_linked(s)),
         spec!("layer.align.topEdges", "Top Edges", &["Layer", "Align"], None, ALIGN, can_align, |s, p| align(s, p, "topEdges")),
         spec!("layer.align.verticalCenters", "Vertical Centers", &["Layer", "Align"], None, ALIGN, can_align, |s, p| align(s, p, "verticalCenters")),

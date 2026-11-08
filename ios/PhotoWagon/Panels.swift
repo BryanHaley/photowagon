@@ -1582,35 +1582,8 @@ struct ActionsPanel: View {
                 ForEach(state.sets, id: \.self) { set in
                     Section(set) {
                         ForEach(state.actions.filter { $0.set == set }) { a in
-                            let open = state.expanded.contains(a.name)
-                            HStack {
-                                Button { state.toggleExpanded(a.name) } label: { Image(systemName: open ? "chevron.down" : "chevron.right").frame(width: 16) }
-                                .buttonStyle(.borderless)
-                                .accessibilityLabel(open ? "Hide steps" : "Show steps")
-                                .accessibilityIdentifier("action.expand.\(a.name)")
-                                check(a.on, id: "action.toggle.\(a.name)") { state.run("actions.toggle", ["action": a.name]) }
-                                HStack {
-                                    Text(a.name)
-                                    Spacer()
-                                    if model.recordingAction == a.name { Image(systemName: "record.circle.fill").foregroundStyle(.red) }
-                                }
-                                .contentShape(Rectangle())
-                                .onTapGesture(count: 2) { state.rename(a.name) }
-                                .onTapGesture { state.selected = a.name }
-                                .accessibilityAddTraits(.isButton)
-                                .accessibilityIdentifier("action.\(a.name)")
-                            }
-                            .listRowBackground(state.selected == a.name ? Color.accentColor.opacity(0.25) : nil)
-                            if open {
-                                ForEach(Array(a.steps.enumerated()), id: \.offset) { i, step in
-                                    HStack {
-                                        check(step.on, id: "step.toggle.\(a.name).\(i)") { state.run("actions.toggle", ["action": a.name, "step": i]) }
-                                        Text(step.label).foregroundStyle(step.on ? .primary : .secondary)
-                                            .accessibilityIdentifier("step.\(a.name).\(i)")
-                                    }
-                                    .padding(.leading, 28)
-                                }
-                            }
+                            actionRow(a)
+                            if state.expanded.contains(a.name) { stepRows(a) }
                         }
                     }
                 }
@@ -1651,6 +1624,40 @@ struct ActionsPanel: View {
         "layer.duplicate": "Duplicate Layer", "select.all": "Select All", "select.deselect": "Deselect",
         "edit.fill": "Fill", "image.size": "Image Size", "layer.transform": "Transform",
     ]
+
+    // Rows of their own: as one expression the list takes the compiler too long to type-check.
+    private func actionRow(_ a: Action) -> some View {
+        let open = state.expanded.contains(a.name)
+        return HStack {
+            Button { state.toggleExpanded(a.name) } label: { Image(systemName: open ? "chevron.down" : "chevron.right").frame(width: 16) }
+                .buttonStyle(.borderless)
+                .accessibilityLabel(open ? "Hide steps" : "Show steps")
+                .accessibilityIdentifier("action.expand.\(a.name)")
+            check(a.on, id: "action.toggle.\(a.name)") { state.run("actions.toggle", ["action": a.name]) }
+            HStack {
+                Text(a.name)
+                Spacer()
+                if model.recordingAction == a.name { Image(systemName: "record.circle.fill").foregroundStyle(.red) }
+            }
+            .contentShape(Rectangle())
+            .onTapGesture(count: 2) { state.rename(a.name) }
+            .onTapGesture { state.selected = a.name }
+            .accessibilityAddTraits(.isButton)
+            .accessibilityIdentifier("action.\(a.name)")
+        }
+        .listRowBackground(state.selected == a.name ? Color.accentColor.opacity(0.25) : nil)
+    }
+
+    private func stepRows(_ a: Action) -> some View {
+        ForEach(Array(a.steps.enumerated()), id: \.offset) { i, step in
+            HStack {
+                check(step.on, id: "step.toggle.\(a.name).\(i)") { state.run("actions.toggle", ["action": a.name, "step": i]) }
+                Text(step.label).foregroundStyle(step.on ? .primary : .secondary)
+                    .accessibilityIdentifier("step.\(a.name).\(i)")
+            }
+            .padding(.leading, 28)
+        }
+    }
 
     private func button(_ title: String, _ symbol: String, _ id: String, enabled: Bool = true, _ action: @escaping () -> Void) -> some View {
         Button(action: action) { Image(systemName: symbol).font(.title3) }

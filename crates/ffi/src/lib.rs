@@ -730,7 +730,6 @@ impl Editor {
         });
     }
 
-
     /// The view with `layer` is going away. The GPU device and pipelines stay for the next view.
     pub fn detach(&self, layer: u64) {
         let _ = self.with(|inner| {

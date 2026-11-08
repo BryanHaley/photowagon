@@ -19,8 +19,8 @@ fn fingerprint(s: &mut Session, p: &Value) -> Result<Value> {
     let mut doc = photocraft_doc::Document::clone(&d.doc);
     // The id is the open document's, not part of its state.
     doc.id = photocraft_doc::DocId(0);
-    let bytes = photocraft_format::save_to_bytes(&doc, &photocraft_format::SaveOptions::default())
-        .map_err(|e| EngineError::Other(format!("fingerprint: {e}")))?;
+    let bytes =
+        photocraft_format::save_to_bytes(&doc, &photocraft_format::SaveOptions::default()).map_err(|e| EngineError::Other(format!("fingerprint: {e}")))?;
     Ok(json!({
         "hash": blake3::hash(&bytes).to_hex().to_string(),
         "activeLayer": d.active_layer.map(|l| l.0),

@@ -39,7 +39,8 @@ fn every_picture_opens_saves_and_reopens() {
             };
             match photocraft_io::import(&format!("again.{format}"), &saved) {
                 Ok(r) if r.document.size == doc.size => {}
-                Ok(r) => failures.push(format!("{name} as {format}: {}x{} became {}x{}", doc.size.width, doc.size.height, r.document.size.width, r.document.size.height)),
+                Ok(r) => failures
+                    .push(format!("{name} as {format}: {}x{} became {}x{}", doc.size.width, doc.size.height, r.document.size.width, r.document.size.height)),
                 Err(e) => failures.push(format!("{name} as {format} won't reopen: {e}")),
             }
         }

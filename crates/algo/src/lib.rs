@@ -1112,7 +1112,12 @@ fn apply_tiled_with_impl(
             (None, Halo::Radius(r)) => {
                 owned = match extent {
                     // Repeated edges add nothing to a disc's extreme: read only what's inside.
-                    Some(e) if matches!(params, FilterParams::Minimum { preserve: Preserve::Roundness, .. } | FilterParams::Maximum { preserve: Preserve::Roundness, .. }) => {
+                    Some(e)
+                        if matches!(
+                            params,
+                            FilterParams::Minimum { preserve: Preserve::Roundness, .. } | FilterParams::Maximum { preserve: Preserve::Roundness, .. }
+                        ) =>
+                    {
                         Image::read(surface, t.inflate(r).intersect(&e))
                     }
                     Some(e) => Image::read_clamped(surface, t.inflate(r), e),

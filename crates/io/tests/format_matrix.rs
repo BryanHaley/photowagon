@@ -185,6 +185,7 @@ const KNOWN: &[(&str, &str)] = &[
 ];
 
 #[test]
+#[ignore = "needs corpus/formats from scripts/format_samples.py, which CI's runner lacks the tools for: run with --ignored"]
 fn every_format_and_option_matches_its_reference_decoder() {
     let dir = root();
     let manifest: Value = match std::fs::read(dir.join("manifest.json")).map(|b| serde_json::from_slice(&b)) {

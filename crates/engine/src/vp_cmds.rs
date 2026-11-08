@@ -24,11 +24,7 @@ fn pt(v: &Value) -> Option<[f64; 2]> {
 
 /// Builds the scene from `"planes"`.
 pub fn scene(p: &Value, canvas: Rect) -> Result<Scene> {
-    let planes = p
-        .get("planes")
-        .and_then(Value::as_array)
-        .filter(|a| !a.is_empty())
-        .ok_or_else(|| bad("draw a plane first"))?;
+    let planes = p.get("planes").and_then(Value::as_array).filter(|a| !a.is_empty()).ok_or_else(|| bad("draw a plane first"))?;
     let center = [(canvas.x0 + canvas.x1) as f64 / 2.0, (canvas.y0 + canvas.y1) as f64 / 2.0];
     let corners = |v: &Value| -> Option<[[f64; 2]; 4]> {
         let a = v.get("corners")?.as_array()?;

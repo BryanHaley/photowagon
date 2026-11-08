@@ -20,7 +20,7 @@ XL are missing (gap G10). Remaining: 300–500 h including PSD fidelity.
 **Format matrix (2026-10-22).** `scripts/format_samples.py` writes our test chart in every format
 and option we import (173 samples with libtiff's and libjpeg-turbo's test images), each with a
 reference decode by the format's own library. `crates/io/tests/format_matrix.rs` (feature
-`corpus`) checks the engine against them, 142 exact or within lossy tolerance and the rest listed
+`corpus`; ignored unless asked for, as the samples are made locally: `cargo test --release -p photocraft-io --features corpus --test format_matrix -- --ignored`) checks the engine against them, 142 exact or within lossy tolerance and the rest listed
 with reasons, and `ios/PhotoWagonTests/FormatMatrixTests.swift` checks the app's full open path
 (engine, Apple's decoder, LibRaw). Our raw decoder matches LibRaw sensor value for value on every
 pixls raw both read (`crates/ffi/src/libraw.rs` tests).

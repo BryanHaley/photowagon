@@ -848,9 +848,13 @@ pub const GUIDE_COLORS: [(&str, [u8; 3]); 9] = [
 fn guide_color(p: &Value) -> Result<Option<[u8; 3]>> {
     let Some(v) = p.get("color") else { return Ok(None) };
     let text = v.as_str().ok_or(EngineError::Other("`color` must be a color name or \"#rrggbb\"".into()))?;
-    GUIDE_COLORS.iter().find(|(name, ..)| name.eq_ignore_ascii_case(text)).map(|(.., rgb)| *rgb).or_else(|| crate::prefs::parse_hex(text)).map(Some).ok_or_else(
-        || EngineError::Other(format!("`color` {text:?} is not a guide color: use \"#rrggbb\" or one of {}", GUIDE_COLORS.map(|c| c.0).join(", "))),
-    )
+    GUIDE_COLORS
+        .iter()
+        .find(|(name, ..)| name.eq_ignore_ascii_case(text))
+        .map(|(.., rgb)| *rgb)
+        .or_else(|| crate::prefs::parse_hex(text))
+        .map(Some)
+        .ok_or_else(|| EngineError::Other(format!("`color` {text:?} is not a guide color: use \"#rrggbb\" or one of {}", GUIDE_COLORS.map(|c| c.0).join(", "))))
 }
 
 /// Edit Selected Guides (the guide context menu): change one guide's orientation, position and
