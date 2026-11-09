@@ -498,10 +498,13 @@ final class ScreenCoverageTests: XCTestCase {
 
     // MARK: - Canvas gestures
 
+    // Each keeps its own state: iOS 26 ignores `state` set on a recognizer outside a view.
     private final class Pan: UIPanGestureRecognizer {
         var at = CGPoint.zero
         var moved = CGPoint.zero
         var flags: UIKeyModifierFlags = []
+        private var held = UIGestureRecognizer.State.possible
+        override var state: UIGestureRecognizer.State { get { held } set { held = newValue } }
         override func location(in view: UIView?) -> CGPoint { at }
         override func translation(in view: UIView?) -> CGPoint { moved }
         override var modifierFlags: UIKeyModifierFlags { flags }
@@ -509,11 +512,15 @@ final class ScreenCoverageTests: XCTestCase {
 
     private final class Press: UILongPressGestureRecognizer {
         var at = CGPoint.zero
+        private var held = UIGestureRecognizer.State.possible
+        override var state: UIGestureRecognizer.State { get { held } set { held = newValue } }
         override func location(in view: UIView?) -> CGPoint { at }
     }
 
     private final class Hover: UIHoverGestureRecognizer {
         var at = CGPoint.zero
+        private var held = UIGestureRecognizer.State.possible
+        override var state: UIGestureRecognizer.State { get { held } set { held = newValue } }
         override func location(in view: UIView?) -> CGPoint { at }
     }
 
