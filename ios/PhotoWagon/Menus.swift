@@ -244,6 +244,8 @@ struct MenuTree {
         "edit.transform.warp", "edit.transform.splitWarpCrosswise", "edit.transform.splitWarpHorizontally", "edit.transform.splitWarpVertically",
         "edit.transform.removeWarpSplit", "edit.perspectiveWarp", "image.variables.define", "image.variables.dataSets", "image.applyDataSet",
         "shape.create", "filter.vanishingPoint",
+        // An iOS app can't take in code to run (App Review 2.5.2).
+        "plugin.list", "plugin.install", "plugin.remove", "plugin.reload", "edit.preferences.plugIns",
     ]
 
     /// Hidden: the app's own File items, and commands that need a desktop file or folder path.

@@ -144,18 +144,11 @@ the band's geometry:
 `x, y` is the document position of the buffer's top-left sample (including the margins), so
 position-dependent filters (gradients, vignettes) are seamless across bands.
 
-## Writing a plug-in in Rust
+## Writing a plug-in
 
-[`examples/plugins/invert-rs`](../examples/plugins/invert-rs) is a complete `no_std` plug-in
-(no allocator, under 1 KiB built). Build it with:
-
-```sh
-rustup target add wasm32-unknown-unknown
-examples/plugins/invert-rs/build.sh      # cargo build --release --target wasm32-unknown-unknown
-```
-
-The script also refreshes `crates/plugins/tests/fixtures/invert.wasm`, the test fixture built from
-that source. Any language that targets core WebAssembly works (C, Zig, AssemblyScript, WAT…), as
+PhotoWagon doesn't offer plug-ins: an iOS app can't take in code to run (App Review 2.5.2), so the
+app hides the `plugin.*` commands. The engine keeps the host and its tests
+(`crates/plugins/tests/fixtures/invert.wasm`, a small `no_std` Invert plug-in). Any language that targets core WebAssembly works (C, Zig, AssemblyScript, WAT…), as
 long as the module has no imports: in Rust, that means `no_std` or a `std` build that never touches
 WASI.
 

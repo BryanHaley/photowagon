@@ -703,7 +703,7 @@ final class EditorModel: ObservableObject {
         case "layer.new.layer": .newLayer
         case "file.export.renderVideo", "file.export.dataSetsAsFiles": .exportToFolder(id)
         case "file.import.notes", "file.import.variableDataSets", "file.import.videoFramesToLayers", "layer.videoLayers.newVideoLayerFromFile",
-             "layer.videoLayers.replaceFootage", "plugin.install", "file.scripts.browse": .commandFile(id)
+             "layer.videoLayers.replaceFootage", "file.scripts.browse": .commandFile(id)
         case _ where id.hasPrefix("layer.layerStyle.") && (LayerStyle.kinds.contains { $0.kind == id.dropFirst(17) } || id.hasSuffix(".blendingOptions")):
             .layerStyle(String(id.dropFirst(17)))
         default: nil

@@ -816,8 +816,11 @@ mod tests {
             .collect();
         let off = ours.chunks(4).zip(theirs.chunks(4)).filter(|(a, b)| a.iter().zip(*b).any(|(x, y)| x.abs_diff(*y) > 48)).count();
         assert!(off < 64, "{off} pixels differ");
-        // The report's file: PhotoCraft's own icon opens without the clip-path warning.
-        let icon = import_svg("photocraft.svg", include_bytes!("../../../assets/app-icon/photocraft.svg")).unwrap();
+        // An icon clipped to a rounded square opens without the clip-path warning.
+        let icon = br##"<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64">
+            <defs><clipPath id="r"><rect width="64" height="64" rx="14"/></clipPath></defs>
+            <g clip-path="url(#r)"><rect width="64" height="64" fill="#3a6"/><circle cx="32" cy="32" r="20" fill="#fff"/></g></svg>"##;
+        let icon = import_svg("icon.svg", icon).unwrap();
         assert!(icon.warnings.iter().all(|w| !w.contains("clip-path")), "{:?}", icon.warnings);
         assert!(icon.document.layers.iter().any(|l| l.vector_mask.is_some()), "its rounded square is a vector mask");
         // Two shapes in the clip: rasterised, and said so.
