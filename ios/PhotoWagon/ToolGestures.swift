@@ -160,7 +160,7 @@ extension CanvasUIView {
         case .directSelect:
             toolDrag = pathHandleAt(startDoc) ?? .none
         case .pen:
-            penBegan(at: startDoc)
+            if model.penAdjusts { toolDrag = pathHandleAt(startDoc) ?? .none } else { penBegan(at: startDoc) }
         case .curvaturePen:
             curvatureTap(at: startDoc)
         default:
@@ -322,7 +322,7 @@ extension CanvasUIView {
             model.view.rotation = ((rotateFrom.rotation + turn) / step).rounded() * step
             model.place(anchor, at: mid)
         case .pen:
-            penDragged(to: here)
+            if model.penAdjusts { dragPathHandle(to: here) } else { penDragged(to: here) }
         case .directSelect:
             dragPathHandle(to: here)
         case .pathSelect:
@@ -660,6 +660,9 @@ extension CanvasUIView {
             setToolPath(nil)
             let pts = thinned(docPoints, every: 8)
             if pts.count >= 2 { model.setWorkPath(model.workPath + [Subpath(knots: smooth(pts), closed: false)]) }
+        case .pen where model.penAdjusts:
+            if gesture.moved { model.setWorkPath(model.workPath) }
+            toolDrag = .none
         case .pen:
             penEnded()
         case .addAnchor:
@@ -831,7 +834,7 @@ extension CanvasUIView {
         case .crop:
             if case .moveCrop = toolDrag { return false }
             return true
-        case .directSelect:
+        case .directSelect, .pen where model.penAdjusts:
             switch toolDrag {
             case .anchor, .handle: return true
             default: return false

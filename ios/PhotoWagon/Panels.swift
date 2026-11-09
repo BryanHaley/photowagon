@@ -257,6 +257,16 @@ struct ContextBar: View {
         } else if let g = model.pickingGroup, Tool.groups.indices.contains(g) {
             toolRow(Tool.groups[g])
         } else if model.tool.pathTool {
+            if model.tool == .pen {
+                Picker("Pen", selection: $model.penAdjusts) {
+                    Label("Add Points", systemImage: "plus").tag(false)
+                    Label("Adjust", systemImage: "hand.point.up.left").tag(true)
+                }
+                .pickerStyle(.segmented)
+                .labelStyle(.titleOnly)
+                .fixedSize()
+                .accessibilityIdentifier("pen.mode")
+            }
             chip("Make Selection", "rectangle.dashed") { model.run("path.toSelection", ["name": "work", "mode": model.selectionMode.rawValue]) }
             chip("Fill Path", "drop.fill") { model.run("path.fill", ["name": "work"]) }
             chip("Stroke Path", "pencil.line") { model.run("path.stroke", ["name": "work", "tool": "brush"]) }

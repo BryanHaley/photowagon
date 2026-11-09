@@ -243,6 +243,19 @@ final class ToolTests: XCTestCase {
         model.loadWorkPath()
         XCTAssertEqual(model.workPath.first?.knots.count, 3, "written to the engine")
 
+        // The Pen's Adjust: a drag moves a handle and adds nothing; Add Points adds again.
+        model.penAdjusts = true
+        canvas.drag(pt(250, 150), pt(260, 170))
+        XCTAssertEqual(model.workPath.first?.knots.count, 3)
+        XCTAssertNear(model.workPath.first?.knots[safe: 1]?.outHandle, pt(260, 170))
+        XCTAssertNear(model.workPath.first?.knots[safe: 1]?.inHandle, pt(154, 46.3), accuracy: 1, "the other handle turns with it, keeping its length")
+        model.loadWorkPath()
+        XCTAssertNear(model.workPath.first?.knots[safe: 1]?.outHandle, pt(260, 170), "written to the engine")
+        model.penAdjusts = false
+        canvas.tap(pt(300, 300))
+        XCTAssertEqual(model.workPath.count, 2, "Add Points starts a new path after a closed one")
+        model.setWorkPath([model.workPath[0]])
+
         model.tool = .directSelect
         canvas.drag(pt(200, 200), pt(220, 220))
         XCTAssertNear(model.workPath.first?.knots[safe: 2]?.anchor, pt(220, 220))

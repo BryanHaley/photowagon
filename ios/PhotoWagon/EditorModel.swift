@@ -438,6 +438,9 @@ final class EditorModel: ObservableObject {
     @Published var snapRotation = false
     /// Free Transform: corners scale about the reference point (⌥ in Photoshop).
     @Published var scaleFromPivot = false
+    /// The Pen's Adjust: touches move anchors and handles (as Direct Selection does) instead of
+    /// adding points.
+    @Published var penAdjusts = false
     // Type tool
     /// The selected text layer's colour (RGB documents), shown in the Type options.
     @Published var typeColor: [Float]?
