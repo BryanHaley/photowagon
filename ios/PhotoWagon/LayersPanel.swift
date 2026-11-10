@@ -504,6 +504,7 @@ struct LayerRowView: View {
     @ViewBuilder
     private var menu: some View {
         Button { rename() } label: { Label("Rename…", systemImage: "pencil") }
+        if !row.isGroup { Button { model.selectPixels(of: row.id) } label: { Label("Select Pixels", systemImage: "rectangle.dashed") } }
         if row.kind == "Type" { Button { editText() } label: { Label("Edit Text…", systemImage: "character.cursor.ibeam") } }
         if row.kind == "Embedded" { Button { editContents() } label: { Label("Edit Contents", systemImage: "square.and.pencil") } }
         if row.adjustment != nil || row.kind == "Fill" { Button { properties = LayerEdit(layer: row.id) } label: { Label("Properties…", systemImage: "slider.horizontal.3") } }

@@ -131,7 +131,10 @@ struct HomeView: View {
                         HStack {
                             Button { model.openRecovered(r) } label: {
                                 HStack {
-                                    Image(systemName: "arrow.uturn.backward.circle.fill").font(.title3)
+                                    FileThumbnail(url: r.url)
+                                        .overlay(alignment: .bottomTrailing) {
+                                            Image(systemName: "arrow.uturn.backward.circle.fill").font(.caption).padding(2)
+                                        }
                                     VStack(alignment: .leading) {
                                         Text(r.name)
                                         Text(r.date.formatted(date: .abbreviated, time: .shortened)).font(.caption).foregroundStyle(.secondary)

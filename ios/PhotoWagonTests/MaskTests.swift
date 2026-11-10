@@ -95,6 +95,7 @@ final class MaskTests: XCTestCase {
         model.commitPending()
         XCTAssertEqual(mask(model, "paint", [125, 25, 155, 55]), 0, accuracy: 0.01, "the square moved right in the mask")
         XCTAssertEqual(mask(model, "paint", [25, 25, 55, 55]), 1, accuracy: 0.01)
+        plainMove(model)
         model.tool = .move
         CanvasUIView(model: model).drag(pt(140, 40), pt(140, 140))
         XCTAssertEqual(mask(model, "paint", [125, 125, 155, 155]), 0, accuracy: 0.01, "and down with the Move tool")

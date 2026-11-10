@@ -124,6 +124,8 @@ final class ToolTests: XCTestCase {
             model.tool = tool
             canvas.drag(pt(100, 100), pt(200, 180))
             XCTAssertEqual(model.activeLayer?.kind, kind, "\(tool)")
+            XCTAssertNotNil(model.transform, "\(tool): a new shape opens Free Transform")
+            model.cancelPending()
         }
         XCTAssertEqual(model.layerCount, 7)
         model.tool = .rectangle
@@ -368,5 +370,103 @@ final class ToolTests: XCTestCase {
         canvas.drag(pt(10, 10), pt(60, 60))
         canvas.tap(pt(5, 5))
         XCTAssertNil(model.pendingFrame, "the picker was closed: the next touch forgets the frame")
+    }
+
+    func testTypeMaskDragsTheSelectionInOneStep() throws {
+        let (model, canvas) = canvas(tool: .typeMask)
+        model.run("select.rect", ["x": 100, "y": 100, "width": 50, "height": 40])
+        let layers = model.layerCount
+        let steps = model.historyNames.count
+        canvas.drag(pt(120, 120), pt(150, 140), steps: 5)
+        XCTAssertEqual(selection(model), [130, 120, 50, 40], "the outline moved, not drawn a text box")
+        XCTAssertEqual(model.historyNames.count, steps + 1, "one step")
+        XCTAssertEqual(model.layerCount, layers, "no pixels or text")
+        XCTAssertNil(model.prompt)
+        canvas.drag(pt(10, 10), pt(60, 60))
+        XCTAssertNotNil(model.prompt, "outside it, a drag makes a text box")
+    }
+
+    func testMoveToolShowsTheTransformBoxAndAppliesItOnToolChange() throws {
+        let (model, canvas) = canvas(tool: .brush)
+        plainMove(model, true)
+        model.run("select.rect", ["x": 100, "y": 100, "width": 100, "height": 100])
+        model.run("edit.fill", ["contents": "color", "color": "#ff0000"])
+        model.run("layer.new.layerViaCopy")
+        model.run("select.deselect")
+        model.tool = .move
+        let box = try XCTUnwrap(model.transform, "the Move tool shows the layer's box")
+        XCTAssertEqual(box.x0, 100)
+        let steps = model.historyNames.count
+        canvas.drag(pt(130, 170), pt(180, 170))
+        XCTAssertEqual(model.historyNames.count, steps + 1, "a drag inside moves the layer straight away")
+        XCTAssertGreaterThan(model.pixel(240, 150).first ?? 0, 0.9, "moved right")
+        XCTAssertEqual(model.transform?.x0 ?? 0, 150, accuracy: 1, "the box follows the layer")
+        XCTAssertEqual(model.transform?.unchanged, true)
+
+        // A corner scales: that waits for Commit, another tool, or Undo.
+        canvas.drag(pt(250, 200), pt(300, 250))
+        XCTAssertEqual(model.transform?.unchanged, false)
+        model.run("edit.undo")
+        XCTAssertEqual(model.transform?.unchanged, true, "Undo takes back the box's change only")
+        XCTAssertEqual(model.historyNames.count, steps + 1)
+        canvas.drag(pt(250, 200), pt(300, 250))
+        model.tool = .brush
+        XCTAssertNil(model.transform, "another tool applies it")
+        XCTAssertEqual(model.historyNames.count, steps + 2)
+
+        model.tool = .move
+        XCTAssertNotNil(model.transform)
+        model.showTransformControls = false
+        XCTAssertNil(model.transform, "switched off: the plain Move tool")
+    }
+
+    func testFreeTransformIsAppliedBeforeAnotherLayerIsSelected() throws {
+        let (model, _) = canvas(tool: .brush)
+        model.run("layer.new.layer", ["name": "Other"])
+        let other = try XCTUnwrap(model.activeLayer?.id)
+        model.run("layer.new.layer", ["name": "Box"])
+        model.run("select.rect", ["x": 0, "y": 0, "width": 50, "height": 50])
+        model.run("edit.fill", ["contents": "color", "color": "#00ff00"])
+        model.run("select.deselect")
+        model.beginTransform()
+        model.transform?.dx = 100
+        model.run("layer.select", ["layer": other])
+        XCTAssertNil(model.transform)
+        XCTAssertEqual(model.historyNames.last, "Free Transform")
+        XCTAssertGreaterThan(model.pixel(125, 25)[safe: 1] ?? 0, 0.9, "the box's layer moved")
+        XCTAssertEqual(model.activeLayer?.id, other)
+    }
+
+    func testANewShapeOpensFreeTransformWithoutKeepProportions() {
+        let (model, canvas) = canvas(tool: .rectangle)
+        canvas.drag(pt(100, 100), pt(200, 180))
+        XCTAssertNotNil(model.transform)
+        XCTAssertFalse(model.keepProportions)
+        model.cancelPending()
+        model.run("layer.new.layer")
+        model.beginTransform()
+        XCTAssertTrue(model.keepProportions, "other layers keep proportions")
+    }
+
+    func testSelectPixelsSelectsByAlpha() throws {
+        let (model, _) = canvas(tool: .brush)
+        model.run("layer.new.layer", ["name": "Half"])
+        model.run("select.rect", ["x": 10, "y": 10, "width": 40, "height": 30])
+        model.run("edit.fill", ["contents": "color", "color": "#000000", "opacity": 50])
+        model.run("select.deselect")
+        model.selectPixels(of: try XCTUnwrap(model.row("Half")?.id))
+        XCTAssertEqual(selection(model), [10, 10, 40, 30])
+        let mean = (model.query("document.stats", ["of": "selection", "rect": [10, 10, 50, 40]]) as? [String: Any])?["mean"] as? [Double]
+        XCTAssertEqual(mean?.first ?? 0, 0.5, accuracy: 0.02, "half-transparent pixels are half selected")
+    }
+
+    func testShapeToolsLeaveTheLastShapesPathAlone() {
+        let (model, canvas) = canvas(tool: .ellipseShape)
+        canvas.drag(pt(100, 100), pt(200, 180))
+        model.commitPending()
+        model.tool = .line
+        XCTAssert(model.workPath.isEmpty, "the circle's path isn't opened for editing")
+        model.tool = .directSelect
+        XCTAssertFalse(model.workPath.isEmpty, "a path tool still shows it")
     }
 }

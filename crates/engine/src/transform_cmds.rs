@@ -650,13 +650,20 @@ impl Preview {
             }
         }
         let c = |v: f64| v.clamp(-1e9, 1e9) as i32;
-        Rect::new(c(a[0].floor()) - 2, c(a[1].floor()) - 2, c(b[0].ceil()) + 2, c(b[1].ceil()) + 2)
+        let r = Rect::new(c(a[0].floor()) - 2, c(a[1].floor()) - 2, c(b[0].ceil()) + 2, c(b[1].ceil()) + 2);
+        // A text's background box follows it: where the box was, and the text's new place grown by its padding.
+        match self.plan.id.and_then(|id| crate::type_background_cmds::reach(&self.doc, id)) {
+            Some((old, pad)) => Rect::new(r.x0.saturating_sub(pad), r.y0.saturating_sub(pad), r.x1.saturating_add(pad), r.y1.saturating_add(pad)).union(&old),
+            None => r,
+        }
     }
 
     /// The document transformed (slow for a big layer: run it off the UI thread).
     pub fn render(mut self) -> Result<Document> {
         let Plan { id, p, lone, h, affine, interp, .. } = &self.plan;
+        let before = self.doc.clone();
         transform_doc(&mut self.doc, *id, p, *lone, h, *affine, *interp, &Interrupt::NONE)?;
+        crate::type_background_cmds::refit(&before, &mut self.doc);
         Ok(self.doc)
     }
 }

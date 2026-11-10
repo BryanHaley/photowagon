@@ -619,7 +619,10 @@ impl Layouter {
                             b.push(StyleProperty::Brush(RunBrush(ri as u32, cls as u8)), r);
                         };
                         for (i, ch) in piece.char_indices() {
-                            let cls = vertical_class(ch);
+                            let cls = match vertical_class(ch) {
+                                VClass::Rotate if st.upright_letters => VClass::Upright,
+                                c => c,
+                            };
                             match seg {
                                 Some((_, c)) if c == cls => {}
                                 Some((from, c)) => {
@@ -988,6 +991,7 @@ impl Layouter {
                             let upright = class == 1 || (class == 2 && !plain.contains(&g.id));
                             vinfo.push(VGlyph {
                                 upright,
+                                step: if upright { v.advance(g.id) - g.advance * hs } else { 0.0 },
                                 advance: g.advance * hs,
                                 origin: if upright { v.origin(g.id) } else { 0.0 },
                                 // Rotated text is centred on the column: its baseline sits
@@ -1034,6 +1038,7 @@ impl Layouter {
                 }
                 if vertical {
                     extra -= squeeze_punctuation(text, &mut out.clusters[c0..], &mut out.glyphs[g0..]);
+                    extra += stack_upright(&mut out.clusters[c0..], &mut out.glyphs[g0..], &vinfo);
                 }
                 if justify_all {
                     let slack = avail.unwrap_or(0.0) - (adv + extra);
@@ -1173,12 +1178,31 @@ fn quote(s: &str) -> String {
 /// Placement data of one vertical-type glyph (before mapping to text space).
 struct VGlyph {
     upright: bool,
+    /// Upright: how much further down the column the glyph takes than its width (px).
+    step: f32,
     /// Advance along the column (px).
     advance: f32,
     /// Upright: distance from the top of the glyph's cell down to its baseline (px).
     origin: f32,
     /// Rotated: distance from the column centre line to the glyph's baseline (px).
     centre: f32,
+}
+
+/// Moves each glyph and caret stop of a vertical line down by the extra room the upright glyphs
+/// before it take (their column advance less their width); returns the total.
+fn stack_upright(clusters: &mut [ClusterInfo], glyphs: &mut [PlacedGlyph], v: &[VGlyph]) -> f32 {
+    let marks: Vec<(f32, f32)> = glyphs.iter().zip(v).map(|(g, vg)| (g.x, vg.step)).filter(|m| m.1 != 0.0 && m.1.is_finite()).collect();
+    if marks.is_empty() {
+        return 0.0;
+    }
+    let before = |x: f32| marks.iter().filter(|m| m.0 < x - 1e-3).map(|m| m.1).sum::<f32>();
+    for g in glyphs.iter_mut() {
+        g.x += before(g.x);
+    }
+    for c in clusters.iter_mut() {
+        c.x += before(c.x);
+    }
+    marks.iter().map(|m| m.1).sum()
 }
 
 /// Vertical metrics of a font instance: `VORG`, `vhea`/`vmtx`, else the ideographic em box.
@@ -1189,6 +1213,8 @@ struct VMetrics<'a> {
     scale: f32,
     /// Em-box fallback origin (px below the cell top).
     em_origin: f32,
+    /// The em (px): an upright glyph's advance when the font has no vertical metrics.
+    em: f32,
 }
 
 impl<'a> VMetrics<'a> {
@@ -1207,7 +1233,14 @@ impl<'a> VMetrics<'a> {
             }
             None => (0.0, size * 0.88),
         };
-        Self { font, coords, scale, em_origin }
+        Self { font, coords, scale, em_origin, em: size }
+    }
+
+    /// An upright glyph's advance down the column (px).
+    fn advance(&self, gid: u32) -> f32 {
+        use skrifa::raw::TableProvider;
+        let a = self.font.as_ref().and_then(|f| f.vmtx().ok()?.advance(skrifa::GlyphId::new(gid))).map(|a| f32::from(a) * self.scale);
+        a.filter(|a| a.is_finite() && *a > 0.0).unwrap_or(self.em)
     }
 
     fn cmap(&self, c: char) -> Option<u32> {

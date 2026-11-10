@@ -92,10 +92,25 @@ extension CanvasUIView {
             toolDrag = drag
             return
         }
-        // Free Transform takes the canvas while it is open, whatever the tool.
+        model.moveGesture = model.tool == .move
+        // Free Transform takes the canvas while it is open, whatever the tool. The Move tool's box
+        // lets go of drags outside it (but the turn knob), and of drags inside it until it is
+        // scaled or turned: those move as the Move tool does.
         if let box = model.transform {
-            toolDrag = transformDrag(box, at: startDoc)
-            return
+            let drag = transformDrag(box, at: startDoc)
+            let knob = rotateHandle(box).knob
+            let onKnob = hypot(toScreen(startDoc).x - knob.x, toScreen(startDoc).y - knob.y) < 22
+            let plainMove: Bool = switch drag {
+            case .rotate: !onKnob
+            case .moveBox: box.unchanged
+            default: false
+            }
+            if model.tool == .move, !model.typeDrag, plainMove {
+                model.commitTransform()
+            } else {
+                toolDrag = drag
+                return
+            }
         }
         if alt, model.tool.holdSamples || model.tool == .eyedropper {
             held(startDoc)
@@ -141,6 +156,8 @@ extension CanvasUIView {
                     toolDrag = .moveCrop(a, b)
                 }
             }
+        case .typeMask, .verticalTypeMask:
+            if model.selectionContains(startDoc) { toolDrag = .moveSelection(UUID().uuidString, 0, 0) }
         case .marquee, .ellipse:
             if let box = model.marqueeBox, let part = boxPart(box, at: startDoc) {
                 toolDrag = .marqueeBox(part, box)
@@ -272,6 +289,11 @@ extension CanvasUIView {
             if case let .sampler(i, _) = toolDrag, model.samplers.indices.contains(i) {
                 model.samplers[i] = here
                 updatePending()
+            }
+        case .typeMask, .verticalTypeMask where { if case .moveSelection = toolDrag { return true }; return false }():
+            if case let .moveSelection(key, x, y) = toolDrag {
+                let (dx, dy) = (Int((here.x - startDoc.x).rounded()), Int((here.y - startDoc.y).rounded()))
+                if model.moveSelection(dx: dx - x, dy: dy - y, key: key) { toolDrag = .moveSelection(key, dx, dy) }
             }
         case .objectSelect, .slice, .frame, .artboard, .zoomIn, .rectangle, .ellipseShape, .triangle, .polygon, .customShape,
              .type, .verticalType, .typeMask, .verticalTypeMask:
@@ -434,6 +456,7 @@ extension CanvasUIView {
         }
         if model.transform != nil {
             toolDrag = .none
+            model.moveGesture = false
             return
         }
         let mode = model.selectionMode.rawValue
@@ -617,22 +640,28 @@ extension CanvasUIView {
             guard let r = rect else { return }
             let fill = model.foreground.hex
             switch model.tool {
-            case .rectangle: model.run("shape.create", ["kind": "rect", "rect": r, "fill": fill])
-            case .ellipseShape: model.run("shape.create", ["kind": "ellipse", "rect": r, "fill": fill])
-            case .triangle: model.run("shape.create", ["kind": "polygon", "sides": 3, "rect": r, "fill": fill])
-            case .polygon: model.run("shape.create", ["kind": "polygon", "sides": model.polygonSides, "rect": r, "fill": fill])
+            case .rectangle: model.drawShape("shape.create", ["kind": "rect", "rect": r, "fill": fill])
+            case .ellipseShape: model.drawShape("shape.create", ["kind": "ellipse", "rect": r, "fill": fill])
+            case .triangle: model.drawShape("shape.create", ["kind": "polygon", "sides": 3, "rect": r, "fill": fill])
+            case .polygon: model.drawShape("shape.create", ["kind": "polygon", "sides": model.polygonSides, "rect": r, "fill": fill])
             default:
-                if let preset = model.firstShapePreset { model.run("shape.presets.place", ["preset": preset, "rect": r, "fill": fill]) }
+                if let preset = model.firstShapePreset { model.drawShape("shape.presets.place", ["preset": preset, "rect": r, "fill": fill]) }
             }
         case .line:
             setToolPath(nil)
             if !tapped {
                 let weight = max(2, Double(4 * scale) / Double(model.view.zoom))
-                model.run("shape.create", ["kind": "line", "from": dp(startDoc), "to": dp(end), "weight": weight.rounded(), "fill": model.foreground.hex])
+                model.drawShape("shape.create", ["kind": "line", "from": dp(startDoc), "to": dp(end), "weight": weight.rounded(), "fill": model.foreground.hex])
             }
+        case .emojiSticker:
+            if tapped { model.emojiSticker(at: end) }
         case .type, .verticalType, .typeMask, .verticalTypeMask:
             setToolPath(nil)
-            typeEnded(at: end, box: tapped ? nil : rect)
+            if case .moveSelection = toolDrag {
+                toolDrag = .none
+            } else {
+                typeEnded(at: end, box: tapped ? nil : rect)
+            }
         case .zoomOut:
             // ⌥ flips it, as in Photoshop.
             model.zoom(by: altDown ? 2 : 0.5, at: pixels(t.point))
@@ -656,6 +685,8 @@ extension CanvasUIView {
         case .move:
             applyMove(to: end, force: true, time: t.time)
             model.smartGuides = []
+            model.moveGesture = false
+            model.showMoveBox()
         case .freeformPen:
             setToolPath(nil)
             let pts = thinned(docPoints, every: 8)
@@ -689,6 +720,10 @@ extension CanvasUIView {
 
     func toolCancelled() {
         hold?.cancel()
+        if model.moveGesture {
+            model.moveGesture = false
+            model.showMoveBox()
+        }
         if objectHold { model.clearObjectHighlight() }
         objectHold = false
         if stroking {
@@ -908,6 +943,7 @@ extension CanvasUIView {
             guard let self, !text.isEmpty else { return }
             var params: [String: Any] = ["text": text, "size": self.model.typeSize > 0 ? self.model.typeSize : size, "color": self.model.foreground.hex,
                                          "orientation": vertical ? "vertical" : "horizontal", "align": self.model.typeAlign]
+            if vertical { params["uprightLetters"] = true }
             if !self.model.typeFont.isEmpty { params["font"] = self.model.typeFont }
             if self.model.typeTracking != 0 { params["tracking"] = self.model.typeTracking }
             if self.model.typeLeading > 0 { params["leading"] = self.model.typeLeading }
@@ -1249,7 +1285,7 @@ extension CanvasUIView {
             lines.addPath(polyline([a, b], closed: false))
             [a, b].forEach { dot(toScreen($0), 4.5) }
         }
-        if model.tool.pathTool || model.tool.shapeTool {
+        if model.tool.pathTool {
             for sp in model.workPath where !sp.knots.isEmpty {
                 let path = CGMutablePath()
                 path.move(to: toScreen(sp.knots[0].anchor))
@@ -1346,4 +1382,6 @@ enum ToolDrag {
     case corner(Int, TransformBox)
     /// A Puppet Warp pin.
     case pin(Int)
+    /// The Type Mask tools drag the selection: its undo key and how far it has moved.
+    case moveSelection(String, Int, Int)
 }

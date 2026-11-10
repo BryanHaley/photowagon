@@ -525,7 +525,11 @@ pub(crate) fn note_damage(s: &mut Session, before: &Document, ids: &[LayerId]) {
     if before.size != st.doc.size {
         return;
     }
-    st.last_damage = layers_damage(before, &st.doc, ids);
+    // A text's background box is refitted after its text moves: its old and new places too.
+    let mut all = ids.to_vec();
+    all.extend(ids.iter().filter_map(|id| crate::type_background_cmds::background_of(before, *id)));
+    all.dedup();
+    st.last_damage = layers_damage(before, &st.doc, &all);
 }
 
 /// Whether two surfaces hold identical pixels: same format and default pixel, and the same

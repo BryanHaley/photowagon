@@ -86,6 +86,9 @@ fn draw_pass(layout: &TextLayout, transform: &Xform, sink: &mut impl LineSink, o
         let Ok(font) = skrifa::FontRef::from_index(face.font.data.as_ref(), face.font.index) else {
             continue;
         };
+        if crate::color_glyphs::is_color(&font, g.id, face.size_px * transform.max_scale() as f32) {
+            continue;
+        }
         let Some(outline) = font.outline_glyphs().get(GlyphId::new(g.id)) else {
             continue;
         };
@@ -154,6 +157,47 @@ fn draw_pass(layout: &TextLayout, transform: &Xform, sink: &mut impl LineSink, o
     }
 }
 
+/// The colour bitmap glyphs of `layout` (emoji), each with the map from its image pixels (y
+/// down) through `transform` to sink space. Under a warp each image moves by the warp's local
+/// affine approximation at its corners, so it bends as a whole rather than within.
+fn bitmap_glyphs<'a>(layout: &'a TextLayout, transform: &Xform, warp: Option<&Warp>) -> Vec<(crate::color_glyphs::Placed<'a>, Xform)> {
+    let mut out = Vec::new();
+    for g in &layout.glyphs {
+        let Some(face) = layout.faces.get(g.face as usize) else { continue };
+        let Ok(font) = skrifa::FontRef::from_index(face.font.data.as_ref(), face.font.index) else {
+            continue;
+        };
+        let Some(bm) = crate::color_glyphs::find(&font, g.id, face.size_px, face.size_px * transform.max_scale() as f32) else { continue };
+        let [x0, y0, x1, y1] = bm.rect;
+        let mut glyph = glyph_xform(layout, g, face.skew_deg);
+        let mut bend = warp;
+        if let Some(w) = warp {
+            let coords: Vec<NormalizedCoord> = face.coords.iter().map(|&c| NormalizedCoord::from_bits(c)).collect();
+            match w.place_glyph(glyph_center(layout, g, &font, face.size_px, &coords)) {
+                Placement::Bend => {}
+                Placement::Hidden => continue,
+                Placement::Frame(m) => {
+                    glyph = Xform(m).mul(&glyph);
+                    bend = None;
+                }
+            }
+        }
+        let map = |x: f64, y: f64| {
+            let (tx, ty) = glyph.apply(x, y);
+            let (tx, ty) = bend.map_or((tx, ty), |w| w.apply(tx, ty));
+            transform.apply(tx, ty)
+        };
+        // Image top-left, top-right and bottom-left corners.
+        let (o, r, d) = (map(x0, y1), map(x1, y1), map(x0, y0));
+        let (iw, ih) = (f64::from(bm.width), f64::from(bm.height));
+        let m = Xform([(r.0 - o.0) / iw, (r.1 - o.1) / iw, (d.0 - o.0) / ih, (d.1 - o.1) / ih, o.0, o.1]);
+        if m.0.iter().all(|v| v.is_finite()) {
+            out.push((bm, m));
+        }
+    }
+    out
+}
+
 /// Font units (scaled to px, y up) → text space for a placed glyph: scales, faux italic,
 /// baseline shift, and the vertical-type orientation.
 fn glyph_xform(layout: &TextLayout, g: &PlacedGlyph, face_skew_deg: f32) -> Xform {
@@ -195,7 +239,7 @@ pub fn layout_warp(layout: &TextLayout, warp: Option<&photocraft_doc::text::Text
 }
 
 /// Colour components in `format`'s model (without alpha).
-fn color_in(format: &PixelFormat, c: &Color) -> Vec<f32> {
+pub(crate) fn color_in(format: &PixelFormat, c: &Color) -> Vec<f32> {
     let n = format.mode.color_channels();
     if c.mode == format.mode {
         c.c[..n].to_vec()
@@ -232,6 +276,12 @@ fn rect_from_bounds([x0, y0, x1, y1]: [f64; 4]) -> Rect {
 pub fn ink_rect_warped(layout: &TextLayout, transform: &Affine, warp: Option<&Warp>) -> Rect {
     let mut b = Bounds::default();
     draw(layout, &Xform(transform.m), &mut b, None, warp);
+    for (bm, m) in bitmap_glyphs(layout, &Xform(transform.m), warp) {
+        let (w, h) = (f64::from(bm.width), f64::from(bm.height));
+        for (x, y) in [(0.0, 0.0), (w, 0.0), (0.0, h), (w, h)] {
+            b.add(m.apply(x, y));
+        }
+    }
     b.rect.map(rect_from_bounds).unwrap_or(Rect::EMPTY)
 }
 
@@ -288,6 +338,13 @@ pub fn rasterize_warped(layout: &TextLayout, transform: &Affine, format: PixelFo
                 px[j] = comps[j] * s + px[j] * keep;
             }
             px[n] = s + px[n] * keep;
+        }
+    }
+    for (bm, m) in bitmap_glyphs(layout, &xf, warp) {
+        if let Some(img) = bm.image() {
+            // The PNG's own size can differ from the size the font table states.
+            let fit = Xform([f64::from(bm.width) / img.width as f64, 0.0, 0.0, f64::from(bm.height) / img.height as f64, 0.0, 0.0]);
+            crate::color_glyphs::composite(&mut acc, w, h, &format, &img, &m.mul(&fit));
         }
     }
     // Unpremultiply.

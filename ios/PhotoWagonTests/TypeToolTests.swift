@@ -124,4 +124,79 @@ final class TypeToolTests: XCTestCase {
         XCTAssertEqual(model.foreground.hex, "#00ff00", "new text takes the foreground")
         XCTAssertNil(model.typeBox, "no text layer selected")
     }
+
+    func testTextBackgroundAddsALinkedBoxUnderTheTextInOneStep() throws {
+        let model = typed()
+        let id = try XCTUnwrap(model.activeLayer?.id)
+        let count = model.layers.count
+        let steps = model.history.past.count
+        model.setTypeBackground(["color": "#ffff00"], edit: 1)
+        model.setTypeBackground(["color": "#00ffff"], edit: 1)
+        XCTAssertEqual(model.history.past.count, steps + 1, "one picker session, one step")
+        XCTAssertEqual(model.layers.count, count + 1)
+        XCTAssertEqual(model.activeLayer?.id, id, "the text stays selected")
+        XCTAssertEqual(model.typeBackground?.color, [0, 1, 1])
+
+        model.setTypeBackground(["padding": 20, "radius": 0], edit: 2)
+        model.typeBackground = nil
+        model.loadTypeOptions(layer: id)
+        let bg = try XCTUnwrap(model.typeBackground)
+        XCTAssertEqual(bg.padding, 20, accuracy: 0.5)
+        XCTAssertEqual(bg.radius, 0, "square corners")
+        XCTAssertEqual(bg.color, [0, 1, 1], "the colour stays")
+
+        model.removeTypeBackground()
+        XCTAssertEqual(model.layers.count, count)
+        model.loadTypeOptions(layer: id)
+        XCTAssertNil(model.typeBackground)
+    }
+
+    func testEmojiStickerPlacesTheFirstEmojiAndOpensFreeTransform() throws {
+        XCTAssertEqual(EditorModel.firstEmoji("ab👍🏽c"), "👍🏽", "with its skin tone")
+        XCTAssertEqual(EditorModel.firstEmoji("👨‍👩‍👧"), "👨‍👩‍👧")
+        XCTAssertNil(EditorModel.firstEmoji("abc 123"))
+        XCTAssertEqual(EditorModel.stickerSide(width: 6000, height: 4000), 1024)
+        XCTAssertEqual(EditorModel.stickerSide(width: 90, height: 90), 64)
+
+        let model = makeModel(width: 600, height: 300)
+        model.emojiSticker(at: Point(x: 450, y: 100))
+        let prompt = try XCTUnwrap(model.prompt)
+        XCTAssertTrue(prompt.emoji)
+        let count = model.layerCount
+        prompt.done("hello")
+        XCTAssertEqual(model.layerCount, count, "no emoji: nothing placed")
+        prompt.done("🤠")
+        let placed = expectation(description: "placed")
+        Task { while model.transform == nil { try? await Task.sleep(for: .milliseconds(20)) }; placed.fulfill() }
+        wait(for: [placed], timeout: 10)
+        let t = try XCTUnwrap(model.transform, "Free Transform to move and size it")
+        XCTAssertEqual(t.center.x + t.dx, 450, accuracy: 1, "centred where the tool was tapped")
+        XCTAssertEqual(t.center.y + t.dy, 100, accuracy: 1)
+        model.commitPending()
+        let b = try XCTUnwrap(model.activeLayer?.bounds)
+        XCTAssertGreaterThan(b[2], 40, "drawn, not empty")
+    }
+
+    func testTheBackgroundSwitchAddsAWhiteBoxQuickly() throws {
+        let model = typed()
+        let start = Date()
+        model.setTypeBackground([:], edit: 1)
+        XCTAssertLessThan(Date().timeIntervalSince(start), 1)
+        XCTAssertEqual(model.typeBackground?.color, [1, 1, 1])
+        XCTAssertNil(model.toast)
+    }
+
+    func testTextTurnsByQuarterTurnsAndTypedAngles() throws {
+        let model = typed()
+        XCTAssertEqual(try XCTUnwrap(model.typeAngle), 0, accuracy: 0.01)
+        model.rotateText(by: 90)
+        XCTAssertEqual(try XCTUnwrap(model.typeAngle), 90, accuracy: 0.01)
+        model.rotateText(by: -180)
+        XCTAssertEqual(try XCTUnwrap(model.typeAngle), 270, accuracy: 0.01, "-90 reads 270")
+        let steps = model.history.past.count
+        model.setTextAngle(30, key: "a")
+        model.setTextAngle(45, key: "a")
+        XCTAssertEqual(try XCTUnwrap(model.typeAngle), 45, accuracy: 0.05)
+        XCTAssertEqual(model.history.past.count, steps + 1, "typing is one step")
+    }
 }

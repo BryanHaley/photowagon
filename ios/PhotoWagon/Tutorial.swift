@@ -2,12 +2,11 @@ import SwiftUI
 
 /// The first-time tour: short tips pointing at the tools, the options bar and the top bar.
 enum TutorialStep: Int, CaseIterable {
-    case toolGroups, groupTools, toolOptions, home, menu, undo, search, history, view, layers, colors
+    case toolGroups, toolOptions, home, menu, undo, search, history, view, layers, colors
 
     var target: TutorialTarget {
         switch self {
         case .toolGroups: .toolbar
-        case .groupTools: .contextBar
         case .toolOptions: .contextBar
         case .home: .home
         case .menu: .menu
@@ -23,7 +22,6 @@ enum TutorialStep: Int, CaseIterable {
     var title: String {
         switch self {
         case .toolGroups: "Tools"
-        case .groupTools: "Pick a Tool"
         case .toolOptions: "Tool Options"
         case .home: "Home"
         case .menu: "Menus"
@@ -38,8 +36,7 @@ enum TutorialStep: Int, CaseIterable {
 
     var text: String {
         switch self {
-        case .toolGroups: "Tap an icon to see the tools in its group. Touch and hold for their names and what they do."
-        case .groupTools: "Tap a tool to pick it. Touch and hold for its name."
+        case .toolGroups: "Tap an icon to pick one of its tools; each says what it does. An icon with a single tool picks it straight away: touch and hold for its name."
         case .toolOptions: "Once a tool is selected, its options appear here."
         case .home: "Your files, new images and settings."
         case .menu: "Tap ☰ to open it. Quick actions are at the top; File, Edit, Image, Layer, Select, Filter and the rest are below them. Scroll down to reach them."
@@ -92,14 +89,9 @@ extension EditorModel {
         showTutorial(.toolGroups)
     }
 
-    /// Help › Tutorial, and each step: the group's list shows while its tip does.
+    /// Help › Tutorial, and each step.
     func showTutorial(_ step: TutorialStep) {
         tutorialStep = step
-        let group = Tool.groups.firstIndex { $0.contains(tool) }
-        switch step {
-        case .groupTools: pickingGroup = group
-        default: pickingGroup = nil
-        }
     }
 
     func nextTutorialStep() {
@@ -118,7 +110,6 @@ extension EditorModel {
 
     func endTutorial() {
         tutorialStep = nil
-        pickingGroup = nil
         tutorialDone = true
     }
 }

@@ -614,6 +614,8 @@ pub(crate) fn char_style(base: Option<&E>, d: &E, fonts: &[String], k: f32) -> C
     s.strikethrough = flag("Strikethrough").unwrap_or(false);
     s.ligatures = flag("Ligatures").unwrap_or(true);
     s.discretionary_ligatures = flag("DLigatures").unwrap_or(false);
+    // 1: letters upright in vertical type; 2 (the default): on their side.
+    s.upright_letters = g("BaselineDirection").and_then(E::as_i64) == Some(1);
     for (key, tag) in OPENTYPE_KEYS {
         if flag(key) == Some(true) {
             s.features.push(photocraft_doc::text::FontFeature { tag: tag.to_string(), value: 1 });
@@ -865,6 +867,7 @@ pub(crate) fn style_sheet_data(s: &CharStyle, font: usize, k: f32) -> E {
         ("Strikethrough".into(), E::Bool(s.strikethrough)),
         ("Ligatures".into(), E::Bool(s.ligatures)),
         ("DLigatures".into(), E::Bool(s.discretionary_ligatures)),
+        ("BaselineDirection".into(), E::Int(if s.upright_letters { 1 } else { 2 })),
         // Photopea lays out edited text without painting it unless its fill is enabled.
         ("FillFlag".into(), E::Bool(true)),
         ("FillColor".into(), E::Dict(vec![("Type".into(), E::Int(color_type)), ("Values".into(), E::Array(values))])),

@@ -432,8 +432,6 @@ final class CanvasUIView: UIView, UIPointerInteractionDelegate, UIGestureRecogni
     override func touchesBegan(_ set: Set<UITouch>, with event: UIEvent?) {
         dropFinishedTouches()
         if !isFirstResponder { becomeFirstResponder() }
-        // Working on the image settles on the tool picked: show its options.
-        if model.pickingGroup != nil { model.pickingGroup = nil }
         if touches.isEmpty { gesture = (0, CACurrentMediaTime(), false) }
         touches.append(contentsOf: set)
         gesture.fingers = max(gesture.fingers, touches.count)
@@ -594,7 +592,6 @@ final class CanvasUIView: UIView, UIPointerInteractionDelegate, UIGestureRecogni
         guard let key = bindings.first(where: { $0.id == id })?.shortcut else { return }
         let group = bindings.filter { $0.kind == "tool" && $0.shortcut == key }.flatMap { b in Tool.allCases.filter { $0.engineId == b.id } }
         guard let first = group.first else { return }
-        model.pickingGroup = nil
         if let i = group.firstIndex(of: model.tool) {
             if next { model.tool = group[(i + 1) % group.count] }
         } else {

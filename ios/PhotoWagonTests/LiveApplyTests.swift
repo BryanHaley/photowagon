@@ -126,4 +126,25 @@ final class LiveApplyTests: XCTestCase {
         XCTAssertEqual(got, CGPoint(x: 0.25, y: 0.25))
         XCTAssertNil(model.canvasPick, "one pick, then the settings come back")
     }
+
+    func testAFillTriedOnOneLayerMovesToTheLayerPickedWhileItsSettingsAreOpen() throws {
+        let model = makeModel(width: 100, height: 100)
+        model.run("layer.new.layer", ["name": "A"])
+        model.run("layer.new.layer", ["name": "B"])
+        let a = try XCTUnwrap(model.row("A")?.id)
+        model.liveBegin()
+        model.live("edit.fill", ["contents": "color", "color": "#ff0000"])
+        idle(model)
+        XCTAssertNotNil(model.info("B"))
+        model.targetLayer(a)
+        idle(model)
+        model.liveFinish("edit.fill", ["contents": "color", "color": "#ff0000"])
+        idle(model)
+        let alpha = { (name: String) in
+            ((model.query("document.stats", ["of": "pixels", "layer": name, "rect": [40, 40, 60, 60]]) as? [String: Any])?["mean"] as? [Double])?.last ?? -1
+        }
+        XCTAssertEqual(alpha("B"), 0, accuracy: 0.01, "B was left empty")
+        XCTAssertEqual(alpha("A"), 1, accuracy: 0.01, "A has the fill")
+        XCTAssertEqual(model.historyNames.filter { $0 == "Fill" }.count, 1)
+    }
 }

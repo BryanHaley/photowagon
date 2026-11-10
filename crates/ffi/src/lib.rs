@@ -51,6 +51,33 @@ pub trait Host: Send + Sync {
     fn print(&self, pdf: Vec<u8>, title: String) -> String;
 }
 
+/// Draws emoji the engine can't decode (iOS stores its emoji in Apple's own image format).
+#[uniffi::export(with_foreign)]
+pub trait ColorGlyphDrawer: Send + Sync {
+    /// Glyph `glyph_id` of the font named `postscript_name` at `size_px` pixels per em, or `None`.
+    fn draw(&self, postscript_name: String, glyph_id: u32, size_px: f32) -> Option<ColorGlyph>;
+}
+
+/// A drawn glyph: premultiplied sRGB RGBA8, rows from the top. `left`/`top` place the image's
+/// top-left corner from the pen position on the baseline (pixels, `top` upwards).
+#[derive(uniffi::Record)]
+pub struct ColorGlyph {
+    pub width: u32,
+    pub height: u32,
+    pub rgba: Vec<u8>,
+    pub left: f32,
+    pub top: f32,
+}
+
+/// Registers the app's emoji drawer for every text layer.
+#[uniffi::export]
+pub fn set_color_glyph_drawer(drawer: Arc<dyn ColorGlyphDrawer>) {
+    photocraft_text::set_color_glyph_source(Some(Arc::new(move |r: &photocraft_text::ColorGlyphRequest| {
+        let g = drawer.draw(r.postscript_name.clone(), r.glyph_id, r.size_px)?;
+        Some(photocraft_text::ColorGlyphImage { width: g.width, height: g.height, rgba: g.rgba, left: g.left, top: g.top })
+    })));
+}
+
 #[derive(uniffi::Record)]
 pub struct DocInfo {
     /// Stays the same for the document's life.

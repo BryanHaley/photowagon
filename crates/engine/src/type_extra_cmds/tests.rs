@@ -440,3 +440,15 @@ fn camel_case_and_underscore_postscript_names_resolve_to_their_installed_faces()
         assert!(!style_font_missing(&mut fonts, &style), "{ps} stored as {guess:?} is not missing");
     }
 }
+
+#[test]
+fn upright_letters_stack_one_under_another_in_vertical_type() {
+    let mut s = session(8);
+    let make = |s: &mut Session, upright: bool| {
+        let r = s.execute("type.create", json!({"x": 150, "y": 5, "text": "hello", "size": 20, "orientation": "vertical", "uprightLetters": upright})).unwrap();
+        ink(s, LayerId(r["layer"].as_u64().unwrap()))
+    };
+    let sideways = make(&mut s, false);
+    let upright = make(&mut s, true);
+    assert!(upright.height() as f32 > sideways.height() as f32 * 1.5, "each letter takes a line: {upright:?} vs {sideways:?}");
+}

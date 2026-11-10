@@ -389,7 +389,7 @@ enum OmegaCatalog {
     static let settings: Set<String> = [
         "autoOptions", "canvasColor", "canvasCustom", "developFiles", "developPresets", "layerThumbnails",
         "openJPEGInDevelop", "pencilOnly", "pencilSqueeze", "pencilTap", "recentFiles",
-        "recoveryMinutes", "snap", "statusInfo", "tutorialDone",
+        "recoveryMinutes", "showTransformControls", "snap", "statusInfo", "tutorialDone",
     ]
 
     /// Keys the completeness check finds that aren't settings, with why.

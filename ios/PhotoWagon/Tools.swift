@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 /// The toolbox. Each tool maps to the engine's tool id (its key bindings) and, for most, one
 /// engine command its gesture ends in.
@@ -19,7 +20,7 @@ enum Tool: String, CaseIterable, Identifiable {
     case blur, sharpen, smudge
     case dodge, burn, sponge
     case pen, freeformPen, curvaturePen, addAnchor, deleteAnchor, convertPoint
-    case type, verticalType, typeMask, verticalTypeMask
+    case type, verticalType, typeMask, verticalTypeMask, emojiSticker
     case pathSelect, directSelect
     case rectangle, ellipseShape, triangle, polygon, line, customShape
     case hand, rotateView
@@ -30,12 +31,12 @@ enum Tool: String, CaseIterable, Identifiable {
     /// The view tools first, then Photoshop's toolbox groups in order.
     static let groups: [[Tool]] = [
         [.hand, .rotateView, .zoomIn, .zoomOut],
-        [.move, .artboard],
+        [.move],
         [.marquee, .ellipse, .singleRow, .singleColumn],
         [.lasso, .polygonLasso, .magneticLasso],
         [.objectSelect, .quickSelect, .magicWand],
         [.crop, .perspectiveCrop, .slice, .sliceSelect],
-        [.frame],
+        [.frame, .artboard],
         [.eyedropper, .colorSampler, .ruler, .note, .count],
         [.spotHeal, .remove, .aiRemove, .heal, .patch, .contentAwareMove, .redEye],
         [.brush, .pencil, .colorReplacement, .mixerBrush],
@@ -46,7 +47,7 @@ enum Tool: String, CaseIterable, Identifiable {
         [.blur, .sharpen, .smudge],
         [.dodge, .burn, .sponge],
         [.pen, .freeformPen, .curvaturePen, .addAnchor, .deleteAnchor, .convertPoint],
-        [.type, .verticalType, .typeMask, .verticalTypeMask],
+        [.type, .verticalType, .typeMask, .verticalTypeMask, .emojiSticker],
         [.pathSelect, .directSelect],
         [.rectangle, .ellipseShape, .triangle, .polygon, .line, .customShape],
     ]
@@ -135,6 +136,7 @@ enum Tool: String, CaseIterable, Identifiable {
         case .verticalType: "Vertical Type"
         case .typeMask: "Horizontal Type Mask"
         case .verticalTypeMask: "Vertical Type Mask"
+        case .emojiSticker: "Emoji Sticker"
         case .pathSelect: "Path Selection"
         case .directSelect: "Direct Selection"
         case .rectangle: "Rectangle"
@@ -208,8 +210,9 @@ enum Tool: String, CaseIterable, Identifiable {
         case .convertPoint: "Tap a point: corner or smooth."
         case .type: "Tap to add text; drag for a box."
         case .verticalType: "Tap to add vertical text."
-        case .typeMask: "Tap to select in text shapes."
-        case .verticalTypeMask: "Tap to select in vertical text."
+        case .typeMask: "Tap to select in text shapes; drag the selection to move it."
+        case .verticalTypeMask: "Tap to select in vertical text; drag the selection to move it."
+        case .emojiSticker: "Tap where the emoji goes, then pick one."
         case .pathSelect: "Drag to move a path."
         case .directSelect: "Drag a path point to move it."
         case .rectangle: "Drag to draw a rectangle."
@@ -280,10 +283,11 @@ enum Tool: String, CaseIterable, Identifiable {
         case .addAnchor: "plus.circle"
         case .deleteAnchor: "minus.circle"
         case .convertPoint: "chevron.up"
-        case .type: "textformat"
-        case .verticalType: "textformat.alt"
-        case .typeMask: "character.cursor.ibeam"
-        case .verticalTypeMask: "t.circle"
+        case .type: "pw.type"
+        case .verticalType: "pw.verticalType"
+        case .typeMask: "pw.typeMask"
+        case .verticalTypeMask: "pw.verticalTypeMask"
+        case .emojiSticker: "face.smiling"
         case .pathSelect: "cursorarrow"
         case .directSelect: "cursorarrow.click"
         case .rectangle: "rectangle"
@@ -350,6 +354,9 @@ enum Tool: String, CaseIterable, Identifiable {
     /// Fill-by-colour tools with a tolerance.
     var hasTolerance: Bool { [.magicWand, .paintBucket, .magicEraser].contains(self) }
     var pathTool: Bool { [.pen, .freeformPen, .curvaturePen, .addAnchor, .deleteAnchor, .convertPoint, .pathSelect, .directSelect].contains(self) }
+    /// The tool's icon: an SF Symbol, or our own (`pw.` names, in the asset catalog).
+    var icon: Image { symbol.hasPrefix("pw.") ? Image(symbol) : Image(systemName: symbol) }
+
     var typeTool: Bool { [.type, .verticalType, .typeMask, .verticalTypeMask].contains(self) }
     var shapeTool: Bool { [.rectangle, .ellipseShape, .triangle, .polygon, .line, .customShape].contains(self) }
     /// A drag draws a rectangle (in document pixels).

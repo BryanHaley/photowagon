@@ -658,7 +658,16 @@ struct PromptSheet: View {
     }
 
     @ViewBuilder private var field: some View {
-        if prompt.multiline {
+        if prompt.emoji {
+            VStack(alignment: .leading, spacing: 8) {
+                EmojiField(text: $text)
+                    .frame(height: 36)
+                    .onChange(of: text) { _, t in if EditorModel.firstEmoji(t) != nil { finish() } }
+                if ProcessInfo.processInfo.isiOSAppOnMac {
+                    Text("Pick one from Edit › Emoji & Symbols, or press Fn E.").font(.caption).foregroundStyle(.secondary)
+                }
+            }
+        } else if prompt.multiline {
             TextField("Text", text: $text, axis: .vertical).lineLimit(1...8)
         } else {
             TextField("Text", text: $text).submitLabel(.done).onSubmit(finish)
@@ -669,6 +678,39 @@ struct PromptSheet: View {
         let t = text
         close()
         prompt.done(t)
+    }
+}
+
+/// A text field that opens on the emoji keyboard.
+struct EmojiField: UIViewRepresentable {
+    @Binding var text: String
+
+    final class Field: UITextField {
+        override var textInputMode: UITextInputMode? {
+            UITextInputMode.activeInputModes.first { $0.primaryLanguage == "emoji" } ?? super.textInputMode
+        }
+    }
+
+    func makeUIView(context: Context) -> UITextField {
+        let f = Field()
+        f.borderStyle = .roundedRect
+        f.placeholder = "Emoji"
+        f.accessibilityIdentifier = "prompt.field"
+        f.addTarget(context.coordinator, action: #selector(Coordinator.changed(_:)), for: .editingChanged)
+        DispatchQueue.main.async { f.becomeFirstResponder() }
+        return f
+    }
+
+    func updateUIView(_ f: UITextField, context: Context) {
+        if f.text != text { f.text = text }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator(text: $text) }
+
+    final class Coordinator: NSObject {
+        let text: Binding<String>
+        init(text: Binding<String>) { self.text = text }
+        @objc func changed(_ f: UITextField) { text.wrappedValue = f.text ?? "" }
     }
 }
 

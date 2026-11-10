@@ -111,6 +111,7 @@ fn perturbed_char() -> CharStyle {
         variations: vec![FontVariation { axis: "\u{1}".into(), value: -1.0 }],
         language: Some("\u{1}".into()),
         style_sheet: None,
+        upright_letters: true,
     }
 }
 

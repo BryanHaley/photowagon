@@ -15,6 +15,7 @@ final class MoveTests: XCTestCase {
         }
         model.run("select.deselect")
         model.run("layer.select", ["name": "a"])
+        plainMove(model)
         model.tool = .move
         let snap = model.snap
         model.snap = true
@@ -80,6 +81,7 @@ final class MoveTests: XCTestCase {
 
     func testTheBackgroundDoesntMove() throws {
         let model = makeModel(width: 100, height: 100)
+        plainMove(model)
         model.tool = .move
         CanvasUIView(model: model).drag(pt(50, 50), pt(80, 50))
         XCTAssertEqual(model.row("Background")?.bounds, [0, 0, 100, 100])

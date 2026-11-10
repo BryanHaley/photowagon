@@ -17,6 +17,14 @@ extension XCTestCase {
         wait("the model is idle") { !model.busy && !model.liveBusy }
     }
 
+    /// The Move tool without its transform box (Show Transform Controls off) for this test.
+    @MainActor
+    func plainMove(_ model: EditorModel, _ on: Bool = false) {
+        let was = model.showTransformControls
+        model.showTransformControls = on
+        addTeardownBlock { @MainActor in model.showTransformControls = was }
+    }
+
     /// A file from the UI tests' samples.
     func sample(_ name: String) -> URL {
         URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()

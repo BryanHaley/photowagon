@@ -93,6 +93,9 @@ pub struct CharStyle {
     /// stay fully resolved; differences from the style are local overrides.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub style_sheet: Option<u32>,
+    /// Vertical type: letters and digits stand upright, one under another, instead of lying on
+    /// their side.
+    pub upright_letters: bool,
 }
 
 impl Default for CharStyle {
@@ -123,6 +126,7 @@ impl Default for CharStyle {
             variations: Vec::new(),
             language: None,
             style_sheet: None,
+            upright_letters: false,
         }
     }
 }

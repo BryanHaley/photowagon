@@ -17,6 +17,7 @@
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 
 pub mod cjk;
+mod color_glyphs;
 pub mod craft_fonts;
 pub mod engine_data;
 pub mod fonts;
@@ -35,6 +36,7 @@ pub mod warp;
 use photocraft_color::PixelFormat;
 use photocraft_doc::TextLayer;
 
+pub use color_glyphs::{ColorGlyphImage, ColorGlyphRequest, ColorGlyphSource, set_color_glyph_source};
 pub use craft_fonts::{CRAFT_FONTS, CraftFont};
 pub use fonts::{FaceInfo, FontDb, ResolvedFont};
 pub use layout::{

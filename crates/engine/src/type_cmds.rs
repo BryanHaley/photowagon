@@ -357,6 +357,7 @@ pub fn apply_char_props(s: &mut CharStyle, p: &Value) -> bool {
         ("fauxItalic", &mut s.faux_italic),
         ("ligatures", &mut s.ligatures),
         ("discretionaryLigatures", &mut s.discretionary_ligatures),
+        ("uprightLetters", &mut s.upright_letters),
     ] {
         if let Some(v) = p.get(k).and_then(Value::as_bool) {
             *f = v;
@@ -791,6 +792,9 @@ fn info(s: &Session, p: &Value) -> Result<Value> {
     if !warnings.is_empty() {
         out["warnings"] = json!(warnings);
     }
+    if let Some(b) = crate::type_background_cmds::info(&d.doc, id) {
+        out["background"] = b;
+    }
     Ok(out)
 }
 
@@ -841,7 +845,7 @@ pub(crate) fn new_text_layer(s: &Session, p: &Value, cmd: &str) -> Result<TextLa
     Ok(t)
 }
 
-const CHAR_PARAMS: &str = r##""font":str,"fontStyle":str,"weight":100..900,"italic":bool,"size":0.1..=1296 pt,"color":"#rrggbb"|[r,g,b,a],"tracking":-1000..=10000 (1/1000 em),"leading":pt|"auto","baselineShift":pt,"horizontalScale":%,"verticalScale":%,"underline":bool,"strikethrough":bool,"fauxBold":bool,"fauxItalic":bool,"kerning":1/1000em (manual, after each character)|"metrics"|"optical"|"off","caps":"normal|small|all","ligatures":bool,"discretionaryLigatures":bool,"features":{"ss01":1},"variations":{"wght":650},"language":str"##;
+const CHAR_PARAMS: &str = r##""font":str,"fontStyle":str,"weight":100..900,"italic":bool,"size":0.1..=1296 pt,"color":"#rrggbb"|[r,g,b,a],"tracking":-1000..=10000 (1/1000 em),"leading":pt|"auto","baselineShift":pt,"horizontalScale":%,"verticalScale":%,"underline":bool,"strikethrough":bool,"fauxBold":bool,"fauxItalic":bool,"kerning":1/1000em (manual, after each character)|"metrics"|"optical"|"off","caps":"normal|small|all","ligatures":bool,"discretionaryLigatures":bool,"uprightLetters":bool (vertical type: letters stand upright, one under another),"features":{"ss01":1},"variations":{"wght":650},"language":str"##;
 
 pub fn specs() -> Vec<CommandSpec> {
     vec![
@@ -1069,7 +1073,7 @@ pub fn specs() -> Vec<CommandSpec> {
             label: "Type Layer Info",
             menu: &[],
             shortcut: None,
-            params: r##"{"layer":id?} → text, runs/paragraphs (char offsets + styles), shape, transform, laid-out lines (text space px), bounds"##,
+            params: r##"{"layer":id?} → text, runs/paragraphs (char offsets + styles), shape, transform, laid-out lines (text space px), bounds, background? {layer,color,padding,radius} (type.background)"##,
             enabled: has_doc,
             journal: false,
             run: |s, p| info(s, p),

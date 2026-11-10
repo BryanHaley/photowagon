@@ -86,12 +86,23 @@ struct CanvasPick: Identifiable, Equatable {
 struct TransformBox: Equatable {
     /// Source frame corners, document pixels.
     var x0, y0, x1, y1: Float
-    var dx: Float = 0, dy: Float = 0, sx: Float = 1, sy: Float = 1, angle: Float = 0
+    var dx: Float = 0, dy: Float = 0, sx: Float = 1, sy: Float = 1
+    /// Radians, kept within one turn (0 up to 2π).
+    var angle: Float = 0 {
+        didSet {
+            let turn = 2 * Float.pi
+            var a = angle.truncatingRemainder(dividingBy: turn)
+            if a < 0 { a += turn }
+            if a < 1e-5 || turn - a < 1e-5 { a = 0 }
+            if a != angle { angle = a }
+        }
+    }
     /// The reference point in the source frame; the centre unless moved.
     var pivot: Point?
 
     var center: Point { Point(x: (x0 + x1) / 2, y: (y0 + y1) / 2) }
     var origin: Point { pivot ?? center }
+    var unchanged: Bool { dx == 0 && dy == 0 && sx == 1 && sy == 1 && angle == 0 }
 
     /// The scale for a corner dragged to `local` (from the fixed point, unrotated), where it
     /// started at `corner` from it. A corner level with the fixed point (the reference point on
@@ -101,7 +112,9 @@ struct TransformBox: Equatable {
         let sy = corner.1 != 0 ? local.1 / corner.1 : nil
         guard sx != nil || sy != nil else { return nil }
         if keep {
-            let s = max(abs(sx ?? 0), abs(sy ?? 0))
+            // Along the diagonal, so a long thin box doesn't jump with a small move across it.
+            let d2 = corner.0 * corner.0 + corner.1 * corner.1
+            let s = sx != nil && sy != nil && d2 > 0 ? abs(local.0 * corner.0 + local.1 * corner.1) / d2 : max(abs(sx ?? 0), abs(sy ?? 0))
             let sign = { (v: Float?, was: Float) in (v ?? was) < 0 ? Float(-1) : 1 }
             return (s * sign(sx, current.0), s * sign(sy, current.1))
         }
@@ -188,6 +201,35 @@ struct TypeBox: Equatable {
 }
 
 extension EditorModel {
+    /// The selected text's turn in degrees (0 up to 360), as the Type options show it.
+    var typeAngle: Double? {
+        guard let b = typeBox, b.linear.count == 4 else { return nil }
+        var a = (Double(b.box.angle) + atan2(b.linear[1], b.linear[0])) * 180 / .pi
+        a = a.truncatingRemainder(dividingBy: 360)
+        if a < 0 { a += 360 }
+        return a > 359.995 ? 0 : a
+    }
+
+    /// Turn the selected text by `degrees` (clockwise); calls with the same `key` are one step.
+    func rotateText(by degrees: Double, key: String? = nil) {
+        guard let b = typeBox, let l = activeLayer, degrees.isFinite else { return }
+        var t = b.box
+        t.angle += Float(degrees * .pi / 180)
+        let quarter = Float.pi / 2
+        if abs(t.angle / quarter - (t.angle / quarter).rounded()) < 1e-4 { t.angle = (t.angle / quarter).rounded() * quarter }
+        guard var p = b.edit(t) else { return }
+        p["layer"] = l.id
+        if let key { p["coalesce"] = key }
+        run("type.edit", p)
+        refreshTypeBox()
+    }
+
+    /// The Type options' angle field.
+    func setTextAngle(_ degrees: Double, key: String) {
+        guard let a = typeAngle else { return }
+        rotateText(by: degrees - a, key: key)
+    }
+
     /// Free Transform: turn the box by `degrees` (positive clockwise, as on screen).
     func rotateTransform(by degrees: Float) {
         guard var t = transform else { return }
@@ -206,6 +248,8 @@ struct TextPrompt: Identifiable {
     var text: String
     /// Return starts a new line; OK finishes (type).
     var multiline = false
+    /// Opens the emoji keyboard and finishes on the first emoji.
+    var emoji = false
     let done: (String) -> Void
 }
 
@@ -327,11 +371,12 @@ final class EditorModel: ObservableObject {
             if oldValue == .ruler { ruler = nil }
             if oldValue == .frame { pendingFrame = nil }
             marqueeBox = nil
-            if tool.pathTool || tool.shapeTool { loadWorkPath() }
-            if let g = pickingGroup, !Tool.groups[g].contains(tool) { pickingGroup = nil }
+            if transform != nil, !typeDrag { commitTransform() }
+            if tool.pathTool { loadWorkPath() }
             if tool == .objectSelect { showObjects(at: nil) } else { clearObjectHighlight() }
             refreshTypeBox()
             refreshFrames()
+            showMoveBox()
         }
     }
     /// The tool before this one (a Pencil double-tap's Previous Tool), and before the Eraser.
@@ -343,9 +388,6 @@ final class EditorModel: ObservableObject {
     @Published var showBrushSettings = false
     /// The painting cursor is a crosshair only (Caps Lock).
     @Published var preciseCursor = false
-    /// The tool group whose tools the context bar lists (its button was just tapped); `nil`
-    /// shows the current tool's options.
-    @Published var pickingGroup: Int?
     /// Help › Manual is open.
     @Published var showManual = false
     @Published var showAcknowledgements = false
@@ -422,6 +464,16 @@ final class EditorModel: ObservableObject {
     @Published var gradientReverse = false
     /// Move tool: pick the layer under the finger.
     @Published var autoSelect = false
+    /// Move tool: the selected layer's Free Transform box shows, so moving, scaling and turning
+    /// need no menu.
+    @Published var showTransformControls = UserDefaults.standard.object(forKey: "showTransformControls") as? Bool ?? true {
+        didSet {
+            UserDefaults.standard.set(showTransformControls, forKey: "showTransformControls")
+            if showTransformControls { showMoveBox() } else if tool == .move, transform != nil { commitTransform() }
+        }
+    }
+    /// A Move tool drag is under way: the box comes back when it ends.
+    var moveGesture = false
     /// Move tool: dragging moves a copy (⌥-drag in Photoshop).
     @Published var moveCopies = false
     /// View › Snap: moved layers snap to the canvas edges and centre, with guides.
@@ -468,6 +520,7 @@ final class EditorModel: ObservableObject {
             let color = c["color"] as? [String: Any]
             typeColor = color?["mode"] as? String == "Rgb" ? (color?["c"] as? [Double])?.prefix(3).map(Float.init) : nil
         }
+        typeBackground = TextBackground(i["background"] as? [String: Any])
         if let p = ((i["paragraphs"] as? [[String: Any]])?.first?["style"]) as? [String: Any], let a = p["align"] as? String {
             typeAlign = a.hasSuffix("Center") || a == "Center" ? "center" : a.hasSuffix("Right") || a == "Right" ? "right" : "left"
         }
@@ -512,6 +565,21 @@ final class EditorModel: ObservableObject {
     /// The marquee's adjustable box, while its selection is the last step.
     @Published var marqueeBox: MarqueeBox? {
         didSet { overlayDirty = true }
+    }
+
+    /// Whether document point `p` is inside the selection's bounds.
+    func selectionContains(_ p: Point) -> Bool {
+        guard doc?.hasSelection == true,
+              let b = (query("document.inspect") as? [String: Any])?["selectionBounds"] as? [Double], b.count == 4 else { return false }
+        return p.x >= Float(b[0]) && p.y >= Float(b[1]) && p.x < Float(b[0] + b[2]) && p.y < Float(b[1] + b[3])
+    }
+
+    /// Moves the selection outline, not the pixels; calls with the same `key` are one undo step.
+    @discardableResult
+    func moveSelection(dx: Int, dy: Int, key: String) -> Bool {
+        guard dx != 0 || dy != 0 else { return false }
+        run("select.transformSelection", ["dx": dx, "dy": dy, "interpolation": "nearest", "coalesce": key])
+        return true
     }
 
     /// Select the marquee `r` (`[x, y, w, h]`) and show its box.
@@ -579,6 +647,7 @@ final class EditorModel: ObservableObject {
     func finishEditingText() {
         typeDone = activeLayer?.id
         typeColor = nil
+        typeBackground = nil
     }
 
     /// The layer and document revision `typeBox` was made from: `type.info` lays out all the text.
@@ -840,9 +909,41 @@ final class EditorModel: ObservableObject {
         showHome = false
     }
 
+    /// The Emoji Sticker tool: pick an emoji, then it is placed like File › Place, centred on `at`.
+    func emojiSticker(at: Point? = nil) {
+        prompt = TextPrompt(title: "Emoji Sticker", text: "", emoji: true) { [weak self] t in
+            guard let self, let e = Self.firstEmoji(t), let doc,
+                  let png = Self.emojiPNG(e, side: Self.stickerSide(width: Int(doc.width), height: Int(doc.height))) else { return }
+            self.place(data: png, name: "\(e).png", at: at)
+        }
+    }
+
+    /// The first emoji in `text` (a whole one, with its skin tone or joined parts), or nil.
+    static func firstEmoji(_ text: String) -> String? {
+        text.first { c in c.unicodeScalars.contains { $0.properties.isEmojiPresentation } || (c.unicodeScalars.first?.properties.isEmoji == true && c.unicodeScalars.count > 1) }.map(String.init)
+    }
+
+    /// A sticker's size in pixels: a third of the image's short side, within reason.
+    static func stickerSide(width: Int, height: Int) -> Int { min(max(min(width, height) / 3, 64), 1024) }
+
+    /// `emoji` as the system draws it, on a transparent square `side` pixels across.
+    static func emojiPNG(_ emoji: String, side: Int) -> Data? {
+        guard side > 0 else { return nil }
+        let s = CGFloat(side)
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        format.opaque = false
+        let font = UIFont.systemFont(ofSize: s * 0.8)
+        let text = NSAttributedString(string: emoji, attributes: [.font: font])
+        let size = text.size()
+        return UIGraphicsImageRenderer(size: CGSize(width: s, height: s), format: format).pngData { _ in
+            text.draw(at: CGPoint(x: (s - size.width) / 2, y: (s - size.height) / 2))
+        }
+    }
+
     /// File › Place: the image as a new layer, then Free Transform to size it. `embedded` false
     /// (Layer › New › From Photos or From Files) makes a plain pixel layer.
-    func place(data: Data, name: String, embedded: Bool? = nil) {
+    func place(data: Data, name: String, embedded: Bool? = nil, at: Point? = nil) {
         // The layer is named after the file: keep its name, in a folder of its own.
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let url = dir.appendingPathComponent(name)
@@ -862,6 +963,10 @@ final class EditorModel: ObservableObject {
                 self.fillFrame(frame)
             } else {
                 self.beginTransform()
+                if let at, var t = self.transform {
+                    (t.dx, t.dy) = (at.x - t.center.x, at.y - t.center.y)
+                    self.transform = t
+                }
             }
         })
     }
@@ -1155,6 +1260,7 @@ final class EditorModel: ObservableObject {
         }
         // Its own thread: parsing every font on the device can recurse deeper than a 512 KB
         // background thread allows. A font that won't parse is skipped (Rust catches it).
+        setColorGlyphDrawer(drawer: EmojiGlyphs())
         let fonts = Thread { _ = addFonts(paths: EditorModel.installedFontFiles()) }
         fonts.stackSize = 8 << 20
         fonts.qualityOfService = .utility
@@ -1179,6 +1285,19 @@ final class EditorModel: ObservableObject {
     }
 
     func run(_ id: String, _ params: [String: Any] = [:]) -> Any? {
+        // Anything else done while Free Transform is open applies the transform first; Undo
+        // takes back the box's changes, or closes an untouched box and undoes as usual.
+        if let t = transform, !typeDrag {
+            if id == "edit.undo" || id == "edit.redo" || id.hasPrefix("history.") {
+                transform = nil
+                if id == "edit.undo", !t.unchanged {
+                    showMoveBox()
+                    return nil
+                }
+            } else if !Self.keepsTransform(id) {
+                commitTransform()
+            }
+        }
         noteDispatched(id, params)
         do {
             let out = try editor.execute(id: id, params: json(params))
@@ -1313,6 +1432,17 @@ final class EditorModel: ObservableObject {
         }
     }
 
+    /// A try's settings and what it was applied to: another layer selected meanwhile is another try.
+    private func liveKey(_ id: String, _ params: [String: Any]?) -> String {
+        id + (params.map(json) ?? "") + "@\(activeLayer?.id ?? 0)/\(maskTarget)"
+    }
+
+    /// Another layer (or its mask) was selected while settings are open: try them again there.
+    private func followLiveTarget() {
+        guard liveOpen, livePreview, liveApplied, !liveRunning, livePending == nil, let w = liveWanted, liveLast != liveKey(w.id, w.params) else { return }
+        queueLive(w.id, w.params, finish: false)
+    }
+
     /// Run `f` once the tries waiting have run.
     func afterLive(_ f: @escaping () -> Void) {
         if liveRunning || livePending != nil { liveThen.append(f) } else { f() }
@@ -1335,8 +1465,10 @@ final class EditorModel: ObservableObject {
         livePending = nil
         liveRunning = true
         liveBusy = true
-        let p = job.params.map(json)
-        let key = job.id + (p ?? "")
+        let key = liveKey(job.id, job.params)
+        var params = job.params
+        if job.id == "edit.fill", maskTarget, params?["target"] == nil { params?["target"] = "mask" }
+        let p = params.map(json)
         // The settings that are showing already: nothing to run (OK keeps them).
         if liveApplied, key == liveLast {
             if job.finish { liveApplied = false }
@@ -1345,11 +1477,16 @@ final class EditorModel: ObservableObject {
         }
         let undo = liveApplied
         let editor = editor
+        // Undo selects the layer the last try was on: the next try goes to the one selected now.
+        let layer = activeLayer?.id
         Task.detached {
             var failure: Error?
             var applied = false
             do {
-                if undo { _ = try editor.execute(id: "edit.undo", params: "{}") }
+                if undo {
+                    _ = try editor.execute(id: "edit.undo", params: "{}")
+                    if let layer { _ = try editor.execute(id: "layer.select", params: "{\"layer\":\(layer)}") }
+                }
                 if let p { _ = try editor.execute(id: job.id, params: p); applied = true }
             } catch { failure = error }
             await MainActor.run {
@@ -1638,6 +1775,8 @@ final class EditorModel: ObservableObject {
         if typeDone != nil, activeLayer?.id != typeDone { typeDone = nil }
         refreshTypeBox()
         refreshFrames()
+        showMoveBox()
+        followLiveTarget()
         needsDraw = true
         overlayDirty = true
     }
@@ -1669,7 +1808,11 @@ final class EditorModel: ObservableObject {
     }
 
     /// Re-read the layers (after a change that doesn't make a history step, like the mask target).
-    func reloadLayers() { loadLayers() }
+    func reloadLayers() {
+        loadLayers()
+        showMoveBox()
+        followLiveTarget()
+    }
 
     /// Settings that start from the document: a width and height marked `=current` (Image Size,
     /// Canvas Size) start at its size, a layer name at the active layer's.
@@ -1739,6 +1882,11 @@ final class EditorModel: ObservableObject {
         var p: [String: Any] = ["channel": channel]
         if let id = activeLayer?.id, ["transparency", "mask"].contains(channel) { p["layer"] = id }
         run("select.loadSelection", p)
+    }
+
+    /// A layer's pixels as the selection, partly selected where they're partly transparent.
+    func selectPixels(of id: UInt64) {
+        run("select.loadSelection", ["channel": "transparency", "layer": id])
     }
 
     /// The layer's mask as the selection (Photoshop's ⌘-click on the mask).
@@ -2016,6 +2164,26 @@ final class EditorModel: ObservableObject {
         typeColor = rgb
     }
 
+    /// The box behind the selected text; nil without one.
+    @Published var typeBackground: TextBackground?
+
+    /// Adds the box behind the selected text or changes it: `color`, `padding`, `radius`
+    /// (`type.background`'s params). One undo step per `edit`.
+    func setTypeBackground(_ change: [String: Any], edit: Int) {
+        guard let id = editingText else { return }
+        var p = change
+        p["layer"] = id
+        p["coalesce"] = "type-background-\(edit)"
+        run("type.background", p)
+        typeBackground = TextBackground((query("type.info", ["layer": id]) as? [String: Any])?["background"] as? [String: Any])
+    }
+
+    func removeTypeBackground() {
+        guard let id = editingText else { return }
+        run("type.background", ["layer": id, "remove": true])
+        typeBackground = nil
+    }
+
     func swapColors() {
         run("tools.swapColors")
     }
@@ -2190,9 +2358,8 @@ final class EditorModel: ObservableObject {
             }
         } else if typeDrag {
             commitTypeBox()
-        } else if let t = transform {
-            transform = nil
-            run("edit.transform", transformParams(t))
+        } else if transform != nil {
+            commitTransform()
         } else if let p = puppet {
             puppet = nil
             puppetMesh = []
@@ -2211,6 +2378,7 @@ final class EditorModel: ObservableObject {
         quad = []
         typeDrag = false
         transform = nil
+        defer { showMoveBox() }
         if puppet != nil {
             puppet = nil
             puppetMesh = []
@@ -2336,12 +2504,41 @@ final class EditorModel: ObservableObject {
     }
 
     /// Free Transform the active layer (inside the selection when there is one).
+    /// A Shape tool's new shape, then Free Transform so it can be moved and sized straight away.
+    func drawShape(_ command: String, _ params: [String: Any]) {
+        guard run(command, params) != nil else { return }
+        beginTransform()
+        keepProportions = false
+    }
+
+    static func keepsTransform(_ id: String) -> Bool {
+        id == "edit.transform" || id.hasPrefix("view.")
+    }
+
+    /// Applies the open Free Transform box; an untouched box just closes.
+    func commitTransform() {
+        guard let t = transform else { return }
+        transform = nil
+        if !t.unchanged { run("edit.transform", transformParams(t)) }
+    }
+
+    /// The Move tool's box on the selected layer (Show Transform Controls).
+    func showMoveBox() {
+        guard tool == .move, showTransformControls, transform == nil, !moveGesture, fluidWarp == nil, puppet == nil, doc != nil,
+              let l = activeLayer, !l.isBackground || doc?.hasSelection == true, l.visible,
+              let b = editor.transformBounds(mask: maskTarget)?.map(Float.init), b.count == 4, b[2] > b[0], b[3] > b[1] else { return }
+        keepProportions = true
+        transform = TransformBox(x0: b[0], y0: b[1], x1: b[2], y1: b[3])
+    }
+
     func beginTransform() {
         // As in Photoshop, the locked Background transforms only inside a selection.
         if activeLayer?.isBackground == true, doc?.hasSelection != true {
             toast = "The Background is locked: tap its lock in Layers to transform it"
             return
         }
+        guard transform == nil else { return }
+        keepProportions = true
         guard let b = editor.transformBounds(mask: maskTarget)?.map(Float.init), b.count == 4 else {
             toast = "Nothing to transform on this layer"
             return
@@ -2494,4 +2691,21 @@ func clockwiseFromTopLeft(_ pts: [Point]) -> [Point] {
     let sorted = pts.sorted { atan2($0.y - cy, $0.x - cx) < atan2($1.y - cy, $1.x - cx) }
     guard let start = sorted.indices.min(by: { sorted[$0].x + sorted[$0].y < sorted[$1].x + sorted[$1].y }) else { return pts }
     return Array(sorted[start...] + sorted[..<start])
+}
+
+/// The box behind a text layer, as `type.info` reports it.
+struct TextBackground: Equatable {
+    var color: [Float]
+    var padding: Double
+    var radius: Double
+
+    init?(_ info: [String: Any]?) {
+        guard let info, let c = info["color"] as? [Double] else { return nil }
+        color = c.map(Float.init)
+        padding = (info["padding"] as? NSNumber)?.doubleValue ?? 0
+        radius = (info["radius"] as? NSNumber)?.doubleValue ?? 0
+    }
+
+    /// Rounded corners: as round as the padding, never tiny.
+    static func roundedRadius(padding: Double) -> Double { max(padding, 6).rounded() }
 }

@@ -4,18 +4,14 @@ import XCTest
 /// The first-time tour: when it starts, its steps, and that it stays away once done or skipped.
 @MainActor
 final class TutorialTests: XCTestCase {
-    func testTheTourStartsOnceAndShowsTheGroupWhileItsTipDoes() {
+    func testTheTourStartsOnceAndEnds() {
         XCTAssertNil({ let m = makeModel(); m.startTutorialIfNew(); return m.tutorialStep }(), "not without a document")
         let model = makeModel(width: 100, height: 100)
         model.tool = .brush
         model.startTutorialIfNew()
         XCTAssertEqual(model.tutorialStep, .toolGroups)
         model.nextTutorialStep()
-        XCTAssertEqual(model.tutorialStep, .groupTools)
-        XCTAssertEqual(model.pickingGroup, Tool.groups.firstIndex { $0.contains(.brush) }, "the brush group's tools are listed")
-        model.nextTutorialStep()
         XCTAssertEqual(model.tutorialStep, .toolOptions)
-        XCTAssertNil(model.pickingGroup, "the tool's options show again")
 
         model.showTutorial(.colors)
         model.nextTutorialStep()

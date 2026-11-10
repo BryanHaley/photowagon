@@ -93,11 +93,6 @@ final class PanelRenderTests: XCTestCase {
         render(ToolBar(model: model, vertical: true))
         render(ContextBar(model: model))
         let spin = { RunLoop.main.run(until: Date().addingTimeInterval(0.01)) }
-        for g in Tool.groups.indices {
-            model.pickingGroup = g
-            spin()
-        }
-        model.pickingGroup = nil
         for t in Tool.allCases {
             model.tool = t
             spin()

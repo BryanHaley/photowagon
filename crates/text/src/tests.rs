@@ -1259,6 +1259,21 @@ fn psd_round_trips_antialias_opentype_and_warp() {
     }
 }
 
+/// Upright letters in vertical type are Photoshop's `/BaselineDirection 1` (its default, 2, lays
+/// them on their side), as a Photoshop-made file of upright vertical "hello" has it.
+#[test]
+fn psd_round_trips_upright_letters_as_baseline_direction_1() {
+    for upright in [true, false] {
+        let mut t = styled("hello", CharStyle { font_family: "Inter".into(), size_pt: 20.0, upright_letters: upright, ..Default::default() });
+        t.orientation = photocraft_doc::text::Orientation::Vertical;
+        let bytes = crate::psd::build_tysh(&t, 72.0, None);
+        let want = if upright { b"/BaselineDirection 1".as_slice() } else { b"/BaselineDirection 2".as_slice() };
+        assert!(bytes.windows(want.len()).any(|w| w == want), "{upright}");
+        let back = crate::psd::text_layer_from_tysh(&bytes, 72.0).unwrap();
+        assert_eq!(back.char_runs()[0].style.upright_letters, upright);
+    }
+}
+
 /// #1469: Some older PSD writers combine a zero PointBase with an enormous local ink origin.
 /// The TySh transform cancels that origin, so importing it as a zero-based layout puts text far
 /// off-canvas. Fold the descriptor origin into the imported transform and preserve it on a TySh

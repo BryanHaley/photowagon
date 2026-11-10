@@ -123,6 +123,7 @@ mod timeline_cmds;
 pub mod tone_cmds;
 pub mod transform_cmds;
 mod trap_cmds;
+pub mod type_background_cmds;
 pub mod type_caret_cmds;
 pub mod type_cmds;
 pub mod type_extra_cmds;
@@ -813,6 +814,7 @@ impl Session {
         let mut doc = (*before).clone();
         let mut active = st.active_layer;
         let r = f(&mut doc, &mut active)?;
+        type_background_cmds::refit(&before, &mut doc);
         if let (Some(k), Some(id)) = (restrict, active) {
             channel_cmds::restrict_to_color(&before, &mut doc, id, k);
         }

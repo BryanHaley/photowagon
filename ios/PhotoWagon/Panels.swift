@@ -56,10 +56,7 @@ struct ToolBar: View {
                 .contentShape(Rectangle())
                 .accessibilityAddTraits(.isButton)
                 .accessibilityIdentifier("group.\(tools[0].title)")
-                .onTapGesture {
-                    model.tool = current
-                    model.pickingGroup = nil
-                }
+                .onTapGesture { model.tool = current }
                 .onLongPressGesture(minimumDuration: 0.4) { tip = current }
                 .popover(isPresented: Binding(get: { tip == current }, set: { if !$0 { tip = nil } })) {
                     ToolTip(tool: current)
@@ -67,10 +64,6 @@ struct ToolBar: View {
         } else {
             Menu { items(tools) } label: {
                 ToolIcon(tool: current, selected: tools.contains(model.tool), more: true)
-            } primaryAction: {
-                model.tool = current
-                // A second tap closes the list.
-                model.pickingGroup = model.pickingGroup == i ? nil : i
             }
             .accessibilityLabel(current.title)
             .accessibilityIdentifier("group.\(tools[0].title)")
@@ -82,9 +75,8 @@ struct ToolBar: View {
         ForEach(tools) { t in
             Button {
                 model.tool = t
-                model.pickingGroup = nil
             } label: {
-                Label(t.title, systemImage: t.symbol)
+                Label { Text(t.title) } icon: { t.icon }
                 Text(t.help)
             }
         }
@@ -142,7 +134,7 @@ struct ToolTip: View {
     let tool: Tool
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Label(tool.title, systemImage: tool.symbol).font(.headline)
+            Label { Text(tool.title) } icon: { tool.icon }.font(.headline)
             Text(tool.help).font(.subheadline).foregroundStyle(.secondary)
         }
         .padding(14)
@@ -156,7 +148,7 @@ struct ToolIcon: View {
     let selected: Bool
     let more: Bool
     var body: some View {
-        Image(systemName: tool.symbol)
+        tool.icon
             .font(.system(size: 19, weight: selected ? .semibold : .regular))
             .foregroundStyle(selected ? Color.black : Color.white)
             .frame(width: 42, height: 42)
@@ -254,8 +246,6 @@ struct ContextBar: View {
             } else {
                 Text(pendingHint).font(.caption).foregroundStyle(.secondary).lineLimit(1)
             }
-        } else if let g = model.pickingGroup, Tool.groups.indices.contains(g) {
-            toolRow(Tool.groups[g])
         } else if model.tool.pathTool {
             if model.tool == .pen {
                 Picker("Pen", selection: $model.penAdjusts) {
@@ -464,7 +454,7 @@ struct ContextBar: View {
                 }
             } label: { chipLabel("Align", "align.horizontal.center") }
             .accessibilityIdentifier("move.align")
-            chip("Free Transform", "arrow.up.left.and.arrow.down.right") { model.beginTransform() }
+            toggle("Show Transform Controls", "arrow.up.left.and.arrow.down.right", $model.showTransformControls)
         }
     }
 
@@ -474,6 +464,10 @@ struct ContextBar: View {
 
     private var transformOptions: some View {
         Group {
+            if model.tool == .move {
+                toggle("Show Transform Controls", "arrow.up.left.and.arrow.down.right", $model.showTransformControls)
+                toggle("Auto-Select", "cursorarrow.rays", $model.autoSelect)
+            }
             toggle("Keep Proportions", "link", $model.keepProportions)
         Menu {
                 ForEach(0..<3) { row in
@@ -669,33 +663,6 @@ struct ContextBar: View {
         .accessibilityLabel(title)
     }
 
-    /// The group's tools; picking one shows its options.
-    private func toolRow(_ tools: [Tool]) -> some View {
-        HStack(spacing: 8) {
-            HStack(spacing: 2) {
-                ForEach(tools) { t in
-                    Image(systemName: t.symbol)
-                        .font(.system(size: 16))
-                        .foregroundStyle(.white)
-                        .frame(width: 40, height: 32)
-                        .background(t == model.tool ? Color(white: 0.38) : .clear, in: RoundedRectangle(cornerRadius: 7))
-                        .namedButton(t.title, model: model) {
-                            model.tool = t
-                            model.pickingGroup = nil
-                        }
-                        .accessibilityIdentifier("row.\(t.title)")
-                }
-            }
-            .padding(2)
-            .background(Color(white: 0.2), in: RoundedRectangle(cornerRadius: 9))
-            if tools.contains(.hand) {
-                ForEach(model.viewActions) { a in chip(a.title, a.symbol, action: a.run) }
-            } else {
-                Text(model.tool.title).font(.caption).foregroundStyle(.secondary).lineLimit(1)
-            }
-        }
-    }
-
     /// Brush size, with small sizes given more travel.
     private var sizeSlider: some View {
         PropSlider(title: "Size", value: "\(Int(model.brushSize))",
@@ -711,7 +678,7 @@ struct ContextBar: View {
     /// The bar shows a slider now.
     private var hasSlider: Bool {
         if model.fluidWarp != nil { return true }
-        if model.pickingGroup != nil || model.hasPending || model.tool.pathTool { return false }
+        if model.hasPending || model.tool.pathTool { return false }
         let selectionBar = model.doc?.hasSelection == true
             && (model.tool.selects || model.tool.typeTool || [.move, .patch, .contentAwareMove].contains(model.tool))
         return !selectionBar && (model.tool.hasTolerance || model.tool.sized)
@@ -782,6 +749,7 @@ struct ContextBar: View {
         case .eyedropper: "Tap or drag to pick a color"
         case .ruler: "Drag to measure"
         case _ where model.tool.typeTool: "Tap for a line of text, drag for a text box"
+        case .emojiSticker: "Tap where the emoji goes"
         case _ where model.tool.shapeTool: "Drag to draw the shape"
         default: nil
         }
@@ -1376,6 +1344,7 @@ extension EditorModel {
 
     /// Size, leading or tracking typed in the options bar; one focus of the field is one undo step.
     func setTypeNumber(_ key: String, _ v: Double, edit: Int) {
+        if key == "angle" { return setTextAngle(v, key: "type-angle-\(edit)") }
         if v != 0 || key == "tracking" { setTypeStyle(key, v, coalesce: "type-\(key)-\(edit)") }
     }
 }
@@ -1387,6 +1356,7 @@ struct TypeOptions: View {
     @State private var fonts: [String] = []
     /// One picker session is one undo step.
     @State private var colorEdit = 0
+    @State private var showBackground = false
 
     var body: some View {
         // Room between the groups: the row scrolls when it runs out.
@@ -1418,6 +1388,15 @@ struct TypeOptions: View {
             .pickerStyle(.segmented)
             .frame(width: 120)
             .accessibilityIdentifier("type.align")
+            if textLayer != nil {
+                backgroundButton
+                styleMenu
+                HStack(spacing: 6) {
+                    iconButton("Rotate 90° Left", "rotate.left") { model.rotateText(by: -90) }
+                    iconButton("Rotate 90° Right", "rotate.right") { model.rotateText(by: 90) }
+                    number("Angle", "°", Binding(get: { model.typeAngle.map { ($0 * 10).rounded() / 10 } }, set: { _ in }), key: "angle")
+                }
+            }
             number("Leading", "pt", Binding(get: { model.typeLeading > 0 ? model.typeLeading : nil }, set: { model.typeLeading = $0 ?? 0 }), key: "leading", prompt: "Auto")
             number("Tracking", "", Binding(get: { model.typeTracking }, set: { model.typeTracking = $0 ?? 0 }), key: "tracking")
         }
@@ -1447,6 +1426,47 @@ struct TypeOptions: View {
             .accessibilityIdentifier("type.color")
     }
 
+    /// A box behind the text: its colour, corners and padding.
+    private var backgroundButton: some View {
+        optionLabel("Background", model.typeBackground == nil ? "rectangle.dashed" : "rectangle.fill")
+            .namedButton("Background", model: model) { showBackground = true }
+            .accessibilityIdentifier("type.background")
+            .popover(isPresented: $showBackground) {
+                TextBackgroundOptions(model: model).presentationCompactAdaptation(.popover)
+            }
+    }
+
+    /// The layer styles text most often gets, each opening its Layer Style page.
+    private var styleMenu: some View {
+        Menu {
+            ForEach(Self.textStyles, id: \.self) { k in
+                Button("\(LayerStyle.label(k))…") { model.request = .layerStyle(k) }
+            }
+            Divider()
+            Button("All Styles…") { model.request = .layerStyle("blendingOptions") }
+        } label: {
+            optionLabel("Style", "fx")
+        }
+        .accessibilityIdentifier("type.style")
+    }
+
+    static let textStyles = ["stroke", "dropShadow", "outerGlow", "innerShadow", "colorOverlay", "bevelEmboss"]
+
+    private func iconButton(_ title: String, _ symbol: String, action: @escaping () -> Void) -> some View {
+        Image(systemName: symbol)
+            .font(.system(size: 16))
+            .foregroundStyle(.white)
+            .frame(width: 40, height: 32)
+            .background(Color(white: 0.2), in: RoundedRectangle(cornerRadius: 8))
+            .namedButton(title, model: model, action)
+    }
+
+    private func optionLabel(_ title: String, _ symbol: String) -> some View {
+        Label(title, systemImage: symbol).font(.caption).lineLimit(1)
+            .padding(.horizontal, 10).frame(height: 32)
+            .background(Color(white: 0.2), in: RoundedRectangle(cornerRadius: 8))
+    }
+
     private func number(_ title: String, _ unit: String, _ value: Binding<Double?>, key: String, prompt: String? = nil) -> some View {
         HStack(spacing: 2) {
             Text(title).font(.caption2).foregroundStyle(.secondary)
@@ -1456,6 +1476,89 @@ struct TypeOptions: View {
             .accessibilityIdentifier("type.\(key)")
             if !unit.isEmpty { Text(unit).font(.caption2).foregroundStyle(.secondary) }
         }
+    }
+}
+
+/// The Type options' Background: a box behind the text, with square or rounded corners and
+/// padding round the letters.
+struct TextBackgroundOptions: View {
+    @ObservedObject var model: EditorModel
+    @State private var edit = 0
+
+    var body: some View {
+        let bg = model.typeBackground
+        let rgb = bg?.color ?? [1, 1, 1]
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Text("Background").font(.headline)
+                Spacer()
+                if bg == nil {
+                    Button("Add", systemImage: "plus") { change([:]) }
+                        .buttonStyle(.bordered)
+                        .accessibilityIdentifier("type.background.add")
+                } else {
+                    Button("Remove", role: .destructive) { model.removeTypeBackground() }
+                        .buttonStyle(.bordered)
+                        .accessibilityIdentifier("type.background.remove")
+                }
+            }
+            Group {
+                HStack {
+                    Text("Color")
+                    Spacer()
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(Color(red: Double(rgb[safe: 0] ?? 1), green: Double(rgb[safe: 1] ?? 1), blue: Double(rgb[safe: 2] ?? 1)))
+                        .frame(width: 44, height: 30)
+                        .overlay(RoundedRectangle(cornerRadius: 6).stroke(.secondary))
+                        .namedButton("Background Color", model: model) {
+                            edit += 1
+                            let e = edit
+                            SystemColorPicker.present(title: "Background Color", rgb: rgb) { model.setTypeBackground(["color": ColorRow.hex($0)], edit: e) }
+                        }
+                        .accessibilityIdentifier("type.background.color")
+                }
+                Picker("Corners", selection: Binding(get: { (bg?.radius ?? 1) > 0 }, set: { change(["radius": $0 ? TextBackground.roundedRadius(padding: bg?.padding ?? 12) : 0]) })) {
+                    Text("Square").tag(false)
+                    Text("Rounded").tag(true)
+                }
+                .pickerStyle(.segmented)
+                .accessibilityIdentifier("type.background.corners")
+                HStack {
+                    Text("Radius")
+                    Spacer()
+                    TypeNumberField(title: "Radius", prompt: "12", value: Binding(get: { bg?.radius }, set: { _ in })) { v, e in
+                        model.setTypeBackground(["radius": min(max(v, 0), 2000)], edit: 2000 + e)
+                    }
+                    .accessibilityIdentifier("type.background.radius")
+                    Text("px").foregroundStyle(.secondary)
+                    Stepper("Radius", value: Binding(get: { bg?.radius ?? 12 }, set: { change(["radius": max($0, 0)]) }), in: 0...2000, step: 2)
+                        .labelsHidden()
+                }
+                .disabled((bg?.radius ?? 0) == 0)
+                HStack {
+                    Text("Padding")
+                    Spacer()
+                    TypeNumberField(title: "Padding", prompt: "12", value: Binding(get: { bg?.padding }, set: { _ in })) { v, e in
+                        model.setTypeBackground(["padding": min(max(v, 0), 2000)], edit: 1000 + e)
+                    }
+                    .accessibilityIdentifier("type.background.padding")
+                    Text("px").foregroundStyle(.secondary)
+                    Stepper("Padding", value: Binding(get: { bg?.padding ?? 12 }, set: { change(["padding": max($0, 0)]) }), in: 0...2000, step: 2)
+                        .labelsHidden()
+                }
+            }
+            .disabled(bg == nil)
+            .opacity(bg == nil ? 0.4 : 1)
+        }
+        .font(.subheadline)
+        .padding(16)
+        .frame(width: 300)
+    }
+
+    /// Add puts a white box behind the text; changes after that edit it.
+    private func change(_ p: [String: Any]) {
+        edit += 1
+        model.setTypeBackground(p, edit: edit)
     }
 }
 

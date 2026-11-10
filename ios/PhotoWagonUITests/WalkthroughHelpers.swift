@@ -610,7 +610,7 @@ class WalkthroughTestCase: XCTestCase {
         return false
     }
 
-    /// Tap a tool group, and pick a tool from the row it shows.
+    /// Tap a tool group, and pick a tool from its menu.
     func tool(group: String, pick: String?) {
         let toolbar = app.descendants(matching: .any)["group.\(group)"].firstMatch
         XCTAssert(toolbar.waitForExistence(timeout: 5), "tool group \(group)")
@@ -627,10 +627,12 @@ class WalkthroughTestCase: XCTestCase {
             from.press(forDuration: 0.05, thenDragTo: from.withOffset(CGVector(dx: -dx, dy: 0)), withVelocity: .slow, thenHoldForDuration: 0.3)
         }
         toolbar.tap()
-        if let pick {
-            let button = app.buttons["row.\(pick)"].firstMatch
-            XCTAssert(button.waitForExistence(timeout: 5), "tool \(pick)")
-            button.tap()
+        // A group of several tools opens its menu; a single tool is picked by the tap.
+        let menu = app.collectionViews.firstMatch
+        if menu.waitForExistence(timeout: 2) {
+            let item = menu.buttons.named(pick ?? group)
+            XCTAssert(item.waitForExistence(timeout: 3), "tool \(pick ?? group)")
+            item.tap()
             Thread.sleep(forTimeInterval: 0.5)
         }
     }

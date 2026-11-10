@@ -48,13 +48,17 @@ final class TransformTests: XCTestCase {
         XCTAssertEqual(try XCTUnwrap(model.transform).angle, 0, "back exactly")
         model.rotateTransform(by: 90)
         XCTAssertEqual(quad(model), [[200, 100], [200, 200], [100, 200], [100, 100]], "a quarter turn about the centre")
+        for _ in 0..<3 { model.rotateTransform(by: 90) }
+        XCTAssertEqual(try XCTUnwrap(model.transform).angle, 0, "a full turn is back to 0")
+        model.rotateTransform(by: -90)
+        XCTAssertEqual(try XCTUnwrap(model.transform).angle, 3 * .pi / 2, accuracy: 0.0001, "270, not -90")
     }
 
     func testACornerKeepsTheProportionsUnlessShiftOrTheOptionIsOff() throws {
         let (model, canvas) = try square()
         canvas.drag(pt(200, 200), pt(300, 250))
-        XCTAssertEqual(quad(model), [[100, 100], [300, 100], [300, 300], [100, 300]], "the opposite corner stays, proportions kept")
-        canvas.drag(pt(300, 300), pt(300, 250), modifiers: .shift)
+        XCTAssertEqual(quad(model), [[100, 100], [275, 100], [275, 275], [100, 275]], "the opposite corner stays, proportions kept, along the diagonal")
+        canvas.drag(pt(275, 275), pt(300, 250), modifiers: .shift)
         XCTAssertEqual(quad(model)[safe: 2], [300, 250], "⇧ stretches")
 
         model.keepProportions = false
@@ -228,7 +232,7 @@ final class TransformTests: XCTestCase {
 
     /// Scale From Reference Point with the reference on the dragged corner's edge (Top Right,
     /// dragging Top Left): it used to do nothing.
-    func testCornerLevelWithTheReferenceStillScales() {
+    func testCornerLevelWithTheReferenceStillScales() throws {
         let normal = TransformBox.cornerScale(local: (50, 100), corner: (100, 200), current: (1, 1), keep: false)
         XCTAssertEqual(normal?.0, 0.5)
         XCTAssertEqual(normal?.1, 0.5)
@@ -239,5 +243,8 @@ final class TransformTests: XCTestCase {
         XCTAssertEqual(free?.0 ?? 0, 0.8, accuracy: 1e-6)
         XCTAssertEqual(free?.1, 1, "the other way stays")
         XCTAssertNil(TransformBox.cornerScale(local: (5, 5), corner: (0, 0), current: (1, 1), keep: true))
+        // A long, thin box (a line of text): a small move across it barely changes the size.
+        let thin = try XCTUnwrap(TransformBox.cornerScale(local: (1000, 60), corner: (1000, 40), current: (1, 1), keep: true))
+        XCTAssertEqual(thin.0, 1, accuracy: 0.01)
     }
 }
