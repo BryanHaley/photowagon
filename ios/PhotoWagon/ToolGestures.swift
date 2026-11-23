@@ -158,6 +158,11 @@ extension CanvasUIView {
             }
         case .typeMask, .verticalTypeMask:
             if model.selectionContains(startDoc) { toolDrag = .moveSelection(UUID().uuidString, 0, 0) }
+        case .patch, .contentAwareMove:
+            if model.selectionContains(startDoc) {
+                toolDrag = .patch
+                if model.tool == .patch { model.liveBegin() }
+            }
         case .marquee, .ellipse:
             if let box = model.marqueeBox, let part = boxPart(box, at: startDoc) {
                 toolDrag = .marqueeBox(part, box)
@@ -212,6 +217,7 @@ extension CanvasUIView {
         }
         if model.tool.usesSource {
             model.run("cloneSource.set", ["source": dp(at)])
+            model.updateCloneMark()
             model.toast = "Clone source set"
         } else {
             model.sample(at: at)
@@ -267,6 +273,7 @@ extension CanvasUIView {
                 pending.append(sp, update: s.update, time: CACurrentMediaTime())
                 docPoints.append(Point(x: Float(sp.x), y: Float(sp.y)))
             }
+            if model.tool.usesSource, let last = docPoints.last { model.updateCloneMark(at: last, first: docPoints.first) }
             if !model.tool.livePreview { setToolPath(strokesPath(model.removeStrokes + [docPoints]), width: brushWidth, dashed: false) }
         case .zoomIn where model.scrubbyZoom:
             let factor = Float(exp((p.x - scrubFrom.point.x) * 0.01))
@@ -325,7 +332,19 @@ extension CanvasUIView {
             docPoints.append(contentsOf: samples.map { toDoc($0.location) })
             setToolPath(polyline(docPoints, closed: false))
         case .patch, .contentAwareMove:
-            setToolPath(polyline([startDoc, here], closed: false))
+            if case .patch = toolDrag {
+                let (a, b) = (toScreen(startDoc), toScreen(here))
+                let d = CGPoint(x: b.x - a.x, y: b.y - a.y)
+                if model.tool == .patch {
+                    showSourceOutline(d)
+                    model.patchDragged([Int((here.x - startDoc.x).rounded()), Int((here.y - startDoc.y).rounded())])
+                } else {
+                    moveAnts(by: d)
+                }
+            } else {
+                docPoints.append(contentsOf: samples.map { toDoc($0.location) })
+                setToolPath(polyline(docPoints, closed: true), width: 3, dashed: false, filled: true)
+            }
         case .move:
             moveShift = modifiers.contains(.shift)
             applyMove(to: here, force: false, time: t.time)
@@ -619,10 +638,22 @@ extension CanvasUIView {
             }
         case .patch, .contentAwareMove:
             setToolPath(nil)
-            guard !tapped else { return }
-            let cmd = model.tool == .patch ? "paint.patch" : "paint.contentAwareMove"
-            let p = json(["offset": [Int((end.x - startDoc.x).rounded()), Int((end.y - startDoc.y).rounded())]])
-            model.whileBusy { editor in _ = try editor.execute(id: cmd, params: p) }
+            moveAnts(by: .zero)
+            showSourceOutline(nil)
+            if case .patch = toolDrag {
+                toolDrag = .none
+                let offset = [Int((end.x - startDoc.x).rounded()), Int((end.y - startDoc.y).rounded())]
+                if model.tool == .patch {
+                    model.patchEnded(tapped ? nil : offset)
+                } else if !tapped {
+                    let p = json(["offset": offset])
+                    model.whileBusy { editor in _ = try editor.execute(id: "paint.contentAwareMove", params: p) }
+                }
+            } else if docPoints.count >= 3, !tapped {
+                model.run("select.lasso", ["points": docPoints.map(dp), "mode": mode].merging(model.edgeParams) { a, _ in a })
+            } else if model.selectionMode == .replace, model.doc?.hasSelection == true {
+                model.run("select.deselect")
+            }
         case .redEye:
             model.run("paint.redEye", ["x": Int(end.x), "y": Int(end.y)])
         case .magicEraser:
@@ -726,6 +757,11 @@ extension CanvasUIView {
         }
         if objectHold { model.clearObjectHighlight() }
         objectHold = false
+        if case .patch = toolDrag {
+            moveAnts(by: .zero)
+            showSourceOutline(nil)
+            if model.tool == .patch { model.patchEnded(nil) }
+        }
         if stroking {
             model.editor.strokeCancel()
             stroking = false
@@ -1306,6 +1342,14 @@ extension CanvasUIView {
                 }
             }
         }
+        if model.tool.usesSource, let c = model.cloneMark {
+            // A small cross with an open middle, so the pixels under it stay visible.
+            let p = toScreen(c)
+            for (dx, dy) in [(1, 0), (-1, 0), (0, 1), (0, -1)] as [(CGFloat, CGFloat)] {
+                lines.move(to: CGPoint(x: p.x + 3 * dx, y: p.y + 3 * dy))
+                lines.addLine(to: CGPoint(x: p.x + 9 * dx, y: p.y + 9 * dy))
+            }
+        }
         if model.tool == .colorSampler || model.tool == .eyedropper {
             for s in model.samplers {
                 let p = toScreen(s)
@@ -1384,4 +1428,6 @@ enum ToolDrag {
     case pin(Int)
     /// The Type Mask tools drag the selection: its undo key and how far it has moved.
     case moveSelection(String, Int, Int)
+    /// Patch and Move and Fill: the selection is being dragged.
+    case patch
 }

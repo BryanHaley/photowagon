@@ -288,6 +288,17 @@ struct ContentView: View {
             if model.doc != nil {
                 StatusBar(model: model).padding(8)
             }
+            if model.doc?.hasSelection == true {
+                Image(systemName: "xmark")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 40, height: 40)
+                    .background(.black.opacity(0.45), in: Circle())
+                    .namedButton("Deselect", model: model) { model.run("select.deselect") }
+                    .accessibilityIdentifier("canvas.deselect")
+                    .padding(8)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+            }
             if model.liveBusy {
                 // A settings change being applied; small, so the image stays in view.
                 ProgressView().tint(.white).padding(8)

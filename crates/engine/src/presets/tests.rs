@@ -683,6 +683,21 @@ fn clone_doc(depth: u32) -> Session {
 }
 
 #[test]
+fn clone_source_at_follows_the_stroke() {
+    let mut s = clone_doc(8);
+    assert_eq!(s.execute("cloneSource.at", json!({"point": [5, 5]})).unwrap()["source"], Value::Null);
+    s.execute("cloneSource.set", json!({"source": [10, 10]})).unwrap();
+    // Before a stroke pairs it, the source is under the stroke's first point.
+    assert_eq!(s.execute("cloneSource.at", json!({"point": [40, 30]})).unwrap()["source"], json!([10.0, 10.0]));
+    assert_eq!(s.execute("cloneSource.at", json!({"point": [45, 30], "first": [40, 30]})).unwrap()["source"], json!([15.0, 10.0]));
+    s.execute("paint.cloneStamp", json!({"points": [[40, 30]], "size": 5, "hardness": 100})).unwrap();
+    assert_eq!(s.execute("cloneSource.at", json!({"point": [50, 50]})).unwrap()["source"], json!([20.0, 30.0]));
+    for p in [json!({}), json!({"point": "x"}), json!({"point": [1, 2], "first": [null, 1]})] {
+        assert!(s.execute("cloneSource.at", p.clone()).is_err(), "{p}");
+    }
+}
+
+#[test]
 fn clone_source_slots_and_identity_matches_offset() {
     for depth in [8, 16, 32] {
         let mut s = clone_doc(depth);

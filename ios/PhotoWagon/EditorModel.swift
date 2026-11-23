@@ -370,6 +370,7 @@ final class EditorModel: ObservableObject {
             if oldValue == .perspectiveCrop || oldValue == .polygonLasso { quad = [] }
             if oldValue == .ruler { ruler = nil }
             if oldValue == .frame { pendingFrame = nil }
+            updateCloneMark()
             marqueeBox = nil
             if transform != nil, !typeDrag { commitTransform() }
             if tool.pathTool { loadWorkPath() }
@@ -484,6 +485,32 @@ final class EditorModel: ObservableObject {
     var smartGuides: [(Point, Point)] = [] { didSet { overlayDirty = true } }
     /// Zoom tool: drag right to zoom in, left to zoom out.
     @Published var scrubbyZoom = true
+    /// Patch: copy the selection onto the dragged-to place instead of filling it from there.
+    @Published var patchDestination = false
+    /// Patch: update while dragging; off, it updates when the finger rests.
+    @Published var patchLive = false
+    private var patchPause: DispatchWorkItem?
+
+    func patchParams(_ offset: [Int]) -> [String: Any] {
+        ["offset": offset, "mode": patchDestination ? "destination" : "source"]
+    }
+
+    /// The Patch selection was dragged by `offset`.
+    func patchDragged(_ offset: [Int], rest: TimeInterval = 0.3) {
+        patchPause?.cancel()
+        let params = patchParams(offset)
+        guard !patchLive else { return live("paint.patch", params) }
+        let work = DispatchWorkItem { [weak self] in self?.live("paint.patch", params) }
+        patchPause = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + rest, execute: work)
+    }
+
+    /// The Patch drag ended at `offset`, or was taken back (nil).
+    func patchEnded(_ offset: [Int]?) {
+        patchPause?.cancel()
+        patchPause = nil
+        if let offset { liveFinish("paint.patch", patchParams(offset)) } else { liveCancel() }
+    }
     /// Free Transform: corners keep the proportions (⇧ flips this, as in Photoshop).
     @Published var keepProportions = true
     /// Free Transform turns in 15° steps (⇧ swaps it for a drag).
@@ -714,6 +741,26 @@ final class EditorModel: ObservableObject {
     }
     var samplers: [Point] = []
     var countMarks: [Point] = []
+    /// Where Clone Stamp and the Healing Brush sample from: their crosshair.
+    var cloneMark: Point? { didSet { overlayDirty = true } }
+
+    /// Moves the crosshair to the source of a stroke at `point` that began at `first`; with no
+    /// point, shows the sample point until a stroke pairs it.
+    func updateCloneMark(at point: Point? = nil, first: Point? = nil) {
+        guard tool.usesSource else { return cloneMark = nil }
+        let out: Any?
+        if let point {
+            var p: [String: Any] = ["point": [Double(point.x), Double(point.y)]]
+            if let first { p["first"] = [Double(first.x), Double(first.y)] }
+            out = (query("cloneSource.at", p) as? [String: Any])?["source"]
+        } else {
+            let list = query("cloneSource.list") as? [String: Any]
+            let slots = list?["sources"] as? [[String: Any]] ?? []
+            let slot = (list?["active"] as? Int).flatMap { slots.indices.contains($0) ? slots[$0] : nil }
+            out = slot?["anchor"] is NSNull ? slot?["source"] : nil
+        }
+        cloneMark = (out as? [NSNumber]).flatMap { $0.count == 2 ? Point(x: $0[0].floatValue, y: $0[1].floatValue) : nil }
+    }
     @Published var prompt: TextPrompt?
     private(set) var resolution: Double = 72
     lazy var firstShapePreset: String? = {

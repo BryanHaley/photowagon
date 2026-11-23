@@ -18,6 +18,9 @@ final class CanvasUIView: UIView, UIPointerInteractionDelegate, UIGestureRecogni
 
     // Overlays, in points.
     let antsLight = CAShapeLayer()
+    /// Patch's second outline, at the pixels it takes.
+    let sourceLight = CAShapeLayer()
+    let sourceDark = CAShapeLayer()
     let antsDark = CAShapeLayer()
     let toolPath = CAShapeLayer()
     /// The brush outline under the mouse, trackpad or a hovering Pencil.
@@ -124,7 +127,7 @@ final class CanvasUIView: UIView, UIPointerInteractionDelegate, UIGestureRecogni
         guideLines.lineWidth = 1
         guideLines.fillColor = nil
         layer.addSublayer(guideLines)
-        for l in [predicted, symmetryGuide, antsLight, antsDark, toolPath, pendingLines, pendingDots, cursor] {
+        for l in [predicted, symmetryGuide, antsLight, antsDark, sourceLight, sourceDark, toolPath, pendingLines, pendingDots, cursor] {
             l.fillColor = nil
             l.lineWidth = 1
             layer.addSublayer(l)
@@ -178,12 +181,14 @@ final class CanvasUIView: UIView, UIPointerInteractionDelegate, UIGestureRecogni
         let pointer = UIPointerInteraction(delegate: self)
         addInteraction(pointer)
         self.pointer = pointer
-        antsLight.strokeColor = UIColor.white.cgColor
-        antsDark.strokeColor = UIColor.black.cgColor
-        antsDark.lineDashPattern = [4, 4]
         let march = CABasicAnimation(keyPath: "lineDashPhase")
         (march.fromValue, march.toValue, march.duration, march.repeatCount) = (0, 8, 0.5, .infinity)
-        antsDark.add(march, forKey: "march")
+        for (light, dark) in [(antsLight, antsDark), (sourceLight, sourceDark)] {
+            light.strokeColor = UIColor.white.cgColor
+            dark.strokeColor = UIColor.black.cgColor
+            dark.lineDashPattern = [4, 4]
+            dark.add(march, forKey: "march")
+        }
         toolPath.strokeColor = UIColor.white.withAlphaComponent(0.9).cgColor
         toolPath.lineDashPattern = [5, 3]
         addSubview(loupe)
@@ -197,7 +202,11 @@ final class CanvasUIView: UIView, UIPointerInteractionDelegate, UIGestureRecogni
         super.layoutSubviews()
         guard bounds.width > 0, bounds.height > 0, window != nil else { return }
         layer.contentsScale = scale
-        for l in [shade, predicted, symmetryGuide, antsLight, antsDark, toolPath, pendingLines, pendingDots, cursor, guideLines] { l.frame = bounds }
+        // Not `frame`: that would undo a shift set with setAffineTransform.
+        for l in [shade, predicted, symmetryGuide, antsLight, antsDark, sourceLight, sourceDark, toolPath, pendingLines, pendingDots, cursor, guideLines] {
+            l.bounds = bounds
+            l.position = CGPoint(x: bounds.midX, y: bounds.midY)
+        }
         let (w, h) = (UInt32(bounds.width * scale), UInt32(bounds.height * scale))
         if attached {
             configure(w, h)
@@ -380,7 +389,26 @@ final class CanvasUIView: UIView, UIPointerInteractionDelegate, UIGestureRecogni
         CATransaction.commit()
     }
 
-    func setToolPath(_ path: CGPath?, width: CGFloat = 1, dashed: Bool = true) {
+    /// Shows the selection outline shifted by `d` points on screen, while it is dragged.
+    func moveAnts(by d: CGPoint) {
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        for l in [antsLight, antsDark] { l.setAffineTransform(CGAffineTransform(translationX: d.x, y: d.y)) }
+        CATransaction.commit()
+    }
+
+    /// A copy of the selection outline `d` points away on screen (nil hides it).
+    func showSourceOutline(_ d: CGPoint?) {
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        for l in [sourceLight, sourceDark] {
+            l.path = d == nil ? nil : antsLight.path
+            l.setAffineTransform(CGAffineTransform(translationX: d?.x ?? 0, y: d?.y ?? 0))
+        }
+        CATransaction.commit()
+    }
+
+    func setToolPath(_ path: CGPath?, width: CGFloat = 1, dashed: Bool = true, filled: Bool = false) {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         toolPath.path = path
@@ -389,6 +417,7 @@ final class CanvasUIView: UIView, UIPointerInteractionDelegate, UIGestureRecogni
         toolPath.lineCap = dashed ? .butt : .round
         toolPath.lineJoin = .round
         toolPath.strokeColor = (dashed ? UIColor.white.withAlphaComponent(0.9) : UIColor.systemPink.withAlphaComponent(0.45)).cgColor
+        toolPath.fillColor = filled ? UIColor.systemPink.withAlphaComponent(0.3).cgColor : nil
         CATransaction.commit()
     }
 

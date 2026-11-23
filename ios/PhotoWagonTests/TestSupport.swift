@@ -114,6 +114,19 @@ extension CanvasUIView {
         toolEnded(ToolTouch(q, time: time + 0.1), modifiers: modifiers)
     }
 
+    /// One finger through document points `pts` in turn.
+    func trace(_ pts: [Point]) {
+        guard let first = pts.first else { return }
+        gesture = (1, 0, false)
+        var time = 100.0
+        toolBegan(ToolTouch(toScreen(first), time: time))
+        for p in pts.dropFirst() {
+            time += 0.1
+            toolMoved(ToolTouch(toScreen(p), time: time))
+        }
+        toolEnded(ToolTouch(toScreen(pts.last ?? first), time: time + 0.1))
+    }
+
     /// A tap at document point `a`.
     func tap(_ a: Point, modifiers: UIKeyModifierFlags = [], alt: Bool = false) {
         gesture = (1, 0, false)

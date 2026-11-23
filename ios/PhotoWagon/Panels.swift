@@ -263,6 +263,7 @@ struct ContextBar: View {
             chip("Shape Layer", "square.on.circle") { model.workPathToShape() }
             chip("Delete Path", "trash") { model.deleteWorkPath() }
         } else if model.doc?.hasSelection == true, model.tool.selects || model.tool.typeTool || [.move, .patch, .contentAwareMove].contains(model.tool) {
+            if model.tool == .patch { patchOptions }
             chip("Deselect", "xmark") { model.run("select.deselect") }
             chip("Invert", "arrow.left.arrow.right") { model.run("select.inverse") }
             chip("Fill", "drop.fill") { model.run("edit.fill", ["contents": "foreground"]) }
@@ -300,6 +301,8 @@ struct ContextBar: View {
                 }
                 chip("Subject", "person.crop.rectangle") { model.selectSubject(mode: model.selectionMode.rawValue) }
             }
+        } else if model.tool == .patch {
+            patchOptions
         } else if model.tool.hasTolerance {
             tolerance
         } else if model.tool == .gradient {
@@ -640,6 +643,17 @@ struct ContextBar: View {
         .accessibilityIdentifier("brush.tips")
     }
 
+    @ViewBuilder private var patchOptions: some View {
+        Picker("Patch", selection: $model.patchDestination) {
+            Text("Source").tag(false)
+            Text("Destination").tag(true)
+        }
+        .pickerStyle(.segmented)
+        .fixedSize()
+        .accessibilityIdentifier("patch.mode")
+        toggle("Live Preview", "play.square", $model.patchLive)
+    }
+
     private func toggle(_ title: String, _ symbol: String, _ value: Binding<Bool>) -> some View {
         Image(systemName: symbol)
             .font(.system(size: 15))
@@ -745,7 +759,8 @@ struct ContextBar: View {
         case .note: "Tap to add a note"
         case .count: "Tap to count"
         case .redEye: "Tap a red eye"
-        case .patch, .contentAwareMove: "Select an area, then drag where to take it from"
+        case .patch: model.patchDestination ? "Draw around a clean area, then drag it onto the spot" : "Draw around the spot, then drag it onto a clean area"
+        case .contentAwareMove: "Draw around the object, then drag it where it goes"
         case .eyedropper: "Tap or drag to pick a color"
         case .ruler: "Drag to measure"
         case _ where model.tool.typeTool: "Tap for a line of text, drag for a text box"

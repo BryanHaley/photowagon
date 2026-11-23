@@ -285,6 +285,23 @@ fn list(s: &mut Session, _: &Value) -> Result<Value> {
     )
 }
 
+/// Where a stroke at `point` (started at `first`) samples from; null with no source set.
+fn at(s: &mut Session, p: &Value) -> Result<Value> {
+    const CMD: &str = "cloneSource.at";
+    let finite = |v: Option<(f64, f64)>| v.filter(|q| q.0.is_finite() && q.1.is_finite());
+    let point = finite(pt(p, "point")).ok_or_else(|| bad(CMD, "`point` must be [x,y]"))?;
+    let first = match p.get("first") {
+        None | Some(Value::Null) => point,
+        Some(_) => finite(pt(p, "first")).ok_or_else(|| bad(CMD, "`first` must be [x,y]"))?,
+    };
+    if s.presets.clone.active().source.is_none() {
+        return Ok(json!({ "source": null }));
+    }
+    let (m, _) = resolve(s, &json!({}), first, CMD)?;
+    let (x, y) = m.map(point.0, point.1);
+    Ok(json!({ "source": [x, y] }))
+}
+
 fn select(s: &mut Session, p: &Value) -> Result<Value> {
     const CMD: &str = "cloneSource.select";
     let i = p.get("index").and_then(Value::as_u64).ok_or_else(|| bad(CMD, "missing `index`"))? as usize;
@@ -400,6 +417,16 @@ pub fn specs() -> Vec<CommandSpec> {
             params: "{} → {active,sources:[{index,source,anchor,offset,layer,width,height,linked,rotation,flipH,flipV}],overlay}",
             enabled: always,
             run: list,
+            journal: false,
+        },
+        CommandSpec {
+            id: "cloneSource.at",
+            label: "Clone Source Point",
+            menu: &[],
+            shortcut: None,
+            params: r##"{"point":[x,y],"first":[x,y]?=point (where the stroke began)} → {"source":[x,y]|null}"##,
+            enabled: always,
+            run: at,
             journal: false,
         },
         CommandSpec {

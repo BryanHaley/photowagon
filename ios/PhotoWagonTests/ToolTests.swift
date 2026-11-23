@@ -386,6 +386,76 @@ final class ToolTests: XCTestCase {
         XCTAssertNotNil(model.prompt, "outside it, a drag makes a text box")
     }
 
+    func testCloneCrosshairShowsTheSourceAndFollowsTheStroke() {
+        let (model, canvas) = canvas(tool: .clone)
+        XCTAssertNil(model.cloneMark)
+        model.run("cloneSource.set", ["source": [50, 60]])
+        model.updateCloneMark()
+        XCTAssertNear(model.cloneMark, pt(50, 60))
+        canvas.drag(pt(200, 200), pt(260, 200))
+        XCTAssertNear(model.cloneMark, pt(110, 60), accuracy: 1, "the source moves with the brush")
+        model.tool = .brush
+        XCTAssertNil(model.cloneMark)
+    }
+
+    func testPatchDrawsItsOwnSelectionThenPatchesFromWhereItIsDragged() {
+        let (model, canvas) = canvas(tool: .brush)
+        model.run("select.rect", ["x": 100, "y": 100, "width": 40, "height": 40])
+        model.run("edit.fill", ["contents": "color", "color": "#ff0000"])
+        model.run("select.deselect")
+        model.tool = .patch
+        canvas.trace([pt(90, 90), pt(150, 90), pt(150, 150), pt(90, 150)])
+        let s = selection(model) ?? []
+        XCTAssert(s.count == 4 && s[0] <= 91 && s[2] >= 58, "a freehand selection: \(s)")
+        model.patchLive = true
+        let steps = model.historyNames.count
+        canvas.updateAnts()
+        canvas.gesture = (1, 0, false)
+        canvas.toolBegan(ToolTouch(canvas.toScreen(pt(120, 120)), time: 100))
+        canvas.toolMoved(ToolTouch(canvas.toScreen(pt(120, 230)), time: 100.1))
+        idle(model)
+        XCTAssertNotNil(canvas.sourceLight.path, "a second outline shows where the pixels come from")
+        XCTAssertGreaterThan(model.pixel(120, 120).dropFirst().first ?? 0, 0.5, "the patch shows while dragging")
+        canvas.toolEnded(ToolTouch(canvas.toScreen(pt(120, 230)), time: 100.2))
+        idle(model)
+        XCTAssertNil(canvas.sourceLight.path)
+        XCTAssertGreaterThan(model.pixel(120, 120).dropFirst().first ?? 0, 0.5, "the red patched from the white below")
+        XCTAssertEqual(model.historyNames.count, steps + 1, "one step for the whole drag")
+        canvas.tap(pt(300, 300))
+        XCTAssertEqual(model.doc?.hasSelection, false, "a tap outside deselects")
+    }
+
+    func testPatchWithoutLivePreviewWaitsForTheFingerToRest() {
+        let (model, canvas) = canvas(tool: .brush)
+        model.run("select.rect", ["x": 100, "y": 100, "width": 40, "height": 40])
+        model.run("edit.fill", ["contents": "color", "color": "#ff0000"])
+        model.tool = .patch
+        XCTAssertFalse(model.patchLive, "off by default")
+        canvas.gesture = (1, 0, false)
+        canvas.toolBegan(ToolTouch(canvas.toScreen(pt(120, 120)), time: 100))
+        canvas.toolMoved(ToolTouch(canvas.toScreen(pt(120, 230)), time: 100.1))
+        XCTAssertLessThan(model.pixel(120, 120).dropFirst().first ?? 1, 0.1, "nothing yet while moving")
+        wait("updates once the finger rests") { (model.pixel(120, 120).dropFirst().first ?? 0) > 0.5 }
+        canvas.toolEnded(ToolTouch(canvas.toScreen(pt(120, 230)), time: 101))
+        idle(model)
+        XCTAssertEqual(model.historyNames.last, "Patch")
+    }
+
+    func testPatchDestinationCopiesTheSelectionOntoTheDraggedToPlace() {
+        let (model, canvas) = canvas(tool: .brush)
+        model.run("select.rect", ["x": 100, "y": 100, "width": 40, "height": 40])
+        model.run("edit.fill", ["contents": "color", "color": "#ff0000"])
+        model.run("select.rect", ["x": 100, "y": 210, "width": 40, "height": 40])
+        model.tool = .patch
+        model.patchDestination = true
+        addTeardownBlock { @MainActor in model.patchDestination = false }
+        canvas.drag(pt(120, 230), pt(120, 120))
+        idle(model)
+        XCTAssertGreaterThan(model.pixel(120, 120).dropFirst().first ?? 0, 0.5, "the white copied over the red")
+        XCTAssertGreaterThan(model.pixel(120, 230).dropFirst().first ?? 0, 0.9, "the selected area stays")
+        XCTAssertEqual(model.historyNames.last, "Patch (Destination)")
+    }
+
     func testMoveToolShowsTheTransformBoxAndAppliesItOnToolChange() throws {
         let (model, canvas) = canvas(tool: .brush)
         plainMove(model, true)
