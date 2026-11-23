@@ -303,6 +303,8 @@ struct ContextBar: View {
             }
         } else if model.tool == .patch {
             patchOptions
+        } else if model.tool == .artboard {
+            artboardOptions
         } else if model.tool.hasTolerance {
             tolerance
         } else if model.tool == .gradient {
@@ -644,6 +646,25 @@ struct ContextBar: View {
             Button { model.request = .importBrushTips } label: { Label("Import Brush Tips…", systemImage: "square.and.arrow.down") }
         } label: { chipLabel("Brush Tip", "paintbrush.pointed") }
         .accessibilityIdentifier("brush.tips")
+    }
+
+    @ViewBuilder private var artboardOptions: some View {
+        if let a = model.activeArtboard {
+            Menu {
+                ForEach(model.artboardSizes) { p in
+                    Button { model.resizeArtboard(width: p.width, height: p.height) } label: { Text(verbatim: "\(p.name) (\(p.width) × \(p.height))") }
+                }
+            } label: {
+                chipLabel("Size", "aspectratio", wide: true)
+            }
+            .accessibilityIdentifier("artboard.sizes")
+            Text(verbatim: "\(Int(a.rect.width)) × \(Int(a.rect.height)) px").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+            toggle("Portrait", "rectangle.portrait", Binding(get: { a.portrait }, set: { _ in model.orientArtboard(portrait: true) }))
+            toggle("Landscape", "rectangle", Binding(get: { !a.portrait }, set: { _ in model.orientArtboard(portrait: false) }))
+            Text("Tap + to add a board beside it").font(.caption).foregroundStyle(.secondary).lineLimit(1)
+        } else {
+            Text("Drag to draw an artboard").font(.caption).foregroundStyle(.secondary).lineLimit(1)
+        }
     }
 
     @ViewBuilder private var patchOptions: some View {

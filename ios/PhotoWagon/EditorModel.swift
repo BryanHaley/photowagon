@@ -278,6 +278,10 @@ struct LayerRow: Identifiable, Equatable {
     var effectsVisible = true
     /// Content bounds [x, y, width, height].
     var bounds: [Double]?
+    /// An artboard's board: x, y, width, height in document pixels.
+    var artboard: [Double]?
+    /// The Layers panel's color label (`red`, … or `none`).
+    var labelColor = "none"
     var mask: MaskInfo?
 
     var isGroup: Bool { kind == "Group" }
@@ -286,7 +290,8 @@ struct LayerRow: Identifiable, Equatable {
         a.id == b.id && a.name == b.name && a.kind == b.kind && a.visible == b.visible && a.opacity == b.opacity && a.blend == b.blend
             && a.selected == b.selected && a.locked == b.locked && a.hasMask == b.hasMask && a.isBackground == b.isBackground && a.fill == b.fill
             && a.depth == b.depth && a.expanded == b.expanded && a.clipped == b.clipped && a.active == b.active && a.smartFilters == b.smartFilters
-            && a.effects == b.effects && a.effectsVisible == b.effectsVisible && a.bounds == b.bounds && a.mask == b.mask && a.adjustment?.kind == b.adjustment?.kind
+            && a.effects == b.effects && a.effectsVisible == b.effectsVisible && a.bounds == b.bounds && a.artboard == b.artboard
+            && a.labelColor == b.labelColor && a.mask == b.mask && a.adjustment?.kind == b.adjustment?.kind
             && NSDictionary(dictionary: a.adjustment?.params ?? [:]).isEqual(to: b.adjustment?.params ?? [:])
     }
 }
@@ -794,6 +799,10 @@ final class EditorModel: ObservableObject {
         /// Close the open panel (to show a document that just opened).
         case closePanels
         case cameraRaw, newLayer, exportAs, saveForWeb, generalPreferences, defineBrush
+        /// Layer › New › Artboard.
+        case newArtboard
+        /// File › Export › Artboards to Files, or one board's Export As.
+        case exportArtboards(UInt64?)
         /// The ☰ menu's Crop and Rotate screen.
         case cropRotate
         /// Layer Style, at Blending Options or an effect kind.
@@ -828,6 +837,8 @@ final class EditorModel: ObservableObject {
         case "window.toggle.actions": .panel(.actions)
         case "filter.cameraRaw": .cameraRaw
         case "layer.new.layer": .newLayer
+        case "layer.new.artboard": .newArtboard
+        case "file.export.artboardsToFiles": .exportArtboards(nil)
         case "file.export.renderVideo", "file.export.dataSetsAsFiles": .exportToFolder(id)
         case "file.import.notes", "file.import.variableDataSets", "file.import.videoFramesToLayers", "layer.videoLayers.newVideoLayerFromFile",
              "layer.videoLayers.replaceFootage", "file.scripts.browse": .commandFile(id)
@@ -1296,6 +1307,11 @@ final class EditorModel: ObservableObject {
     /// Something the canvas overlays depend on changed.
     var overlayDirty = true
     private var fitPending = true
+    /// The artboards before the canvas grew (`followCanvasShift`).
+    private var boardsBeforeResize: [ArtboardRow]?
+    /// The canvas grew left or up and everything moved by this much (document pixels): a drag in
+    /// progress moves its start point with it.
+    var canvasShifted: ((Float, Float) -> Void)?
     private var layersRevision: UInt64?
     private var previewRunning = false
     private var previewNext: String?
@@ -1801,7 +1817,8 @@ final class EditorModel: ObservableObject {
             countMarks = []
             layersRevision = nil
         } else if d?.width != doc?.width || d?.height != doc?.height {
-            fitPending = true
+            // Artboards grow the canvas as they're added or moved: the view stays where it is.
+            if artboards.isEmpty { fitPending = true } else { boardsBeforeResize = artboards }
         }
         doc = d
         documents = editor.documents()
@@ -1809,6 +1826,10 @@ final class EditorModel: ObservableObject {
         if let d, d.revision != layersRevision {
             layersRevision = d.revision
             loadLayers()
+            if let before = boardsBeforeResize {
+                boardsBeforeResize = nil
+                followCanvasShift(from: before)
+            }
             animation = AnimationInfo(query("animation.info"))
             if animation == nil, playing { stopPlaying() }
             if objectHighlight != nil || showAllObjects { showObjects(at: nil) }
@@ -2047,6 +2068,8 @@ final class EditorModel: ObservableObject {
               let rows = obj["layers"] as? [[String: Any]]
         else { layers = []; return }
         resolution = (obj["resolution"] as? NSNumber)?.doubleValue ?? 72
+        let g = obj["guides"] as? [String: Any]
+        guides = ((g?["horizontal"] as? [NSNumber])?.map(\.doubleValue) ?? [], (g?["vertical"] as? [NSNumber])?.map(\.doubleValue) ?? [])
         maskTarget = obj["maskTarget"] as? Bool ?? false
         maskView = ((obj["layerMaskView"] as? [String: Any])?["layer"] as? NSNumber)?.uint64Value
         history = (obj["history"] as? [String] ?? [], obj["historyRedo"] as? [String] ?? [])
@@ -2069,6 +2092,8 @@ final class EditorModel: ObservableObject {
                 row.clipped = r["clipped"] as? Bool ?? false
                 row.active = id == active
                 row.bounds = (r["bounds"] as? [NSNumber])?.map(\.doubleValue)
+                row.artboard = ((r["artboard"] as? [String: Any])?["rect"] as? [NSNumber])?.map(\.doubleValue)
+                row.labelColor = r["labelColor"] as? String ?? "none"
                 row.mask = MaskInfo(r["mask"])
                 if let a = r["adjustment"] as? [String: Any], let kind = a["kind"] as? String { row.adjustment = (kind, a["params"] as? [String: Any] ?? [:]) }
                 row.smartFilters = (r["smartFilters"] as? [[String: Any]] ?? []).enumerated().map { i, f in
@@ -2106,6 +2131,8 @@ final class EditorModel: ObservableObject {
 
     /// Every layer in the document, groups' layers included.
     @Published private(set) var layerCount = 0
+    /// The document's guides: horizontal ones' y and vertical ones' x, in document pixels.
+    var guides: (horizontal: [Double], vertical: [Double]) = ([], []) { didSet { overlayDirty = true } }
     /// Layers panel: taps add layers to the selection, or take them out (⌘-click in Photoshop).
     @Published var selectingLayers = false
     /// Smart objects whose filter list is folded away in the Layers panel.

@@ -340,6 +340,10 @@ struct LayerRowView: View {
 
     var body: some View {
         HStack(spacing: 8) {
+            // The layer's colour label, a stripe at the row's edge.
+            RoundedRectangle(cornerRadius: 2).fill(LabelColors.color(row.labelColor) ?? .clear).frame(width: 4, height: 30)
+                .padding(.leading, -12)
+                .accessibilityIdentifier("layer.label.\(row.name).\(row.labelColor)")
             Button { model.run("layer.setProps", ["layer": row.id, "visible": !row.visible]) } label: {
                 Image(systemName: row.visible ? "eye" : "eye.slash").foregroundStyle(row.visible ? .primary : .secondary)
             }
@@ -484,6 +488,7 @@ struct LayerRowView: View {
 
     private var kindName: String {
         if let a = row.adjustment { return AdjustmentKinds.label(a.kind) }
+        if row.artboard != nil { return "Artboard" }
         return row.kind
     }
 
@@ -512,7 +517,17 @@ struct LayerRowView: View {
         if !row.isBackground {
             Button { model.run("layer.layerStyle.clear", ["layer": row.id]) } label: { Label("Clear Layer Style", systemImage: "square.slash") }
         }
-        Button { model.run("layer.duplicate", ["layer": row.id]) } label: { Label("Duplicate Layer", systemImage: "plus.square.on.square") }
+        Button { model.run("layer.duplicate", ["layer": row.id]) } label: { Label(row.artboard != nil ? "Duplicate Artboard" : "Duplicate Layer", systemImage: "plus.square.on.square") }
+        if row.artboard != nil {
+            Button { selectThis(); model.request = .exportArtboards(row.id) } label: { Label("Export As…", systemImage: "square.and.arrow.up") }
+        }
+        Menu {
+            ForEach(LabelColors.all, id: \.id) { c in
+                Button { model.setLabelColor(c.id, of: row.id) } label: {
+                    if row.labelColor == c.id { Label(c.title, systemImage: "checkmark") } else { Text(c.title) }
+                }
+            }
+        } label: { Label("Color", systemImage: "paintpalette") }
         Button { selectThis(); model.run(row.isGroup ? "layer.ungroupLayers" : "layer.groupLayers") } label: {
             Label(row.isGroup ? "Ungroup Layers" : "Group Layers", systemImage: "folder")
         }
@@ -570,6 +585,8 @@ struct LayerRowView: View {
         Group {
             if row.kind == "Type" {
                 Text("T").font(.title2.bold()).foregroundStyle(.white).frame(maxWidth: .infinity, maxHeight: .infinity).background(Color(white: 0.3))
+            } else if row.artboard != nil {
+                Image(systemName: "rectangle.on.rectangle").foregroundStyle(.secondary).frame(maxWidth: .infinity, maxHeight: .infinity).background(Color(white: 0.2))
             } else if row.isGroup {
                 Image(systemName: "folder.fill").foregroundStyle(.secondary).frame(maxWidth: .infinity, maxHeight: .infinity).background(Color(white: 0.2))
             } else if let thumb {
@@ -636,7 +653,7 @@ struct LayerRowView: View {
             }
             return
         }
-        editing = LayerTextEdit(layer: row.id, title: "Rename Layer", text: row.name) { [model, row] name in
+        editing = LayerTextEdit(layer: row.id, title: row.artboard != nil ? "Rename Artboard" : "Rename Layer", text: row.name) { [model, row] name in
             if !name.isEmpty { model.run("layer.renameLayer", ["layer": row.id, "name": name]) }
         }
     }

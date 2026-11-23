@@ -294,6 +294,10 @@ struct NewDocumentSheet: View {
     @State private var background = "white"
     @State private var profile = "srgb"
     @State private var preset = ""
+    @State private var artboards = false
+    @State private var savingPreset = false
+    @State private var presetName = ""
+    @State private var saved = SavedPresets.all
 
     /// Colour profiles for each mode, as the engine names them.
     static let profiles: [String: [(String, String)]] = [
@@ -318,8 +322,10 @@ struct NewDocumentSheet: View {
         ("Art & Illustration", [DocPreset(name: "Default", width: 4000, height: 3000, resolution: 300),
                                 DocPreset(name: "Square", width: 3000, height: 3000, resolution: 300)]),
         ("Web", [DocPreset(name: "Web Large", width: 1920, height: 1080, resolution: 72),
-                 DocPreset(name: "Web Medium", width: 1440, height: 900, resolution: 72),
-                 DocPreset(name: "Social Square", width: 1080, height: 1080, resolution: 72)]),
+                 DocPreset(name: "Web Medium", width: 1440, height: 900, resolution: 72)]),
+        ("Social", [DocPreset(name: "Social Portrait", width: 1080, height: 1350, resolution: 72),
+                    DocPreset(name: "Social Square", width: 1080, height: 1080, resolution: 72),
+                    DocPreset(name: "Social Story", width: 1080, height: 1920, resolution: 72)]),
         ("Mobile", [DocPreset(name: "iPhone 16 Pro", width: 1206, height: 2622, resolution: 72),
                     DocPreset(name: "iPad Pro 11 in", width: 1668, height: 2420, resolution: 72)]),
         ("Film & Video", [DocPreset(name: "HDTV 1080p", width: 1920, height: 1080, resolution: 72),
@@ -335,13 +341,14 @@ struct NewDocumentSheet: View {
                         if let p = Self.preset(name) { apply(p) }
                     })) {
                         Text("Custom").tag("")
-                        ForEach(Self.presets, id: \.0) { group in
+                        ForEach(groups, id: \.0) { group in
                             Section(group.0) {
                                 ForEach(group.1) { p in Text(verbatim: "\(p.name) — \(p.width) × \(p.height) px").tag(p.name) }
                             }
                         }
                     }
                     .accessibilityIdentifier("new.preset")
+                    Button("Save Preset…") { presetName = name; savingPreset = true }.accessibilityIdentifier("new.savePreset")
                 }
                 Section("Details") {
                     TextField("Name", text: $name).accessibilityIdentifier("new.name")
@@ -349,6 +356,15 @@ struct NewDocumentSheet: View {
                         .accessibilityIdentifier("new.units")
                     number("Width", $width, id: "new.width")
                     number("Height", $height, id: "new.height")
+                    Picker("Orientation", selection: Binding(get: { px(width) <= px(height) }, set: { portrait in
+                        if portrait != (px(width) <= px(height)) { (width, height) = (height, width) }
+                    })) {
+                        Image(systemName: "rectangle.portrait").accessibilityLabel("Portrait").tag(true)
+                        Image(systemName: "rectangle").accessibilityLabel("Landscape").tag(false)
+                    }
+                    .pickerStyle(.segmented)
+                    .accessibilityIdentifier("new.orientation")
+                    Toggle("Artboards", isOn: $artboards).accessibilityIdentifier("new.artboards")
                     number("Resolution (pixels/inch)", $resolution, id: "new.resolution")
                 }
                 Section("Color") {
@@ -370,6 +386,17 @@ struct NewDocumentSheet: View {
                     if let problem { Text(problem).foregroundStyle(.orange) }
                 }
             }
+            .alert("Save Preset", isPresented: $savingPreset) {
+                TextField("Name", text: $presetName).accessibilityIdentifier("new.presetName")
+                Button("Cancel", role: .cancel) {}
+                Button("Save") {
+                    let n = presetName.trimmingCharacters(in: .whitespaces)
+                    guard !n.isEmpty, problem == nil else { return }
+                    SavedPresets.save(DocPreset(name: n, width: px(width), height: px(height), resolution: max(Int(Self.value(resolution)), 1)))
+                    saved = SavedPresets.all
+                    preset = n
+                }
+            } message: { Text("Keep this size for New Document and the Artboard tool.") }
             .navigationTitle("New Document")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -406,7 +433,10 @@ struct NewDocumentSheet: View {
 
     private func px(_ s: String) -> Int { Self.pixels(s, unit: unit, resolution: resolution) }
 
-    static func preset(_ name: String) -> DocPreset? { presets.flatMap(\.1).first { $0.name == name } }
+    static func preset(_ name: String) -> DocPreset? { (SavedPresets.all + presets.flatMap(\.1)).first { $0.name == name } }
+
+    /// The preset groups, saved presets first.
+    private var groups: [(String, [DocPreset])] { (saved.isEmpty ? [] : [("Saved", saved)]) + Self.presets }
 
     private func apply(_ p: DocPreset) {
         (name, unit, width, height, resolution) = (p.name, .pixels, "\(p.width)", "\(p.height)", "\(p.resolution)")
@@ -424,7 +454,7 @@ struct NewDocumentSheet: View {
     private func create() {
         let (w, h) = (px(width), px(height))
         guard problem == nil else { return }
-        model.newDocument(["width": w, "height": h, "resolution": max(Self.value(resolution), 1), "mode": mode, "depth": depth, "background": background, "profile": profile, "name": name])
+        model.newDocument(["width": w, "height": h, "resolution": max(Self.value(resolution), 1), "mode": mode, "depth": depth, "background": background, "profile": profile, "name": name, "artboard": artboards])
         dismiss()
     }
 }

@@ -90,6 +90,7 @@ final class MenuTests: XCTestCase {
         XCTAssertTrue(MenuTree.shows(command("edit.preferences.general")), "Preferences › General keeps its place")
         XCTAssertFalse(MenuTree.shows(command("file.closeAll")))
         XCTAssertFalse(MenuTree.shows(command("file.export.layersToFiles", params: #"{"dir":folder}"#)), "needs a desktop folder")
+        XCTAssertTrue(MenuTree.shows(command("file.export.artboardsToFiles", params: #"{"dir":folder}"#)), "the app's own screen asks instead")
         XCTAssertTrue(MenuTree.shows(command("file.importX", params: #"{"path":str,"data":b64}"#)), "takes the file's data too")
         XCTAssertTrue(all.filter(MenuTree.shows).allSatisfy { !$0.params.contains(#""path":str"#) || $0.params.contains(#""data""#) })
     }

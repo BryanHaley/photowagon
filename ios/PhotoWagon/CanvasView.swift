@@ -95,6 +95,7 @@ final class CanvasUIView: UIView, UIPointerInteractionDelegate, UIGestureRecogni
     let objectLayer = CALayer()
     /// Smart guides while moving a layer.
     let guideLines = CAShapeLayer()
+    let boardOverlay = BoardOverlay()
     /// The magnifier for exact points, the pixel it shows (and the revision), and how often it
     /// fetched pixels.
     let loupe = LoupeView(frame: CGRect(x: 0, y: 0, width: Loupe.size, height: Loupe.size))
@@ -126,6 +127,12 @@ final class CanvasUIView: UIView, UIPointerInteractionDelegate, UIGestureRecogni
         guideLines.strokeColor = UIColor.systemPink.cgColor
         guideLines.lineWidth = 1
         guideLines.fillColor = nil
+        boardOverlay.install(in: layer)
+        model.canvasShifted = { [weak self] dx, dy in
+            guard let self else { return }
+            self.startDoc = Point(x: self.startDoc.x + dx, y: self.startDoc.y + dy)
+            self.docPoints = self.docPoints.map { Point(x: $0.x + dx, y: $0.y + dy) }
+        }
         layer.addSublayer(guideLines)
         for l in [predicted, symmetryGuide, antsLight, antsDark, sourceLight, sourceDark, toolPath, pendingLines, pendingDots, cursor] {
             l.fillColor = nil
@@ -207,6 +214,7 @@ final class CanvasUIView: UIView, UIPointerInteractionDelegate, UIGestureRecogni
             l.bounds = bounds
             l.position = CGPoint(x: bounds.midX, y: bounds.midY)
         }
+        boardOverlay.layout(bounds)
         let (w, h) = (UInt32(bounds.width * scale), UInt32(bounds.height * scale))
         if attached {
             configure(w, h)
@@ -315,6 +323,7 @@ final class CanvasUIView: UIView, UIPointerInteractionDelegate, UIGestureRecogni
         if model.overlayDirty {
             model.overlayDirty = false
             updateAnts()
+            updateBoards()
             updateSymmetry()
             updateObjectHighlight()
             updatePending()

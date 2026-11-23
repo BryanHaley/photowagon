@@ -116,6 +116,16 @@ extension CanvasUIView {
             held(startDoc)
             return
         }
+        if boardTouched(at: p) {
+            toolDrag = .handled
+            return
+        }
+        // The Artboard tool drags a board it starts on.
+        if model.tool == .artboard, let b = model.artboard(at: startDoc) {
+            if model.activeArtboard?.id != b.id { model.run("layer.select", ["layer": b.id]) }
+            toolDrag = .board(b.id, "board-\(UUID().uuidString)", 0, 0)
+            return
+        }
         switch model.tool {
         case .move:
             moveApplied = (0, 0)
@@ -304,6 +314,14 @@ extension CanvasUIView {
             }
         case .objectSelect, .slice, .frame, .artboard, .zoomIn, .rectangle, .ellipseShape, .triangle, .polygon, .customShape,
              .type, .verticalType, .typeMask, .verticalTypeMask:
+            if case .handled = toolDrag { return }
+            if case let .board(id, key, x, y) = toolDrag {
+                let (dx, dy) = (Int((here.x - startDoc.x).rounded()), Int((here.y - startDoc.y).rounded()))
+                if dx != x || dy != y, model.run("layer.translate", ["layer": id, "dx": dx - x, "dy": dy - y, "coalesce": key]) != nil {
+                    toolDrag = .board(id, key, dx, dy)
+                }
+                return
+            }
             let q = constrained(here, modifiers)
             setToolPath(model.tool == .ellipse || model.tool == .ellipseShape ? marquee(startDoc, q, ellipse: true) : marquee(startDoc, q, ellipse: false))
         case .crop:
@@ -603,7 +621,10 @@ extension CanvasUIView {
             }
         case .artboard:
             setToolPath(nil)
-            if let r = rect { model.run("layer.new.artboard", ["rect": r]) }
+            switch toolDrag {
+            case .handled, .board: toolDrag = .none
+            default: if let r = rect { model.run("layer.new.artboard", ["rect": r]) }
+            }
         case .colorSampler:
             if case let .sampler(i, from) = toolDrag {
                 toolDrag = .none
@@ -715,6 +736,7 @@ extension CanvasUIView {
             }
         case .move:
             applyMove(to: end, force: true, time: t.time)
+            if moveApplied != (0, 0) { model.adoptMovedLayers(key: moveKey) }
             model.smartGuides = []
             model.moveGesture = false
             model.showMoveBox()
@@ -1403,6 +1425,10 @@ extension CanvasUIView {
 /// What a tool drag is doing.
 enum ToolDrag {
     case none
+    /// The touch was taken when it began (an artboard's name or "+").
+    case handled
+    /// The Artboard tool moving board `id`: its undo key and how far it has moved.
+    case board(UInt64, String, Int, Int)
     case moveCrop(Point, Point)
     /// A crop corner or edge: the corner that stays, which sides move, and where the other end of
     /// a dragged edge is.

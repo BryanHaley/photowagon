@@ -250,6 +250,8 @@ struct MenuTree {
         if notOnIOS.contains(c.id) { return false }
         // Screens of the app's own that it lists among its items; Camera Raw, New Layer, Layer
         // Style and Preferences › General keep their place in the engine's menus.
+        // Screens of the app's own for these engine commands, listed where the engine puts them.
+        if [.newArtboard, .exportArtboards(nil)].contains(EditorModel.request(for: c.id)) { return true }
         if let r = EditorModel.request(for: c.id), r != .cameraRaw, r != .newLayer, r != .generalPreferences {
             if case .layerStyle = r { return true }
             if case .exportToFolder = r { return true }

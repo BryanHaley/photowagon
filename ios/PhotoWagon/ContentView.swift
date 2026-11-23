@@ -21,6 +21,8 @@ struct ContentView: View {
     @State private var showNewLayer = false
     @State private var showExport = false
     @State private var showSaveForWeb = false
+    @State private var showNewArtboard = false
+    @State private var exportBoards: ExportBoards?
     @State private var showGeneralPreferences = false
     @State private var showNew = false
     @State private var brushName: String?
@@ -166,6 +168,8 @@ struct ContentView: View {
             }
         }
         .sheet(isPresented: $showSaveForWeb) { SaveForWebSheet(model: model) }
+        .sheet(isPresented: $showNewArtboard) { NewArtboardSheet(model: model) }
+        .sheet(item: $exportBoards) { e in ExportArtboardsSheet(model: model, only: e.only) }
         .sheet(isPresented: $showGeneralPreferences) { GeneralPreferencesSheet(model: model) }
         .sheet(isPresented: $model.showBrushSettings) { BrushSettingsSheet(model: model) }
         .alert("Brush Name", isPresented: Binding(get: { brushName != nil }, set: { if !$0 { brushName = nil } })) {
@@ -472,6 +476,8 @@ struct ContentView: View {
         case .newLayer: showNewLayer = true
         case .exportAs: showExport = true
         case .saveForWeb: showSaveForWeb = true
+        case .newArtboard: showNewArtboard = true
+        case let .exportArtboards(only): afterPanel { exportBoards = ExportBoards(only: only) }
         case .generalPreferences: showGeneralPreferences = true
         case .defineBrush: brushName = "Brush"
         case let .exportToFolder(id): filesFor = .folder(id)
@@ -874,7 +880,7 @@ enum SystemColorPicker {
 
 /// UI tests only (`-uiTestProbe <folder>`): the test writes `{"seq": n, "id": "document.stats",
 /// "params": {…}}` to `query.json` in that folder; the app answers in `result.json` with the same
-/// `seq`. Read-only commands only, plus `app.docToCanvas` {x, y}, `app.documents`, `app.objectHighlight`
+/// `seq`. Read-only commands only, plus `app.docToCanvas` {x, y}, `app.documents`, `app.files`, `app.objectHighlight`
 /// and `app.toasts`.
 struct TestProbe: View {
     static let folder = UserDefaults.standard.string(forKey: "uiTestProbe").map { URL(fileURLWithPath: $0) }
@@ -908,6 +914,8 @@ struct TestProbe: View {
             let p = docToScreen(view: model.view, x: Float(x), y: Float(y))
             let ppp = Double(max(model.view.pixelsPerPoint, 1))
             out = ["x": Double(p.x) / ppp, "y": Double(p.y) / ppp]
+        } else if id == "app.files" {
+            out = ["names": (try? FileManager.default.contentsOfDirectory(atPath: AppFolder.url.path)) ?? []]
         } else if id == "app.documents" {
             // The open documents' names, as their tabs show them (the tab row hides with one).
             out = ["names": model.documents.map(\.name), "active": model.doc.map(\.name) ?? NSNull()]

@@ -40,6 +40,7 @@ pub fn document(d: &DocState) -> Value {
         "selectedLayers": selected.iter().map(|l| l.0).collect::<Vec<_>>(),
         "isolatedLayers": d.isolated_layers.iter().map(|l| l.0).collect::<Vec<_>>(),
         "hasSelection": doc.selection.is_some(),
+        "guides": {"horizontal": doc.guides.horizontal, "vertical": doc.guides.vertical},
         "selectionBounds": doc.selection.as_ref().map(|s| { let r = s.content_bounds(); [r.x0, r.y0, r.width() as i32, r.height() as i32] }),
         "layers": doc.layers.iter().rev().map(|l| layer_sel(l, &selected, &instances, Some(&doc.metadata))).collect::<Vec<_>>(),
         "backgroundLayer": doc.layers.first().filter(|l| doc.is_background(l.id)).map(|l| l.id.0),

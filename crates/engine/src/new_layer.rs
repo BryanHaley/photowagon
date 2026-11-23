@@ -1,7 +1,7 @@
 //! Layer › New › Layer: Photoshop's New Layer options (name, Use Previous Layer to Create Clipping
 //! Mask, color label, mode, opacity, and Fill with neutral color), applied in one history step.
 
-use photocraft_doc::{BlendMode, LabelColor, Layer};
+use photocraft_doc::{BlendMode, LabelColor, Layer, LayerContent};
 use serde_json::{Value, json};
 
 use crate::{EngineError, Result, Session};
@@ -54,6 +54,15 @@ pub fn run(s: &mut Session, p: &Value) -> Result<Value> {
         // Nothing may sit under the Background: below it the layer lands above it instead.
         let id = match *active {
             Some(a) if below && doc.layer(a).is_some() && !doc.is_background(a) => doc.insert_below(Some(a), layer),
+            // A selected artboard takes the new layer at the top of its own layers.
+            Some(a) if doc.layer(a).is_some_and(|l| l.artboard().is_some()) => {
+                let id = layer.id;
+                match doc.layer_mut(a).map(|l| &mut l.content) {
+                    Some(LayerContent::Group(g)) => g.children.push(layer),
+                    _ => return Err(bad("the artboard isn't a group")),
+                }
+                id
+            }
             _ => doc.insert_above(*active, layer),
         };
         crate::clip_group::settle(doc, &[id], &Default::default(), clip);

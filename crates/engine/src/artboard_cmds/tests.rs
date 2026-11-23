@@ -585,3 +585,31 @@ fn add_beside_places_a_board_on_each_side_and_alt_duplicates_contents() {
     assert_eq!(doc(&s).size, before);
     assert!(s.execute("layer.artboard.addBeside", json!({"side": "diagonal"})).is_err());
 }
+
+#[test]
+fn a_new_layer_goes_into_the_selected_artboard_and_a_move_into_another_joins_the_drag() {
+    let mut s = session(8);
+    let a = LayerId(s.execute("layer.new.artboard", json!({"rect": [0, 0, 40, 40]})).unwrap()["layer"].as_u64().unwrap());
+    let b = LayerId(s.execute("layer.new.artboard", json!({"rect": [60, 0, 40, 40]})).unwrap()["layer"].as_u64().unwrap());
+    s.execute("layer.select", json!({"layer": a.0})).unwrap();
+    let l = LayerId(s.execute("layer.new.layer", json!({})).unwrap()["layer"].as_u64().unwrap());
+    assert_eq!(doc(&s).artboard_of(l), Some(a), "inside the selected board");
+    let steps = s.active().unwrap().history.past_len();
+    s.execute("layer.translate", json!({"layer": l.0, "dx": 60, "dy": 0, "coalesce": "drag"})).unwrap();
+    s.execute("layer.moveTo", json!({"layer": l.0, "target": b.0, "position": "into", "coalesce": "drag"})).unwrap();
+    assert_eq!(doc(&s).artboard_of(l), Some(b));
+    assert_eq!(s.active().unwrap().history.past_len(), steps + 1, "one undo step");
+}
+
+#[test]
+fn a_new_artboard_document_is_one_board_holding_a_layer() {
+    let mut s = Session::new();
+    s.execute("file.new", json!({"width": 1080, "height": 1350, "artboard": true, "background": "black"})).unwrap();
+    let d = doc(&s);
+    assert_eq!(d.layers.len(), 1);
+    let board = d.layers[0].artboard().unwrap();
+    assert_eq!((board.rect.width(), board.rect.height()), (1080, 1350));
+    assert_eq!(board.background, ArtboardBackground::Black);
+    assert_eq!(d.layers[0].name, "Artboard 1");
+    assert!(s.active().unwrap().history.past_len() == 0, "no steps to undo");
+}

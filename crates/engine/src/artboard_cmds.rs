@@ -228,6 +228,15 @@ fn set_artboard(l: &mut Layer, a: Artboard) {
     l.clipped = false;
 }
 
+/// A new document as one artboard the canvas's size, "Artboard 1", holding an empty "Layer 1"
+/// (File › New with Artboards on). Its layers before are dropped.
+pub fn into_artboard_document(doc: &mut Document, background: ArtboardBackground) {
+    let rect = Rect::new(0, 0, doc.size.width as i32, doc.size.height as i32);
+    let mut g = Layer::group("Artboard 1", vec![Layer::raster("Layer 1", doc.pixel_format())]);
+    set_artboard(&mut g, Artboard { rect, background, preset: String::new() });
+    doc.layers = vec![g];
+}
+
 fn new_artboard(s: &mut Session, p: &Value) -> Result<Value> {
     let cmd = "layer.new.artboard";
     let d = s.active().ok_or(EngineError::NoDocument)?;

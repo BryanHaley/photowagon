@@ -527,7 +527,7 @@ fn build() -> Vec<CommandSpec> {
             "New…",
             ["File"],
             Some("Cmd+N"),
-            r##"{"width":1..300000=1920,"height":1..300000=1080 (pixel counts are rounded),"mode":"rgb|gray|grayscale|cmyk|lab"="rgb","depth":8|16|32=8,"background":"white|black|backgroundColor|transparent|#rrggbb"="white","backgroundColor":[r,g,b]? (0..1; defaults to toolbox color),"resolution":1..30000=72 (ppi),"profile":"working|srgb|display-p3|adobe-rgb-compat|…|none"? (as edit.assignProfile; default untagged, shown in the working space),"name":str}"##,
+            r##"{"width":1..300000=1920,"height":1..300000=1080 (pixel counts are rounded),"mode":"rgb|gray|grayscale|cmyk|lab"="rgb","depth":8|16|32=8,"background":"white|black|backgroundColor|transparent|#rrggbb"="white","backgroundColor":[r,g,b]? (0..1; defaults to toolbox color),"resolution":1..30000=72 (ppi),"profile":"working|srgb|display-p3|adobe-rgb-compat|…|none"? (as edit.assignProfile; default untagged, shown in the working space),"name":str,"artboard":bool=false (one artboard the canvas's size with the background, holding Layer 1)}"##,
             always,
             |s, p| {
                 use crate::document_preset_cmds::{MAX_DIMENSION, MAX_RESOLUTION, background_color, color_mode, sample_type};
@@ -563,6 +563,20 @@ fn build() -> Vec<CommandSpec> {
                     }
                 };
                 doc.resolution_dpi = res;
+                if p.get("artboard").and_then(Value::as_bool) == Some(true) {
+                    use photocraft_doc::ArtboardBackground as B;
+                    let background = match p.get("background").and_then(Value::as_str).unwrap_or("white") {
+                        "transparent" => B::Transparent,
+                        "black" => B::Black,
+                        "white" => B::White,
+                        "backgroundColor" => {
+                            let c = background_color(p, s.tools.background, "file.new")?;
+                            B::Custom(Color::rgba(c[0], c[1], c[2], 1.0))
+                        }
+                        other => parse_hex(other).map_or(B::White, |c| B::Custom(Color::rgba(c[0], c[1], c[2], c[3]))),
+                    };
+                    crate::artboard_cmds::into_artboard_document(&mut doc, background);
+                }
                 if let Some(spec) = p.get("profile").and_then(Value::as_str) {
                     doc.icc_profile = crate::color_cmds::profile_bytes(s, spec, None, mode)?;
                 }
