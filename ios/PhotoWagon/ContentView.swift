@@ -1,3 +1,4 @@
+import Photos
 import PhotosUI
 import SwiftUI
 import UniformTypeIdentifiers
@@ -30,7 +31,7 @@ struct ContentView: View {
 
     /// What a picked file is for.
     enum Purpose: Equatable { case open, place, layer, brushTips, actions, folder(String), commandFile(String) }
-    enum SaveKind: Identifiable { case saveAs, copy; var id: Self { self } }
+    enum SaveKind: Identifiable { case saveAs, copy, photos; var id: Self { self } }
 
     init(model: EditorModel? = nil) {
         _model = StateObject(wrappedValue: model ?? EditorModel())
@@ -213,7 +214,7 @@ struct ContentView: View {
             }, pickMany: many)
         }
         .sheet(item: $saveSheet) { kind in
-            SaveSheet(model: model, copy: kind == .copy) { data, name, type in
+            SaveSheet(model: model, copy: kind != .saveAs, toPhotos: kind == .photos) { data, name, type in
                 // The exporter can't open while this sheet is still closing.
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                     exporting = ExportJob(file: DataFile(data: data), type: type, name: name, kind: kind)
@@ -459,7 +460,7 @@ struct ContentView: View {
         case .saveCopy: saveSheet = .copy
         case .close: if let i = model.documents.firstIndex(where: { $0.id == model.doc?.id }) { model.requestClose(i) }
         case let .share(format): share(format)
-        case .saveToPhotos: saveToPhotos()
+        case .saveToPhotos: saveSheet = .photos
         case .print: model.run("file.print", ["scaleToFit": true])
         case .canvasColor:
             SystemColorPicker.present(title: "Canvas Color", rgb: CanvasColor.customRGB) { [model] in model.setCustomCanvas($0) }
@@ -513,15 +514,8 @@ struct ContentView: View {
     }
 
     /// A file dropped on the canvas becomes a layer; dropped anywhere else it opens.
-    private func saveToPhotos() {
-        guard let data = model.export("png"), let image = UIImage(data: data) else { return }
-        PhotoSaver.save(image) { error in
-            if let error { model.toast = "Couldn't save to Photos: \(error.localizedDescription)" } else { model.toast = "Saved to Photos" }
-        }
-    }
-
     private func share(_ format: String) {
-        guard let data = model.export(format) else { return }
+        guard let data = model.shareData(format) else { return }
         let url: URL
         do { url = try EditorModel.shareFile(data, name: "\(model.fileStem).\(format)") } catch { model.show(error); return }
         let sheet = UIActivityViewController(activityItems: [url], applicationActivities: nil)
@@ -620,22 +614,22 @@ extension UTType {
     static let pcraft = UTType(filenameExtension: "pcraft", conformingTo: .data) ?? .data
 }
 
-/// Saves to Photos and reports how it went (it asks for permission the first time).
-final class PhotoSaver: NSObject {
-    private let done: (Error?) -> Void
-    private static var pending: [PhotoSaver] = []
-
-    private init(_ done: @escaping (Error?) -> Void) { self.done = done }
-
-    static func save(_ image: UIImage, done: @escaping (Error?) -> Void) {
-        let saver = PhotoSaver(done)
-        pending.append(saver)
-        UIImageWriteToSavedPhotosAlbum(image, saver, #selector(finished(_:error:context:)), nil)
-    }
-
-    @objc private func finished(_ image: UIImage, error: Error?, context: UnsafeMutableRawPointer?) {
-        done(error)
-        PhotoSaver.pending.removeAll { $0 === self }
+/// Saves an image file to Photos as it is (it asks for permission the first time).
+enum PhotoSaver {
+    static func save(_ data: Data, name: String, done: @escaping @MainActor (Error?) -> Void) {
+        PHPhotoLibrary.requestAuthorization(for: .addOnly) { status in
+            guard status == .authorized || status == .limited else {
+                Task { @MainActor in done(CocoaError(.userCancelled)) }
+                return
+            }
+            PHPhotoLibrary.shared().performChanges({
+                let options = PHAssetResourceCreationOptions()
+                options.originalFilename = name
+                PHAssetCreationRequest.forAsset().addResource(with: .photo, data: data, options: options)
+            }, completionHandler: { _, error in
+                Task { @MainActor in done(error) }
+            })
+        }
     }
 }
 

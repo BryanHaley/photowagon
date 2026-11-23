@@ -547,6 +547,9 @@ struct SaveFormat: Hashable {
                                 SaveFormat(title: "WebP", ext: "webp"), SaveFormat(title: "JPEG XL", ext: "jxl"), SaveFormat(title: "GIF", ext: "gif"),
                                 SaveFormat(title: "BMP", ext: "bmp")]
 
+    /// What Photos takes.
+    static let photos = [SaveFormat(title: "JPEG", ext: "jpg"), SaveFormat(title: "PNG", ext: "png"), SaveFormat(title: "TIFF", ext: "tiff")]
+
     /// Save As offers only formats that keep layers once there is more than one, as Photoshop does.
     static func offered(copy: Bool, layerCount: Int) -> [SaveFormat] { copy || layerCount <= 1 ? all : layered }
 }
@@ -556,13 +559,15 @@ struct SaveFormat: Hashable {
 struct SaveSheet: View {
     @ObservedObject var model: EditorModel
     let copy: Bool
+    /// Save to Photos: only the formats it takes, no place.
+    var toPhotos = false
     /// Save somewhere else through the system sheet.
     let elsewhere: (Data, String, UTType) -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var name = ""
     @State var format = SaveFormat.layered[0]
 
-    private var formats: [SaveFormat] { SaveFormat.offered(copy: copy, layerCount: model.layerCount) }
+    private var formats: [SaveFormat] { toPhotos ? SaveFormat.photos : SaveFormat.offered(copy: copy, layerCount: model.layerCount) }
     @State private var quality = 10.0
     @State private var inAppFolder = true
     @State var jxlLossless = true
@@ -586,11 +591,13 @@ struct SaveSheet: View {
                 if format.ext == "jxl" {
                     JXLOptions(lossless: $jxlLossless, quality: $jxlQuality, effort: $jxlEffort, id: "save")
                 }
-                Picker("Where", selection: $inAppFolder) {
-                    Text("On My iPhone › PhotoWagon").tag(true)
-                    Text("Other Location…").tag(false)
+                if !toPhotos {
+                    Picker("Where", selection: $inAppFolder) {
+                        Text("On My iPhone › PhotoWagon").tag(true)
+                        Text("Other Location…").tag(false)
+                    }
+                    .accessibilityIdentifier("save.where")
                 }
-                .accessibilityIdentifier("save.where")
                 if !copy {
                     Text("Only formats that keep layers are listed. Use Save a Copy for JPEG or PNG.")
                         .font(.footnote).foregroundStyle(.secondary)
@@ -600,7 +607,7 @@ struct SaveSheet: View {
                         .font(.footnote).foregroundStyle(.secondary)
                 }
             }
-            .navigationTitle(copy ? "Save a Copy" : "Save As")
+            .navigationTitle(toPhotos ? "Save to Photos" : copy ? "Save a Copy" : "Save As")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
@@ -609,14 +616,16 @@ struct SaveSheet: View {
                         guard let data = model.fileData(format.ext, jpegQuality: quality, jxl: (jxlLossless, jxlQuality, jxlEffort)) else { return }
                         let file = "\(name.isEmpty ? model.fileStem : name).\(format.ext)"
                         dismiss()
-                        if inAppFolder { model.saveInAppFolder(data, file: file, copy: copy) } else { elsewhere(data, file, format.type) }
+                        if toPhotos {
+                            model.saveToPhotos(data, name: file)
+                        } else if inAppFolder { model.saveInAppFolder(data, file: file, copy: copy) } else { elsewhere(data, file, format.type) }
                     }
                     .accessibilityIdentifier("save.save")
                 }
             }
             .onAppear {
-                name = model.fileStem + (copy ? " copy" : "")
-                if copy { format = SaveFormat.all[0] }
+                name = model.fileStem + (copy && !toPhotos ? " copy" : "")
+                if copy { format = formats[0] }
             }
         }
     }
@@ -627,6 +636,17 @@ extension EditorModel {
     func fileData(_ ext: String, jpegQuality: Double, jxl: (lossless: Bool, quality: Double, effort: Double)) -> Data? {
         ext == "jxl" ? exportJXL(lossless: jxl.lossless, quality: Int(jxl.quality), effort: Int(jxl.effort))
             : export(ext, quality: ext == "jpg" ? UInt8(jpegQuality) : nil)
+    }
+
+    /// Quick Share's file: JPEG at quality 10 of 12 (85%).
+    func shareData(_ format: String) -> Data? {
+        export(format, quality: format == "jpg" ? 10 : nil)
+    }
+
+    func saveToPhotos(_ data: Data, name: String) {
+        PhotoSaver.save(data, name: name) { [weak self] error in
+            self?.toast = error.map { "Couldn't save to Photos: \($0.localizedDescription)" } ?? "Saved to Photos"
+        }
     }
 
     /// A Save As or Save a Copy file in the app's folder: after Save As the document is that file.

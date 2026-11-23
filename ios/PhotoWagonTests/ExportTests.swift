@@ -37,6 +37,15 @@ final class ExportTests: XCTestCase {
         XCTAssertTrue(fm.fileExists(atPath: second.path))
     }
 
+    func testQuickShareJPEGAndPhotosFormats() throws {
+        let model = makeModel(width: 200, height: 100)
+        let jpg = try XCTUnwrap(model.shareData("jpg"))
+        XCTAssertEqual(Array(jpg.prefix(2)), [0xFF, 0xD8], "a JPEG")
+        let png = try XCTUnwrap(model.shareData("png"))
+        XCTAssertEqual(png.first, 0x89, "a PNG")
+        XCTAssertEqual(SaveFormat.photos.map(\.ext), ["jpg", "png", "tiff"])
+    }
+
     func testExportAsWritesOneFilePerSize() {
         let model = makeModel(width: 200, height: 100)
         let files = ["sizes-test.png", "sizes-test@2x.png", "sizes-test@0.5x.png"]

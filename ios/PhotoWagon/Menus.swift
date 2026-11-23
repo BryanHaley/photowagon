@@ -17,7 +17,9 @@ struct MainMenu: UIViewRepresentable {
         b.accessibilityIdentifier = "menu"
         let share = UIAction(title: "Quick Share as PNG…", image: UIImage(systemName: "square.and.arrow.up")) { [model] _ in model.request = .share("png") }
         share.accessibilityIdentifier = "menu.share"
-        b.menu = UIMenu(children: [UIMenu(options: .displayInline, children: [share]),
+        let shareJPEG = UIAction(title: "Quick Share as JPEG…", image: UIImage(systemName: "square.and.arrow.up")) { [model] _ in model.request = .share("jpg") }
+        shareJPEG.accessibilityIdentifier = "menu.shareJPEG"
+        b.menu = UIMenu(children: [UIMenu(options: .displayInline, children: [shareJPEG, share]),
                                    UIMenu(options: .displayInline, children: [UIDeferredMenuElement.uncached { done in done(quickActions()) }])]
             + MenuTree.order.map { name in
             UIMenu(title: name, children: [UIDeferredMenuElement.uncached { done in done(items(name)) }])
@@ -126,16 +128,11 @@ struct MainMenu: UIViewRepresentable {
                 section([
                     action("Place Embedded…", "photo.badge.plus", enabled: open) { model.request = .placeFiles },
                     action("Place from Photos…", "photo.badge.plus", enabled: open) { model.request = .placePhotos },
-                    UIMenu(title: "Share", image: UIImage(systemName: "square.and.arrow.up"), children: [
-                        action("JPEG", "photo", enabled: open) { model.request = .share("jpg") },
-                        action("PNG", "photo", enabled: open) { model.request = .share("png") },
-                    ]),
                     UIMenu(title: "Export", image: UIImage(systemName: "square.and.arrow.up.on.square"), children: [
-                        action("Quick Export as PNG", "photo", enabled: open) { model.quickExport(prefs: ["quickExportFormat": "png"]) },
                         action("Export As…", "square.and.arrow.up", enabled: open) { model.request = .exportAs },
                         action("Save for Web…", "globe", enabled: open) { model.request = .saveForWeb },
                     ]),
-                    action("Save to Photos", "photo", enabled: open) { model.request = .saveToPhotos },
+                    action("Save to Photos…", "photo", enabled: open) { model.request = .saveToPhotos },
                     action("Print…", "printer", enabled: open) { model.request = .print },
                 ]),
             ]

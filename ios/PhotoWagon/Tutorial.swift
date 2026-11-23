@@ -201,7 +201,7 @@ struct TutorialOverlay: View {
 /// The Menus tip's picture of the ☰ menu: quick actions, then the menus below, scrolling.
 private struct MenuScrollPicture: View {
     @State private var down = false
-    private let quick = ["Quick Share as PNG", "Crop and Rotate", "Auto Enhance", "Develop", "Curves"]
+    private let quick = ["Quick Share as JPEG", "Quick Share as PNG", "Crop and Rotate", "Auto Enhance", "Develop", "Curves"]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
