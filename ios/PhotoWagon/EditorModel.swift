@@ -485,6 +485,17 @@ final class EditorModel: ObservableObject {
     var smartGuides: [(Point, Point)] = [] { didSet { overlayDirty = true } }
     /// Zoom tool: drag right to zoom in, left to zoom out.
     @Published var scrubbyZoom = true
+    /// Smudge, Dodge, Burn and Sponge: show the effect while painting.
+    @Published var toneLive = true
+    /// Blur and Sharpen: the same.
+    @Published var focusLive = false
+    /// The current tool's Live Preview switch.
+    var toolLive: Bool {
+        get { [.blur, .sharpen].contains(tool) ? focusLive : toneLive }
+        set { if [.blur, .sharpen].contains(tool) { focusLive = newValue } else { toneLive = newValue } }
+    }
+    /// The current tool's stroke shows as it's painted (else as a trail, applied on release).
+    var strokeIsLive: Bool { tool.livePreview && (toolLive || !tool.hasLiveOption) }
     /// Patch: copy the selection onto the dragged-to place instead of filling it from there.
     @Published var patchDestination = false
     /// Patch: update while dragging; off, it updates when the finger rests.
@@ -2364,7 +2375,7 @@ final class EditorModel: ObservableObject {
         case .quickSelect: ["size": size, "mode": selectionMode == .subtract ? "subtract" : "add", "sampleAllLayers": sampleAllLayers, "enhanceEdge": enhanceEdge]
         default: pct
         }
-        return (cmd, p)
+        return (cmd, tool.hasLiveOption && !toolLive ? p.merging(["preview": false]) { a, _ in a } : p)
     }
 
     // MARK: - Pending work

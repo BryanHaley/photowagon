@@ -1,8 +1,8 @@
 //! Live strokes: the Brush, Pencil and Eraser, the Clone Stamp, Healing Brush and History Brush,
-//! and the dodge, burn, sponge, blur and sharpen tools render onto a copy of the document while
-//! the finger or pen moves; other stroke commands (Spot Healing, Quick Selection, …) only
-//! collect points. The stroke commits as its command with
-//! every point.
+//! and the dodge, burn, sponge, blur, sharpen and smudge tools render onto a copy of the document
+//! while the finger or pen moves (unless the params say `"preview": false`); other stroke
+//! commands (Spot Healing, Quick Selection, …) only collect points. The stroke commits as its
+//! command with every point.
 
 use std::sync::Arc;
 
@@ -31,12 +31,17 @@ pub struct Live {
 }
 
 impl Live {
-    pub fn begin(s: &Session, cmd: &str, params: Value, first: &[StrokePoint]) -> Result<Self> {
+    pub fn begin(s: &Session, cmd: &str, mut params: Value, first: &[StrokePoint]) -> Result<Self> {
+        let shown = params.get("preview").and_then(Value::as_bool).unwrap_or(true);
+        if let Some(o) = params.as_object_mut() {
+            o.remove("preview");
+        }
         let p = with_points(&params, first);
         let preview = match cmd {
+            _ if !shown => Preview::None,
             "paint.stroke" | "paint.pencil" => Preview::Brush(LiveStroke::begin_with(s, cmd, &p)?),
             "paint.cloneStamp" | "paint.healingBrush" | "paint.historyBrush" => Preview::Retouch(LiveRetouch::begin(s, cmd, &p)?),
-            "paint.dodge" | "paint.burn" | "paint.sponge" | "paint.blur" | "paint.sharpen" => Preview::Dab(LiveDab::begin(s, cmd, &p)?),
+            "paint.dodge" | "paint.burn" | "paint.sponge" | "paint.blur" | "paint.sharpen" | "paint.smudge" => Preview::Dab(LiveDab::begin(s, cmd, &p)?),
             _ => Preview::None,
         };
         let damage = match &preview {

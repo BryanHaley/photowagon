@@ -130,6 +130,19 @@ fn a_live_dodge_stroke_lightens() {
 }
 
 #[test]
+fn smudge_previews_live_unless_preview_is_off() {
+    let e = editor();
+    e.execute("edit.fill".into(), json!({"contents": "gray"}).to_string()).unwrap();
+    e.stroke_begin("paint.smudge".into(), json!({"size": 20}).to_string(), vec![pt(10.0, 24.0)]).unwrap();
+    assert!(e.lock().stroke.as_ref().is_some_and(|l| l.doc().is_some()), "smudge shows live");
+    e.stroke_cancel();
+    e.stroke_begin("paint.blur".into(), json!({"size": 20, "preview": false}).to_string(), vec![pt(10.0, 24.0)]).unwrap();
+    assert!(e.lock().stroke.as_ref().is_some_and(|l| l.doc().is_none()), "no live preview");
+    e.stroke_push(vec![pt(30.0, 24.0)]).unwrap();
+    e.stroke_end().unwrap();
+}
+
+#[test]
 fn a_transform_preview_leaves_the_document_until_it_ends() {
     let e = editor();
     e.execute("layer.new.layer".into(), "{}".into()).unwrap();

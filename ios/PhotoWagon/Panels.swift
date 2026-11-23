@@ -350,6 +350,9 @@ struct ContextBar: View {
             if [.spotHeal, .remove, .aiRemove].contains(model.tool) {
                 toggle("Sample All Layers", "square.3.layers.3d", $model.sampleAllLayers)
             }
+            if model.tool.hasLiveOption {
+                toggle("Live Preview", "play.square", $model.toolLive)
+            }
             if [.remove, .aiRemove].contains(model.tool) {
                 toggle("Remove After Each Stroke", "checkmark.circle", $model.removeEachStroke)
             }

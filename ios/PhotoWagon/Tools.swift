@@ -330,8 +330,11 @@ enum Tool: String, CaseIterable, Identifiable {
 
     /// The engine renders this stroke live; the others show a trail and run on release.
     var livePreview: Bool {
-        [.brush, .eraser, .pencil, .clone, .heal, .historyBrush, .blur, .sharpen, .dodge, .burn, .sponge].contains(self)
+        [.brush, .eraser, .pencil, .clone, .heal, .historyBrush].contains(self) || hasLiveOption
     }
+
+    /// Has a Live Preview switch: off, it shows a trail and runs on release.
+    var hasLiveOption: Bool { [.blur, .sharpen, .smudge, .dodge, .burn, .sponge].contains(self) }
 
     /// Has a brush size.
     var sized: Bool { strokeCommand != nil }

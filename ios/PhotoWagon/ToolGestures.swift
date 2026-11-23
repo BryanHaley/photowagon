@@ -274,7 +274,7 @@ extension CanvasUIView {
                 docPoints.append(Point(x: Float(sp.x), y: Float(sp.y)))
             }
             if model.tool.usesSource, let last = docPoints.last { model.updateCloneMark(at: last, first: docPoints.first) }
-            if !model.tool.livePreview { setToolPath(strokesPath(model.removeStrokes + [docPoints]), width: brushWidth, dashed: false) }
+            if !model.strokeIsLive { setToolPath(strokesPath(model.removeStrokes + [docPoints]), width: brushWidth, dashed: false) }
         case .zoomIn where model.scrubbyZoom:
             let factor = Float(exp((p.x - scrubFrom.point.x) * 0.01))
             model.view.zoom = min(max(scrubFrom.zoom * factor, 0.01), 64)
@@ -507,7 +507,7 @@ extension CanvasUIView {
             if !pending.isEmpty {
                 try? model.editor.strokePush(points: pending.takeAll())
             }
-            if model.tool.livePreview {
+            if model.strokeIsLive {
                 do { _ = try model.editor.strokeEnd() } catch { model.show(error) }
                 model.sync()
             } else {

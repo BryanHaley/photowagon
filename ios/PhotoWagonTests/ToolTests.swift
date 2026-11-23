@@ -425,6 +425,38 @@ final class ToolTests: XCTestCase {
         XCTAssertEqual(model.doc?.hasSelection, false, "a tap outside deselects")
     }
 
+    func testToneToolsLivePreviewSwitch() {
+        let (model, canvas) = canvas(tool: .smudge)
+        XCTAssertTrue(model.strokeIsLive, "on by default")
+        XCTAssertNil(model.strokeParams()?.1["preview"])
+        canvas.gesture = (1, 0, false)
+        canvas.toolBegan(ToolTouch(canvas.toScreen(pt(100, 100)), time: 100))
+        canvas.toolMoved(ToolTouch(canvas.toScreen(pt(200, 100)), time: 100.1))
+        XCTAssertNil(canvas.toolPath.path, "live: no trail")
+        canvas.toolEnded(ToolTouch(canvas.toScreen(pt(200, 100)), time: 100.2))
+
+        model.toneLive = false
+        addTeardownBlock { @MainActor in model.toneLive = true }
+        XCTAssertFalse(model.strokeIsLive)
+        XCTAssertEqual(model.strokeParams()?.1["preview"] as? Bool, false)
+        let steps = model.historyNames.count
+        canvas.toolBegan(ToolTouch(canvas.toScreen(pt(100, 150)), time: 101))
+        canvas.toolMoved(ToolTouch(canvas.toScreen(pt(200, 150)), time: 101.1))
+        XCTAssertNotNil(canvas.toolPath.path, "off: the pink trail")
+        canvas.toolEnded(ToolTouch(canvas.toScreen(pt(200, 150)), time: 101.2))
+        idle(model)
+        XCTAssertNil(canvas.toolPath.path, "the trail goes once applied")
+        XCTAssertEqual(model.historyNames.count, steps + 1)
+        model.tool = .blur
+        XCTAssertFalse(model.strokeIsLive, "Blur and Sharpen start off")
+        model.toolLive = true
+        addTeardownBlock { @MainActor in model.focusLive = false }
+        model.tool = .dodge
+        XCTAssertFalse(model.strokeIsLive, "their own switch")
+        model.tool = .brush
+        XCTAssertTrue(model.strokeIsLive, "other tools aren't affected")
+    }
+
     func testPatchWithoutLivePreviewWaitsForTheFingerToRest() {
         let (model, canvas) = canvas(tool: .brush)
         model.run("select.rect", ["x": 100, "y": 100, "width": 40, "height": 40])

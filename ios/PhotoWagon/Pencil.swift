@@ -200,7 +200,7 @@ extension CanvasUIView: UIPencilInteractionDelegate {
 
     /// Draw the Pencil's predicted points ahead of a live stroke; `nil` clears them.
     func showPrediction(_ touches: [UITouch]?) {
-        guard let touches, !touches.isEmpty, stroking, model.tool.livePreview, let last = docPoints.last else {
+        guard let touches, !touches.isEmpty, stroking, model.strokeIsLive, let last = docPoints.last else {
             predicted.path = nil
             return
         }
