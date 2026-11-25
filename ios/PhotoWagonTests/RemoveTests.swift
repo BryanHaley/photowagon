@@ -119,6 +119,28 @@ final class RemoveTests: XCTestCase {
         XCTAssertEqual(model.historyNames.count, steps)
     }
 
+    func testMainlandChinaTurnsAIRemoveOff() {
+        XCTAssertTrue(AIRegion.blocked(region: "CN", timeZone: "America/New_York", storefront: nil))
+        XCTAssertTrue(AIRegion.blocked(region: "US", timeZone: "Asia/Shanghai", storefront: nil))
+        XCTAssertTrue(AIRegion.blocked(region: "US", timeZone: "America/New_York", storefront: "CHN"))
+        XCTAssertFalse(AIRegion.blocked(region: "HK", timeZone: "Asia/Hong_Kong", storefront: "HKG"))
+        XCTAssertFalse(AIRegion.blocked(region: "TW", timeZone: "Asia/Taipei", storefront: "TWN"))
+
+        let (model, _) = canvas(tool: .brush)
+        AIRegion.override = false
+        defer { AIRegion.override = nil }
+        XCTAssertFalse(Tool.groups.joined().contains(.aiRemove))
+        XCTAssertFalse(CropFill.offered.contains(.ai))
+        model.tool = .aiRemove
+        XCTAssertEqual(model.tool, .brush, "the tool can't be picked")
+        model.aiRemove(.selection)
+        XCTAssertNil(model.aiRemoveWaiting, "no download offered")
+        XCTAssertEqual(model.toast, AIRegion.unavailable)
+        var refused: Error?
+        ModelDownload(folder: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)).download { refused = $0 }
+        XCTAssertNotNil(refused, "the download doesn't start")
+    }
+
     func testADamagedDownloadIsRefused() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)

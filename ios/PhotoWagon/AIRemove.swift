@@ -1,6 +1,32 @@
 import CoreML
 import CryptoKit
 import Foundation
+import StoreKit
+
+/// AI Remove and AI Fill are off in mainland China: by the device's region, its time zone or
+/// the App Store country.
+enum AIRegion {
+    static let mainlandTimeZones: Set<String> = ["Asia/Shanghai", "Asia/Urumqi", "Asia/Chongqing", "Asia/Harbin", "Asia/Kashgar", "PRC"]
+    static let key = "aiStorefront"
+    /// Tests set this.
+    static var override: Bool?
+
+    static let unavailable = "AI Remove isn't available in your region."
+
+    static func blocked(region: String?, timeZone: String, storefront: String?) -> Bool {
+        region == "CN" || mainlandTimeZones.contains(timeZone) || storefront == "CHN"
+    }
+
+    static var allowed: Bool {
+        override ?? !blocked(region: Locale.current.region?.identifier, timeZone: TimeZone.current.identifier,
+                             storefront: UserDefaults.standard.string(forKey: key))
+    }
+
+    /// Remembers the App Store country, so it counts even offline.
+    static func checkStorefront() async {
+        if let code = await Storefront.current?.countryCode { UserDefaults.standard.set(code, forKey: key) }
+    }
+}
 
 /// Fills the hole in a square picture for AI Remove. Tests use a stand-in.
 protocol Inpainter: Sendable {
@@ -94,7 +120,7 @@ final class ModelDownload: ObservableObject {
     @Published private(set) var state: State
     let folder: URL
     var compiled: URL { folder.appendingPathComponent("\(Self.name).mlmodelc") }
-    var inpainter: CoreMLInpainter? { state == .ready ? CoreMLInpainter(url: compiled, side: Self.side) : nil }
+    var inpainter: CoreMLInpainter? { state == .ready && AIRegion.allowed ? CoreMLInpainter(url: compiled, side: Self.side) : nil }
 
     private var task: URLSessionDownloadTask?
     private var watch: NSKeyValueObservation?
@@ -108,6 +134,7 @@ final class ModelDownload: ObservableObject {
 
     /// Downloads and installs the model; `done` gets the error, or nil once it's ready.
     func download(then done: @escaping @MainActor (Error?) -> Void = { _ in }) {
+        guard AIRegion.allowed else { return done(AIRemoveError(AIRegion.unavailable)) }
         guard task == nil, state != .ready else { return }
         state = .downloading(0)
         let folder = folder
@@ -186,6 +213,11 @@ extension EditorModel {
     /// AI Remove: the engine cuts the model's square round the strokes, the model fills it, and
     /// the engine pastes it back into the hole, as one undo step.
     func aiRemove(_ what: AIRemoveRequest, then: (() -> Void)? = nil) {
+        guard AIRegion.allowed else {
+            toast = AIRegion.unavailable
+            then?()
+            return
+        }
         guard let inpainter else {
             aiRemoveWaiting = what
             then?()

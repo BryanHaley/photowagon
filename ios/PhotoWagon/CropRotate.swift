@@ -168,6 +168,8 @@ enum CropFill: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    static var offered: [CropFill] { AIRegion.allowed ? allCases : allCases.filter { $0 != .ai } }
+
     var title: String {
         switch self {
         case .color: "Color…"
@@ -313,7 +315,7 @@ struct CropRotateView: View {
                     fill = f
                     if f == .color { pickFillColor() }
                 })) {
-                    ForEach(CropFill.allCases) { f in
+                    ForEach(CropFill.offered) { f in
                         // Only Color… opens something more.
                         if f == .color { Label(f.title, systemImage: "paintpalette").tag(f) } else { Text(f.title).tag(f) }
                     }

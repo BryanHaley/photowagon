@@ -29,7 +29,11 @@ enum Tool: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 
     /// The view tools first, then Photoshop's toolbox groups in order.
-    static let groups: [[Tool]] = [
+    static var groups: [[Tool]] {
+        AIRegion.allowed ? allGroups : allGroups.map { $0.filter { $0 != .aiRemove } }
+    }
+
+    static let allGroups: [[Tool]] = [
         [.hand, .rotateView, .zoomIn, .zoomOut],
         [.move],
         [.marquee, .ellipse, .singleRow, .singleColumn],

@@ -72,7 +72,7 @@ struct GeneralPreferencesSheet: View {
                 } footer: {
                     Text("Squeeze needs Apple Pencil Pro. With Only Apple Pencil Paints, a finger pans the image while a painting tool is picked.")
                 }
-                AIModelSection(model: model)
+                if AIRegion.allowed { AIModelSection(model: model) }
                 Section {
                     NavigationLink("Acknowledgements") { AcknowledgementsView() }
                         .accessibilityIdentifier("prefs.acknowledgements")

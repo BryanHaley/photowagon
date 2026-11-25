@@ -387,7 +387,7 @@ enum OmegaCatalog {
 
     /// Every stored setting the app reads or writes (`UserDefaults` keys and `@AppStorage` names).
     static let settings: Set<String> = [
-        "autoOptions", "canvasColor", "canvasCustom", "developFiles", "developPresets", "layerThumbnails",
+        "aiStorefront", "autoOptions", "canvasColor", "canvasCustom", "developFiles", "developPresets", "layerThumbnails",
         "openJPEGInDevelop", "pencilOnly", "pencilSqueeze", "pencilTap", "recentFiles",
         "recoveryMinutes", "savedDocPresets", "showTransformControls", "snap", "statusInfo", "tutorialDone",
     ]

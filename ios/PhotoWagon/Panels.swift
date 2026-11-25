@@ -268,7 +268,7 @@ struct ContextBar: View {
             chip("Invert", "arrow.left.arrow.right") { model.run("select.inverse") }
             chip("Fill", "drop.fill") { model.run("edit.fill", ["contents": "foreground"]) }
             chip("Quick Fill", Tool.remove.symbol) { model.runInBackground("edit.deleteAndFillSelection") }
-            chip("AI Remove", Tool.aiRemove.symbol) { model.aiRemove(.selection) }
+            if AIRegion.allowed { chip("AI Remove", Tool.aiRemove.symbol) { model.aiRemove(.selection) } }
             chip("Delete", "trash") { model.run("edit.clear") }
             chip("Copy", "doc.on.doc") { model.run("edit.copy") }
             pasteChip

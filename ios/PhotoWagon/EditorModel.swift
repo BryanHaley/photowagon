@@ -368,6 +368,11 @@ final class EditorModel: ObservableObject {
         didSet {
             overlayDirty = true
             guard tool != oldValue else { return }
+            if tool == .aiRemove, !AIRegion.allowed {
+                toast = AIRegion.unavailable
+                tool = oldValue
+                return
+            }
             previousTool = oldValue
             hint = tool.title
             // A half-made crop, polygon or measurement belongs to its tool.

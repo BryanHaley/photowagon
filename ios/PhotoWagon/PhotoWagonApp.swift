@@ -31,6 +31,7 @@ struct PhotoWagonApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .task { await AIRegion.checkStorefront() }
         }
     }
 }
