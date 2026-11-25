@@ -1,7 +1,6 @@
 # PhotoWagon
 
-A photo editor for iPhone and iPad that a user can pick up without help. Menus, tools
-and panels are where they'd look for them under names they'll recognise.
+A photo editor for iPhone and iPad that a user can pick up without help. Menus, tools and panels are where they'd look for them under names they'll recognise.
 
 <p align="center">
   <img src="docs/images/ai-remove.jpg" width="24%" alt="AI Remove, before and after">
@@ -10,15 +9,11 @@ and panels are where they'd look for them under names they'll recognise.
   <img src="docs/images/develop.jpg" width="24%" alt="Develop">
 </p>
 
-PhotoWagon is a SwiftUI app on top of the [PhotoCraft](https://github.com/storytold/photocraft)
-engine, an open-source image editor written in Rust. The engine handles layers, masks, adjustment
-layers, layer styles, type, brushes, filters and PSD files. The app calls it through a Swift bridge.
+PhotoWagon is a SwiftUI app on top of the [PhotoCraft](https://github.com/storytold/photocraft) engine, an open-source image editor written in Rust. The engine handles layers, masks, adjustment layers, layer styles, type, brushes, filters and PSD files. The app calls it through a Swift bridge.
 
 ## Build and run
 
-You need Xcode, XcodeGen (`brew install xcodegen`) and rustup with the iOS targets
-(`rustup target add aarch64-apple-ios aarch64-apple-ios-sim`). If Homebrew's `rust` is also
-installed, put rustup's `cargo` first: `export PATH=/opt/homebrew/opt/rustup/bin:$PATH`.
+You need Xcode, XcodeGen (`brew install xcodegen`) and rustup with the iOS targets (`rustup target add aarch64-apple-ios aarch64-apple-ios-sim`). If Homebrew's `rust` is also installed, put rustup's `cargo` first: `export PATH=/opt/homebrew/opt/rustup/bin:$PATH`.
 
 ```sh
 cargo xtask ios --sim        # build the Rust engine and its Swift bindings
@@ -37,11 +32,7 @@ open PhotoWagon.xcodeproj    # build and run (iOS 17 or later)
 
 ## Patents
 
-We made a good-faith effort not to use methods covered by patents that are still in force,
-Adobe's in particular. To this end we had to remove some code and functionality from the PhotoCraft core; we checked every patent and paper the code cites, and Adobe's US patents against
-our features, removed the methods still covered, and replaced them with methods whose patents have expired or that we designed
-ourselves. Patent states are from Google Patents and are not legal advice. If you think we've
-missed something, please open an issue.
+We made a good-faith effort not to use methods covered by patents that are still in force, Adobe's in particular. To this end we had to remove some code and functionality from the PhotoCraft core; we checked every patent and paper the code cites, and Adobe's US patents against our features, removed the methods still covered, and replaced them with methods whose patents have expired or that we designed ourselves. Patent states are from Google Patents and are not legal advice. If you think we've missed something, please open an issue.
 
 | Removed | Patent | Replaced with |
 |---|---|---|
@@ -64,38 +55,23 @@ missed something, please open an issue.
 | Surface Blur's sliding-histogram fast path for 8-bit images (`crates/algo/src/blur.rs`) | Adobe: US 7,920,741 | The existing non-histogram paths. 8-bit Surface Blur is slower: about 3 s at radius 10 and 10 s at radius 30 on 12 MP, up from about 1.4 s |
 
 We also:
-- **Left out snapping to other layers:** snapping a moved layer to other layers' edges and
-  centres, with a guide drawn for each match, is covered by Adobe's US 10,331,319 and
-  US 10,782,861. A moved layer snaps to the canvas's edges and centre only.
-- **Left out caching AI results:** keeping an AI model's results (such as Apple Vision's object
-  masks) and reusing them for later edits is covered by Adobe's US 12,579,596. Nothing is cached:
-  Vision runs again for each hover, hold, tap and Select Subject, so the highlight is slower to
-  appear.
-- **Left out HEVC:** the app doesn't bundle an HEVC (HEIC) decoder. Apple's decoder, licensed
-  with iOS, opens HEIC files.
-- **Left out noise in Blur Effects:** Photoshop adds grain to the blurred areas, scaled by how
-  much each area is blurred, which Adobe's US 9,536,337 covers until 2035. Blur Effects have no
-  noise option; add grain with Filter › Noise › Add Noise as a Live Filter instead.
-- **Left out masks in Develop:** a list of masked adjustments kept inside the develop screen is
-  covered by Adobe's US 10,481,774 until 2036. Develop has no masks; for a local change, use an
-  adjustment layer with a mask (Select › Subject, or a gradient on the mask).
-- **Left out radial symmetry:** painting symmetry mirrors strokes across one or two lines
-  (vertical, horizontal, dual axis, diagonal). Radial or mandala copies made as a list of
-  transforms are covered by Adobe's US 11,461,874 until 2040, so there are none.
-- **Kept methods whose patents have expired:** dark channel dehaze (Microsoft US 8,340,461),
-  GrabCut (Microsoft US 7,660,463) and Poisson editing (Microsoft US 6,856,705).
-- **Renamed features:** we use our own names, not Adobe's trademarked ones. We name Adobe Photoshop
-  only for its file format (Photoshop® (PSD)), which PhotoWagon opens and saves.
+- **Left out snapping to other layers:** snapping a moved layer to other layers' edges and centres, with a guide drawn for each match, is covered by Adobe's US 10,331,319 and US 10,782,861. A moved layer snaps to the canvas's edges and centre only.
+- **Left out caching AI results:** keeping an AI model's results (such as Apple Vision's object masks) and reusing them for later edits is covered by Adobe's US 12,579,596. Nothing is cached: Vision runs again for each hover, hold, tap and Select Subject, so the highlight is slower to appear.
+- **Left out HEVC:** the app doesn't bundle an HEVC (HEIC) decoder. Apple's decoder, licensed with iOS, opens HEIC files.
+- **Left out noise in Blur Effects:** Photoshop adds grain to the blurred areas, scaled by how much each area is blurred, which Adobe's US 9,536,337 covers until 2035. Blur Effects have no noise option; add grain with Filter › Noise › Add Noise as a Live Filter instead.
+- **Left out masks in Develop:** a list of masked adjustments kept inside the develop screen is covered by Adobe's US 10,481,774 until 2036. Develop has no masks; for a local change, use an adjustment layer with a mask (Select › Subject, or a gradient on the mask).
+- **Left out radial symmetry:** painting symmetry mirrors strokes across one or two lines (vertical, horizontal, dual axis, diagonal). Radial or mandala copies made as a list of transforms are covered by Adobe's US 11,461,874 until 2040, so there are none.
+- **Kept methods whose patents have expired:** dark channel dehaze (Microsoft US 8,340,461), GrabCut (Microsoft US 7,660,463) and Poisson editing (Microsoft US 6,856,705).
+- **Renamed features:** we use our own names, not Adobe's trademarked ones. We name Adobe Photoshop only for its file format (Photoshop® (PSD)), which PhotoWagon opens and saves.
 
-Adobe and Photoshop are either registered trademarks or trademarks of Adobe in the United States
-and/or other countries. This project isn't affiliated with or endorsed by Adobe.
+Adobe and Photoshop are either registered trademarks or trademarks of Adobe in the United States and/or other countries. This project isn't affiliated with or endorsed by Adobe.
+
+## AI features in China
+
+AI Remove and Crop's AI Fill are turned off in China (the People's Republic of China) and the app doesn't download their model there. From November 16th 2026, Apple requires every app on the China App Store to declare its AI-generated content in App Store Connect. An app that makes images with AI must show that its service is filed with the Cyberspace Administration of China (CAC), under the Interim Measures for the Management of Generative AI Services. We can't make that filing without having a company registered in mainland China, so these features are off there instead. The app recognizes when its region, its time zone or its App Store country matches. The Republic of China isn't affected. Features that don't make new pixels, such as Select Subject and Remove Background, stay on.
 
 ## License
 
-MIT or Apache-2.0, at your option ([LICENSE-MIT](LICENSE-MIT), [LICENSE-APACHE](LICENSE-APACHE)).
-It is built on [PhotoCraft](https://github.com/storytold/photocraft), whose code is also MIT or Apache-2.0, at your option ([LICENSE-MIT-PhotoCraft](LICENSE-MIT-PhotoCraft), [LICENSE-APACHE-PhotoCraft](LICENSE-APACHE-PhotoCraft)).
-Third-party assets keep their own licences, listed in [ATTRIBUTION.md](ATTRIBUTION.md).
+MIT or Apache-2.0, at your option ([LICENSE-MIT](LICENSE-MIT), [LICENSE-APACHE](LICENSE-APACHE)). It is built on [PhotoCraft](https://github.com/storytold/photocraft), whose code is also MIT or Apache-2.0, at your option ([LICENSE-MIT-PhotoCraft](LICENSE-MIT-PhotoCraft), [LICENSE-APACHE-PhotoCraft](LICENSE-APACHE-PhotoCraft)). Third-party assets keep their own licences, listed in [ATTRIBUTION.md](ATTRIBUTION.md).
 
-The PhotoWagon name, app icon and logo are trademarks of Bryan Haley. They aren't covered by the
-licences above: a fork or copy of this code needs its own name and icon, and mustn't be published
-(on the App Store or anywhere else) as PhotoWagon.
+The PhotoWagon name, app icon and logo are trademarks of Bryan Haley. They aren't covered by the licences above: a fork or copy of this code needs its own name and icon, and mustn't be published (on the App Store or anywhere else) as PhotoWagon.

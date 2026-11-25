@@ -3,10 +3,13 @@ import CryptoKit
 import Foundation
 import StoreKit
 
-/// AI Remove and AI Fill are off in mainland China: by the device's region, its time zone or
-/// the App Store country.
+/// AI Remove and AI Fill are off in mainland China, Hong Kong and Macau: by the device's region,
+/// its time zone or the App Store country.
 enum AIRegion {
-    static let mainlandTimeZones: Set<String> = ["Asia/Shanghai", "Asia/Urumqi", "Asia/Chongqing", "Asia/Harbin", "Asia/Kashgar", "PRC"]
+    static let regions: Set<String> = ["CN", "HK", "MO"]
+    static let timeZones: Set<String> = ["Asia/Shanghai", "Asia/Urumqi", "Asia/Chongqing", "Asia/Harbin", "Asia/Kashgar", "PRC",
+                                         "Asia/Hong_Kong", "Hongkong", "Asia/Macau", "Asia/Macao"]
+    static let storefronts: Set<String> = ["CHN", "HKG", "MAC"]
     static let key = "aiStorefront"
     /// Tests set this.
     static var override: Bool?
@@ -14,7 +17,7 @@ enum AIRegion {
     static let unavailable = "AI Remove isn't available in your region."
 
     static func blocked(region: String?, timeZone: String, storefront: String?) -> Bool {
-        region == "CN" || mainlandTimeZones.contains(timeZone) || storefront == "CHN"
+        regions.contains(region ?? "") || timeZones.contains(timeZone) || storefronts.contains(storefront ?? "")
     }
 
     static var allowed: Bool {

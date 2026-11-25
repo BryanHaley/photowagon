@@ -119,11 +119,13 @@ final class RemoveTests: XCTestCase {
         XCTAssertEqual(model.historyNames.count, steps)
     }
 
-    func testMainlandChinaTurnsAIRemoveOff() {
+    func testChinaTurnsAIRemoveOff() {
         XCTAssertTrue(AIRegion.blocked(region: "CN", timeZone: "America/New_York", storefront: nil))
         XCTAssertTrue(AIRegion.blocked(region: "US", timeZone: "Asia/Shanghai", storefront: nil))
         XCTAssertTrue(AIRegion.blocked(region: "US", timeZone: "America/New_York", storefront: "CHN"))
-        XCTAssertFalse(AIRegion.blocked(region: "HK", timeZone: "Asia/Hong_Kong", storefront: "HKG"))
+        XCTAssertTrue(AIRegion.blocked(region: "HK", timeZone: "America/New_York", storefront: nil))
+        XCTAssertTrue(AIRegion.blocked(region: "US", timeZone: "Asia/Macau", storefront: nil))
+        XCTAssertTrue(AIRegion.blocked(region: nil, timeZone: "America/New_York", storefront: "HKG"))
         XCTAssertFalse(AIRegion.blocked(region: "TW", timeZone: "Asia/Taipei", storefront: "TWN"))
 
         let (model, _) = canvas(tool: .brush)
